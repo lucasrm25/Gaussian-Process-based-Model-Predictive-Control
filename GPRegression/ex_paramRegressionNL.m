@@ -26,6 +26,9 @@
 close all;
 clear;
 
+addpath([pwd,'/utils/']);
+
+
 % plotting
 cmp = get(groot,'DefaultAxesColorOrder'); % new colormap
 c_gray = 0.4*ones(1,3);

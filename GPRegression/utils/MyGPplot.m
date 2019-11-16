@@ -28,16 +28,16 @@ function [h_fig] = MyGPplot(h_fig,m,V,z,colChoice,paramThrsh,flag_noShading,flag
 
 if nargin<5 || isempty(colChoice)
     colChoice = 'r';
-end;
+end
 if nargin<6 || isempty(paramThrsh)
     paramThrsh = 0.4;   % "the smaller, the brighter", Philipp: 0.6
-end;
+end
 if nargin<7 || isempty(flag_noShading)
     flag_noShading = false;
-end;
+end
 if nargin<8 || isempty(flag_noSamples)
     flag_noSamples = false;
-end;
+end
 
 %% Plot config
 % Number of samples to be plot
@@ -65,7 +65,7 @@ elseif colChoice=='r'
     col_2white = dre2white;
 else
     error('Color not specified.');
-end;
+end
 
 % Lines
 lineWidthMean = 2;
@@ -73,7 +73,7 @@ lineWidthStd = 0.8;
 lineWidthSamples = 0.8;
 
 % Number of std
-n_std = 2;  % how many std to plot
+n_std = 3;  % how many std to plot
 multSTD = 1.5*n_std;    % 4,3;  2, 2.5; Multiply STD to get shading y-range
 
 
@@ -88,24 +88,39 @@ min_std_V_shading = min([std_V*multSTD+m; -std_V*multSTD+m]);
 max_std_V = max([std_V*n_std+m; -std_V*n_std+m]);
 min_std_V = min([std_V*n_std+m; -std_V*n_std+m]);
 
+
+%%%% LUCAS RATH - BEGIN CHANGE
 % Gaussian density
-GaussDensity = @(y,m,v)(bsxfun(@rdivide,exp(-0.5*...
-    bsxfun(@rdivide,bsxfun(@minus,y,m').^2,v'))./sqrt(2*pi),sqrt(v')));
+% GaussDensity = @(y,m,v)(bsxfun(@rdivide,exp(-0.5*...
+%     bsxfun(@rdivide,bsxfun(@minus,y,m').^2,v'))./sqrt(2*pi),sqrt(v')));
+GaussDensity = @(y,m,v) exp(-0.5 * (y - m').^2 ./ v') ./ sqrt(2*pi) ./ sqrt(v');
+%%%% LUCAS RATH - END CHANGE
 
+
+%%%% LUCAS RATH - BEGIN CHANGE
 % Samples from prior
-s_prior = bsxfun(@plus, m, chol(V + 1.0e-8 * eye(N_test))' * randn(N_test,N_sample));
+Vpd = (V + V')/2  + 1.0e-8 * eye(N_test);
+s_prior = bsxfun(@plus, m, chol(Vpd)' * randn(N_test,N_sample));
 
-% Shading
-%Y = linspace(-multSTD*max_std_V,multSTD*max_std_V,250)';
+% sanity check
+% norm(chol(Vpd)'*chol(Vpd)-Vpd)
+% norm( (s_prior-m)*(s_prior-m)'/(N_sample-1) - Vpd )
+%%%% LUCAS RATH - END CHANGE
+
+
+% Shading - LIKELIHOOD HEATMAP
+% grid coordinates in y
 Y = linspace(min_std_V_shading,max_std_V_shading,250)';
+% grid coordinates in x
 zGD = linspace(z(1),z(end),300); % x-resolution of the density
+% likelihood for each (y,x) position in the grid
 P = GaussDensity(Y,interp1(z,m,zGD)',interp1(z,diag(V+eps),zGD)'); 
 
 
 %% Plot
 if ~isempty(h_fig)
     figure(h_fig);
-end;
+end
 
 % Set colormap
 colormap(col_2white);
@@ -118,7 +133,7 @@ grid on;
 if ~flag_noShading
     imagesc(z,Y,P);
     set(gca,'Layer','top'); % show grid lines on top
-end;
+end
 
 % Plot mean and std
 plot(z, m, 'color',col_d,'LineWidth',lineWidthMean);
@@ -127,8 +142,8 @@ hold on;
 if ~flag_noSamples
     for iS=1:N_sample
         plot(z,s_prior(:,iS),'--','color',col_d,'LineWidth',lineWidthStd);
-    end;
-end;
+    end
+end
 
 % Axis settings
 extraLim = 0.03;

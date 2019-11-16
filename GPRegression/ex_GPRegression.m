@@ -31,9 +31,20 @@
 close all;
 clear;
 
+addpath([pwd,'/utils/']);
+
+%%%% LUCAS RATH - BEGIN CHANGE
+n_test = 100;
+%%%% LUCAS RATH - END CHANGE
+
 % Testpoints: these points will be used for plotting all functions
-x_plot = linspace(-4,4)';  % test points (plot functions at these points)
-n_test = length(x_plot);
+
+%%%% LUCAS RATH - BEGIN CHANGE
+% x_plot = linspace(-4,4)';  % test points (plot functions at these points)
+x_plot = linspace(-4,4,n_test);  % <D,n> test points (plot functions at these points)
+% n_test = length(x_plot);
+% n_test = size(x_plot,2);
+%%%% LUCAS RATH - END CHANGE
 
 % plotting
 cmp = get(groot,'DefaultAxesColorOrder'); % new colormap
@@ -61,15 +72,15 @@ ylim_f = [-3,3];
 X = [1 2 3 -1 -3 -4 4 0];
 
 % Flag: iteratively add data?
-flag_iterData = true;
+flag_iterData = false;
 
 % Show samples or not?
 flag_noSamples = false;
 
 % Hyperparameters
-sigma_f = 1;    % output variance (std); default/best: 1
-ell = 1;        % length scale; default: 1, best: 2
-sigma_n = 0.05;  % STD of measurement noise; default/best: 0.05
+sigma_f = 1;      % output variance (std); default/best: 1
+ell = 2;            % length scale; default: 1, best: 2
+sigma_n = 0.05;     % STD of measurement noise; default/best: 0.05
 
 
 
@@ -92,11 +103,21 @@ drawnow;
 %% Prior
 % Mean function
 %gp.mu = @(a) 0;    % one data point
-gp.mu = @(a) (zeros(size(a,1),1));  % multiplee data points
+
+%%%% LUCAS RATH - BEGIN CHANGE
+% gp.mu = @(a) (zeros(size(a,1),1));  % multiple data points
+gp.mu = @(a) (zeros(size(a,2),1));  % <n,1>  multiple data points
+% gp.mu = @(a) (linspace(1,5,size(a,2)))';  % <n,1> multiple data points
+
+% Y = [X;ones(1,n_train)]' * W
+% least-square-fit =>  W = [X;ones(1,n_train)]'\Y
+% wprior = [X;ones(1,size(X,2))]'\Y;
+% gp.mu = @(a) [a;ones(1,size(a,2))]' * wprior;
+%%%% LUCAS RATH - END CHANGE
 
 % Kernel: squared exponential (for scalar input)
 %gp.k = @(a,b) sigma_f^2 * exp(-(a-b)^2/(2*ell^2));    % one data point
-gp.K = @(a,b) sigma_f^2 * exp(-bsxfun(@minus,a,b').^2/(2*ell^2));    % multiplee data points
+gp.K = @(a,b) sigma_f^2 * exp(-bsxfun(@minus,a,b').^2/(2*ell^2));    % <na,nb> multiple data points
 
 
 % GRV prior at test points
@@ -134,7 +155,7 @@ if flag_iterData
 else
     % don't
     iters = length(X);
-end;
+end
 for n_sel=iters
     % data points considered
     X_sel = X(1:n_sel);
@@ -147,7 +168,11 @@ for n_sel=iters
     m_X = gp.mu(X_sel);
     k_XX = gp.K(X_sel',X_sel');
     aux1 = inv(k_XX + sigma_n^2*eye(n_sel));
-    k_xX = gp.K(x,X_sel');
+
+    %%%% LUCAS RATH - BEGIN CHANGE
+    % k_xX = gp.K(x,X_sel);
+    k_xX = gp.K(x',X_sel');
+    %%%% LUCAS RATH - END CHANGE
     
     mean_post = m_x + k_xX*aux1*(Y_sel-m_X);
     K_post = K_xx - k_xX*aux1*k_xX';
@@ -167,8 +192,8 @@ for n_sel=iters
 
     if flag_iterData
         pause;
-    end;
-end;
+    end
+end
 
 return;
 
