@@ -6,7 +6,7 @@ classdef GP < handle
         sigman
         lambda
         maxsize
-        invKXX
+        inv_KXX_sn
     end
     
     methods
@@ -28,7 +28,7 @@ classdef GP < handle
         end
         
         
-        function mean = mu(obj,x)
+        function mean = mu(~,x)
         %------------------------------------------------------------------
         % zero mean function: mean[f(x)] = 0
         % args:
@@ -71,7 +71,7 @@ classdef GP < handle
                 obj.dict.Y = [obj.dict.Y; Y];
                 % precompute inv(K(X,X) + sigman^2*I)
                 I = eye(size(obj.dict.X,2));
-                obj.invKXX = inv( obj.K(obj.dict.X,obj.dict.X) + obj.sigman^2 * I );
+                obj.inv_KXX_sn = inv( obj.K(obj.dict.X,obj.dict.X) + obj.sigman^2 * I );
             end
             
         end
@@ -85,12 +85,12 @@ classdef GP < handle
         %------------------------------------------------------------------
             KxX = obj.K(x,obj.dict.X);
             KXx = KxX';
-            muy  = obj.mu(x) + KxX * obj.invKXX * (obj.dict.Y-obj.mu(obj.dict.X));
-            covary = obj.K(x,x) - KxX * obj.invKXX * KXx;
+            muy  = obj.mu(x) + KxX * obj.inv_KXX_sn * (obj.dict.Y-obj.mu(obj.dict.X));
+            covary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KXx;
         end
         
         
-        function plot2d(obj, gridX1,gridX2)
+        function plot2d(obj, gridX1,gridX2, truthfun)
         %------------------------------------------------------------------
         % plot mean and covariance of GP with 2D states
         % args:
@@ -105,7 +105,7 @@ classdef GP < handle
             [X1,X2] = meshgrid(gridX1,gridX2);
             for i=1:size(X1,1)
                 for j=1:size(X1,2)
-                    % Y(i,j) = truthfun([X1(i,j);X2(i,j)]);
+                    Y(i,j) = truthfun([X1(i,j);X2(i,j)]);
                     [mu,var] = obj.eval([X1(i,j);X2(i,j)]);
                     Ystd(i,j)  = sqrt(var);
                     Ymean(i,j) = mu;
@@ -113,16 +113,30 @@ classdef GP < handle
             end
             
             % plot data points, and +-2*stddev surfaces
-            figure('Color','w')
+            figure('Color','w', 'Position', [123   124   550   420])
             hold on; grid on;
             % surf(X1,X2,Y, 'FaceAlpha',0.3)
             surf(X1,X2,Ymean+2*Ystd ,Ystd, 'FaceAlpha',0.3)
             surf(X1,X2,Ymean-2*Ystd,Ystd, 'FaceAlpha',0.3)
-            scatter3(obj.dict.X(1,:),obj.dict.X(2,:),obj.dict.Y,'filled')
-
+            scatter3(obj.dict.X(1,:),obj.dict.X(2,:),obj.dict.Y,'filled','MarkerFaceColor','red')
+            title('mean\pm2*stddev Prediction Curves')
             shading interp;
-            colormap jet
+            colormap(gcf,jet);
             view(30,30)
+            
+            % plot bias and variance
+            figure('Color','w', 'Position',[708   166   894   264])
+            subplot(1,2,1); hold on; grid on;
+            contourf(X1,X2, abs(Ymean-Y), 10)
+            title('Absolute Prediction Bias')
+            colorbar;
+            scatter(obj.dict.X(1,:),obj.dict.X(2,:),'filled','MarkerFaceColor','red')
+            subplot(1,2,2); hold on; grid on;
+            contourf(X1,X2, Ystd.^2, 10)
+            title('Prediction Variance')
+            colorbar;
+            scatter(obj.dict.X(1,:),obj.dict.X(2,:),'filled','MarkerFaceColor','red')
+            colormap(gcf,parula);
         end
     end
 end
