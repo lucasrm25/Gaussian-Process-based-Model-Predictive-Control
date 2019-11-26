@@ -2,8 +2,8 @@ clear vars; close all; clc;
 
 % GP hyperparameters
 sigmaf  = 10;        % output variance (std)
-lambda  = 10;        % length scale
-sigman  = 0.05;     % STD of measurement noise
+lambda  = 10^2;        % length scale
+sigman  = 1;     % STD of measurement noise
 maxsize = 100;      % maximum number of points in the dictionary
 
 % create GP object
@@ -13,7 +13,8 @@ gp = GP(sigmaf, sigman, lambda, maxsize);
 truthfun = @(x) x'*[1;2] - 20;
 
 % generate sampled data
-xdata = rand(2,10)*10 + 10;
+nsamples = 20;
+xdata = rand(2,nsamples)*10 + 10;
 ydata = truthfun(xdata) + sigman*randn(size(xdata,2),1);
 
 % add sampled data to gp dictionary
@@ -25,3 +26,35 @@ x = [25:35; 25:35];
 
 % plot prediction bias and variance
 gp.plot2d(truthfun, [-5,40],[-5,40])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

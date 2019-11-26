@@ -16,19 +16,20 @@ B = 3;
 Bd = 1;
 
 % disturbance noise stddev - in continuous time
-sigmaw = 0.1/dt;
+sigmaw = 0.01/sqrt(dt);
 
 n = size(A,2);
 m = size(B,2);
 md = size(Bd,2);
 
 % true disturbance model
-d_true = @(x,u) -3*[0.01 -1 1 0.5]*[(x+u)^3 exp(-10*(u+0.5)^2) exp(-10*(x-0.5)^2) sin(2*x)]';
+d_true = @(x,u) 1/dt*[20 -20]*[mvnpdf([x,u],[2,2],diag([2,20])) mvnpdf([x,u],[-2,-2],diag([2,20]))]';
+
 % true model
-f_true = @(x,u,inclnoise) A*x + B*u + Bd*(d_true(x,u) + inclnoise*sigmaw*randn(md));
+f_true = @(x,u) A*x + B*u + Bd*(d_true(x,u));
 
 % dicretize true model - ODE1 Euler integration
-fd_true = @(x,u,dt,inclnoise) x + dt*f_true(x,u,inclnoise);
+fd_true = @(x,u,dt,inclnoise) x + dt*f_true(x,u) + inclnoise*sqrt(dt)*Bd*sigmaw*randn(md);
 
 
 %% Controller
@@ -41,7 +42,7 @@ fd = @(x,u,dt) x + dt*f(x,u);
 % LQR controller
 Ak = eye(n)+dt*A;
 Bk = B*dt;
-K = place(Ak,Bk,0.8);
+K = place(Ak,Bk,0.9);
 
 % Prefilter
 Kr = inv((eye(n)-Ak+Bk*K)\Bk);
@@ -52,10 +53,10 @@ eig(Ak-Bk*K)
 %% Gaussian Process
 
 % GP hyperparameters
-sigmaf  = 10;        % output variance (std)
-lambda  = 10;        % length scale
-sigman  = sigmaw*dt; % stddev of measurement noise
-maxsize = 100;       % maximum number of points in the dictionary
+sigmaf  = 0.1;              % output variance (std)
+lambda  = diag([2,10].^2);   % length scale
+sigman  = sigmaw*sqrt(dt);  % stddev of measurement noise
+maxsize = 100;              % maximum number of points in the dictionary
 
 % create GP object
 gp = GP(sigmaf, sigman, lambda, maxsize);
@@ -64,13 +65,13 @@ gp = GP(sigmaf, sigman, lambda, maxsize);
 %% Simulate
 
 % define input
-r = @(t) 3;
-r = @(t) sin(10*t);
-% r = @(t) sin(10*t); %+ 2*sin(20*t) + 10*exp(-t);
+% r = @(t) -3;
+% r = @(t) 1*sin(10*t);
+r = @(t) 5*sin(5*t) + 5*sin(15*t) + 10*exp(-t);
 
 nr = 1;
 
-tf = 1;
+tf = 10;
 
 x0 = 0;
 
@@ -83,11 +84,8 @@ out.u = zeros(m,length(out.t)-1);
 out.r = zeros(nr,length(out.t)-1);
 
 
-gptrue = @(x) Bd \ ( fd_true(x(1),x(2),dt,false) - fd(x(1),x(2),dt) );
-
-
 for i = 1:numel(out.t)-1
-    out.t(i)
+    disp(out.t(i))
     
     % read new reference
     out.r(:,i) = r(out.t(i));
@@ -101,13 +99,13 @@ for i = 1:numel(out.t)-1
     % measure data
     out.xhat(:,i+1) = out.x(:,i+1); % perfect observer
     
-    % update GP model
+    % add data to GP model
     out.xnom(:,i+1) = fd(out.xhat(:,i),out.u(:,i),dt);
-    ddata = Bd \ (out.xhat(:,i+1) - out.xnom(:,i+1));
-    gp.add( [out.xnom(:,i);out.u(:,i)], ddata );
+    if mod(i-1,7)==0
+        ddata = Bd \ (out.xhat(:,i+1) - out.xnom(:,i+1));
+        gp.add( [out.xnom(:,i);out.u(:,i)], ddata );
+    end
     
-    1;
-    % scatter3( gp.dict.X(1,:), gp.dict.X(2,:), gp.dict.Y, 'filled' ) 
 %     ddata
 %     gptrue( [out.xhat(:,i),out.u(:,i)] )
 %     d_true( out.xhat(:,i),out.u(:,i) )*dt
@@ -116,14 +114,16 @@ end
 
 
 %% Evaluate results
+close all;
 
 % true GP function that is ment to be learned
-% gptrue = @(x) Bd \ ( fd_true(x(1),x(2),dt,false) - fd(x(1),x(2),dt) );
+gptrue = @(x) Bd \ ( fd_true(x(1),x(2),dt,false) - fd(x(1),x(2),dt) );
 
 % plot prediction bias and variance
-gp.plot2d( gptrue, ...
-           [min(out.x),max(out.x)], ...
-           [min(out.u),max(out.u)] );
+gp.plot2d( gptrue )
+% , ...
+%            [min(out.x),max(out.x)], ...
+%            [min(out.u),max(out.u)] );
        
        
 figure; hold on; grid on;
