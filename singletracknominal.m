@@ -20,7 +20,7 @@ classdef singletracknominal
             % discretize model
         end
         
-        function xkp1 = f(obj,xk)
+        function xdot = f(obj,xk)
             xkp1 = xk;
         end
     end

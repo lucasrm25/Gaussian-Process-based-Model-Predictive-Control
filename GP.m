@@ -17,7 +17,7 @@ classdef GP < handle
         %   sigmaf: signal/output stddev
         %   sigman: evaluation noise stddev
         %   lambda: length scale
-        %   maxsize: maximum dictionary size 
+        %   maxsize: maximum dictionary size
         %------------------------------------------------------------------
             obj.dict.X  = [];
             obj.dict.Y  = [];
@@ -90,23 +90,40 @@ classdef GP < handle
         end
         
         
-        function plot2d(obj, gridX1,gridX2, truthfun)
+        function plot2d(obj, truthfun, varargin)
         %------------------------------------------------------------------
         % plot mean and covariance of GP with 2D states
         % args:
-        %   gridX1, gridX2: <1,any> points of X1 and X2 that will form the 
-        %                   grid where the data will be evaluated
+        %   truthfun: anonymous function @(x) which returns the true function
+        %   varargin{1} = rangeX1, 
+        %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
+        %                           will be evaluated
         %------------------------------------------------------------------   
             if size(obj.dict.X,1) ~= 2
                 error('This function can only be used when dim(X)=2');
             end
             
             % generate grid where the mean and variance will be calculated
-            [X1,X2] = meshgrid(gridX1,gridX2);
+            if numel(varargin) ~= 2
+                factor = 0.5;
+                rangeX1 = [ min(obj.dict.X(1,:)) - factor*range(obj.dict.X(1,:)), ...
+                            max(obj.dict.X(1,:)) + factor*range(obj.dict.X(1,:))  ];
+                rangeX2 = [ min(obj.dict.X(2,:)) - factor*range(obj.dict.X(2,:)), ...
+                            max(obj.dict.X(2,:)) + factor*range(obj.dict.X(2,:))  ];
+            else
+                rangeX1 = varargin{1};
+                rangeX2 = varargin{2};
+            end
+
+            [X1,X2] = meshgrid(linspace(rangeX1(1),rangeX1(2),100),...
+                               linspace(rangeX2(1),rangeX2(2),100));
             for i=1:size(X1,1)
                 for j=1:size(X1,2)
                     Y(i,j) = truthfun([X1(i,j);X2(i,j)]);
                     [mu,var] = obj.eval([X1(i,j);X2(i,j)]);
+                    if var < 0
+                        error('GP obtained a negative variance... aborting');
+                    end
                     Ystd(i,j)  = sqrt(var);
                     Ymean(i,j) = mu;
                 end
@@ -122,6 +139,15 @@ classdef GP < handle
             title('mean\pm2*stddev Prediction Curves')
             shading interp;
             colormap(gcf,jet);
+            view(30,30)
+            
+            % plot bias and variance
+            figure('Color','w', 'Position',[665 123 560 420])
+            hold on; grid on;
+            surf(X1,X2,Y, 'FaceAlpha',0.3, 'FaceColor','b', 'EdgeColor', 'none', 'DisplayName', 'True function');
+            surf(X1,X2,Ymean, 'FaceAlpha',0.3, 'FaceColor','g', 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
+            scatter3(obj.dict.X(1,:),obj.dict.X(2,:),obj.dict.Y,'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+            legend;
             view(30,30)
             
             % plot bias and variance
