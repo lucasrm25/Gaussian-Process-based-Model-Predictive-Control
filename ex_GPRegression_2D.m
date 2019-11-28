@@ -26,35 +26,3 @@ x = [25:35; 25:35];
 
 % plot prediction bias and variance
 gp.plot2d(truthfun, [-5,40],[-5,40])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
