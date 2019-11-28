@@ -1,3 +1,10 @@
+%------------------------------------------------------------------
+% Programed by: 
+%   - Lucas Rath (lucasrm25@gmail.com)
+%   - 
+%   -
+%------------------------------------------------------------------
+
 classdef NMPC
     %------------------------------------------------------------------
     % Nonlinear MPC class
@@ -140,6 +147,7 @@ classdef NMPC
             uvec = vars( (1:obj.N*obj.m)  + length(xvec) );
             evec = vars( (1:(obj.N+1)*obj.ne) + length(xvec) + length(uvec) );
         end
+        
 
         function cost = costfun(obj, vars, t0, r)
             % to make the notation shorter
@@ -174,6 +182,7 @@ classdef NMPC
             end
             
         end
+        
 
         function [cineq,ceq] = nonlcon(obj,vars, t0, x0)
 
@@ -207,12 +216,15 @@ classdef NMPC
                     %       mean and covariance needs to be propagated with
                     %       EKF
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                else 
-                    % add dynamics constraints without GP disturbance estimation
+                    
+                else % add constraints without GP disturbance estimation
+                    
+                    % dynamics (xk+1-f(xk,uk)=0) and provided equality (h=0) constraints
                     ceq = [ceq ;
                            xvec(idx_xk+n) - obj.f(t,xvec(idx_xk),uvec(idx_uk)) ;
                            obj.h(t,xvec(idx_xk),uvec(idx_uk),evec(idx_ek))     ];
                     
+                    % provided inequality constraints (g<=0)   
                     cineq = [cineq;
                              obj.g(t,xvec(idx_xk),uvec(idx_uk),evec(idx_ek)) ];
                 end
