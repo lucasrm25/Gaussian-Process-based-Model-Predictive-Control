@@ -1,3 +1,11 @@
+%------------------------------------------------------------------
+%   1D Toy example:
+%
+%       - Simulate the GP learning of the nonlinear part of the plant
+%       dynamics
+%       - System is being currently controlled with a state feedback control
+%------------------------------------------------------------------
+
 clear vars; close all; clc;
 
 dt = 0.01;
@@ -6,8 +14,8 @@ dt = 0.01;
 %------------------------------------------------------------------
 %   dot_x(t) = f_true(x(t),u(t)) + Bd*(d_true(t) + w(t)),    wk=N(0,sigmaw^2)
 %   
-%   x = [x1]
-%   u = [u1]
+%   x = [x1]        1D state
+%   u = [u1]        1D input
 %------------------------------------------------------------------
 
 % true model
@@ -113,9 +121,10 @@ for i = 1:numel(out.t)-1
         gp.add( [out.xnom(:,i);out.u(:,i)], ddata );
     end
     
-%     ddata
-%     gptrue( [out.xhat(:,i),out.u(:,i)] )
-%     d_true( out.xhat(:,i),out.u(:,i) )*dt
+    % check if these tree values are the same:
+    %     ddata
+    %     gptrue( [out.xhat(:,i),out.u(:,i)] )
+    %     d_true( out.xhat(:,i),out.u(:,i) )*dt
     
 end
 
