@@ -1,9 +1,9 @@
 clear vars; close all; clc;
 
 % GP hyperparameters
-sigmaf  = 10;        % output variance (std)
-lambda  = 10^2;        % length scale
-sigman  = 1;     % STD of measurement noise
+sigmaf  = 10;       % output variance (std)
+lambda  = 10^2;     % length scale
+sigman  = 1;        % STD of measurement noise
 maxsize = 100;      % maximum number of points in the dictionary
 
 % create GP object

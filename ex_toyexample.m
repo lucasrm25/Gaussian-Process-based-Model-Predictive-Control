@@ -50,6 +50,12 @@ Kr = inv((eye(n)-Ak+Bk*K)\Bk);
 eig(Ak-Bk*K)
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TODO:
+%       - Implement MPC controller - See MPC.m class
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 %% Gaussian Process
 
 % GP hyperparameters
@@ -68,11 +74,12 @@ gp = GP(sigmaf, sigman, lambda, maxsize);
 % r = @(t) -3;
 % r = @(t) 1*sin(10*t);
 r = @(t) 5*sin(5*t) + 5*sin(15*t) + 10*exp(-t);
+nr = 1; % dimension of r(t)
 
-nr = 1;
-
+% simulation time
 tf = 10;
 
+% initial state
 x0 = 0;
 
 % initialize variables to store simulation results
@@ -121,11 +128,8 @@ gptrue = @(x) Bd \ ( fd_true(x(1),x(2),dt,false) - fd(x(1),x(2),dt) );
 
 % plot prediction bias and variance
 gp.plot2d( gptrue )
-% , ...
-%            [min(out.x),max(out.x)], ...
-%            [min(out.u),max(out.u)] );
        
-       
+% plot reference and state signal
 figure; hold on; grid on;
 plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
 plot(out.t, out.x, 'DisplayName', 'x(t)')
