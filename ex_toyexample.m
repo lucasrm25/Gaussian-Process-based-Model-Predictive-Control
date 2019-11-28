@@ -8,7 +8,7 @@
 
 clear vars; close all; clc;
 
-dt = 0.01;
+dt = 0.05;
 
 %% Dynamic Model
 %------------------------------------------------------------------
@@ -40,29 +40,6 @@ f_true = @(x,u) A*x + B*u + Bd*(d_true(x,u));
 fd_true = @(x,u,dt,inclnoise) x + dt*f_true(x,u) + inclnoise*sqrt(dt)*Bd*sigmaw*randn(md);
 
 
-%% Controller
-
-% nominal model
-f = @(x,u) A*x + B*u;
-% discretize nominal model
-fd = @(x,u,dt) x + dt*f(x,u);
-
-% LQR controller
-Ak = eye(n)+dt*A;
-Bk = B*dt;
-K = place(Ak,Bk,0.9);
-
-% Prefilter
-Kr = inv((eye(n)-Ak+Bk*K)\Bk);
-
-eig(Ak-Bk*K)
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% TODO:
-%       - Implement MPC controller - See MPC.m class
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 %% Gaussian Process
 
@@ -70,10 +47,57 @@ eig(Ak-Bk*K)
 sigmaf  = 0.1;              % output variance (std)
 lambda  = diag([2,10].^2);   % length scale
 sigman  = sigmaw*sqrt(dt);  % stddev of measurement noise
-maxsize = 100;              % maximum number of points in the dictionary
+maxsize = 200;              % maximum number of points in the dictionary
 
 % create GP object
 gp = GP(sigmaf, sigman, lambda, maxsize);
+
+
+
+%% Controller
+
+% -------------------------------------------------------------------------
+% DEFINE NOMINAL MODEL
+% nominal continuous time model
+f = @(x,u) A*x + B*u;
+% discretize nominal model
+fd = @(x,u,dt) x + dt*f(x,u);
+% -------------------------------------------------------------------------
+
+
+
+% -------------------------------------------------------------------------
+% LQR CONTROLLER
+Ak = eye(n)+dt*A;
+Bk = B*dt;
+K = place(Ak,Bk,0.9);
+% Prefilter
+Kr = inv((eye(n)-Ak+Bk*K)\Bk);
+% check eigenvalues
+eig(Ak-Bk*K);
+% -------------------------------------------------------------------------
+
+
+% -------------------------------------------------------------------------
+% NONLINEAR MPC CONTROLLER
+% define cost function
+N = 20;     % prediction horizon
+Q = 100;
+R = 1;
+f    = @(t,x,u) fd(x,u,dt);
+fo   = @(t,x,u,e,r)  1*(x-r(t))'*Q*(x-r(t)) + R*u^2;
+fend = @(t,x,e,r)   10*(x-r(t))'*Q*(x-r(t));
+h    = @(t,x,u,e) 0;
+g    = @(t,x,u,e) 0;
+
+mpc = NMPC(fo, fend, f, gp, Bd, N, sigmaw, h, g, n, m, 0, dt);
+
+x0 = 10;
+e0 = 0;
+t0 = 0;
+r  = @(t)2;    % desired trajectory
+u0 = mpc.optimize(x0, e0, t0, r );
+% -------------------------------------------------------------------------
 
 
 %% Simulate
@@ -85,7 +109,7 @@ r = @(t) 5*sin(5*t) + 5*sin(15*t) + 10*exp(-t);
 nr = 1; % dimension of r(t)
 
 % simulation time
-tf = 10;
+tf = 5;
 
 % initial state
 x0 = 0;
@@ -106,7 +130,11 @@ for i = 1:numel(out.t)-1
     out.r(:,i) = r(out.t(i));
     
     % calculate control input
-    out.u(:,i) = Kr*out.r(:,i) - K*out.xhat(:,i);
+%     out.u(:,i) = Kr*out.r(:,i) - K*out.xhat(:,i);
+    x0 = out.xhat(:,i);
+    e0 = 0;
+    t0 = out.t(i);
+    out.u(:,i) = mpc.optimize(x0, e0, t0, r);
     
     % simulate real model
     out.x(:,i+1) = fd_true(out.x(:,i),out.u(:,i),dt,true);
@@ -116,7 +144,7 @@ for i = 1:numel(out.t)-1
     
     % add data to GP model
     out.xnom(:,i+1) = fd(out.xhat(:,i),out.u(:,i),dt);
-    if mod(i-1,7)==0
+    if mod(i-1,3)==0
         ddata = Bd \ (out.xhat(:,i+1) - out.xnom(:,i+1));
         gp.add( [out.xnom(:,i);out.u(:,i)], ddata );
     end
@@ -139,9 +167,13 @@ gptrue = @(x) Bd \ ( fd_true(x(1),x(2),dt,false) - fd(x(1),x(2),dt) );
 gp.plot2d( gptrue )
        
 % plot reference and state signal
-figure; hold on; grid on;
+figure; 
+subplot(2,1,1); hold on; grid on;
 plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
 plot(out.t, out.x, 'DisplayName', 'x(t)')
+legend;
+subplot(2,1,2); hold on; grid on;
+plot(out.t(1:end-1), out.u, 'DisplayName', 'u(t)')
 legend;
 
 
