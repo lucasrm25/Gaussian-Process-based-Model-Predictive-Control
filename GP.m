@@ -8,24 +8,38 @@
 classdef GP < handle
     %------------------------------------------------------------------
     % Gaussian Process model fitting with SEQ kernel function
+    %
+    % This is a MIMO fitting function    x \in R^n -> y \in R^p.
+    % each output dimension is treated as a different GP
+    % 
+    % The Kernel parameters, when optimized, are optimized for each output
+    % dimension separately.
     %------------------------------------------------------------------
     
-    
     properties
-        % dictionary: [X,Y]
-        X        % <D,N>
-        Y        % <1,N>
-        maxsize  % <1>
-        
-        % kernel parameters
-        sigmaf  % <1>
-        sigman  % <1>
-        L       % <D,D>
+        % kernel parameters (one for each output dimension)
+        sigmaf  % <p> signal/output stddev
+        sigman  % <p> evaluation noise stddev
+        l       % <n,n,p> length scale covariance matrix
     end
     
-    properties(Access=private)
+    properties(SetAccess=private)
+        % dictionary: [X,Y]
+        X        % <n,N> input dataset
+        Y        % <N,p> output dataset
+        
+        N     % <1> dictionary size
+        Nmax  % <1> max dictionary size
+        
+        n % <1> input dimension
+        p % <1> output dimension
+        
         % aux variables
-        inv_KXX_sn  % <N,N>
+        L       % <N,N>: chol(obj.KXX + sigman^2 * I,'lower');
+        alpha   % <N,1>: L'\(L\(Y-muX));
+        % (DEPRECATED) inv_KXX_sn  % <N,N>
+        
+        outdated % <bool> tells if data has been added withouth updating L and alpha matrices
     end
     
     methods
@@ -33,25 +47,52 @@ classdef GP < handle
         %------------------------------------------------------------------
         % GP constructor
         % args:
-        %   sigmaf: <1> signal/output stddev
-        %   sigman: <1> evaluation noise stddev
-        %   lambda: <n,n> length scale covariance matrix
+        %   sigmaf: <p> signal/output stddev
+        %   sigman: <p> evaluation noise stddev
+        %   lambda: <n,n,p> length scale covariance matrix
         %   maxsize: <1> maximum dictionary size
         %------------------------------------------------------------------
-            obj.X  = [];
-            obj.Y  = [];
+            obj.X       = [];
+            obj.Y       = [];
             obj.sigmaf  = sigmaf;
             obj.sigman  = sigman;
-            obj.L       = lambda;
-            obj.maxsize = maxsize;
+            obj.l       = lambda;
+            obj.Nmax    = maxsize;
         end
         
+        function bool = isfull(obj)
+        %------------------------------------------------------------------
+        % is dictionary full?
+        %------------------------------------------------------------------
+            bool = obj.N >= obj.Nmax;
+        end
+        
+        function N = get.N(obj)
+        %------------------------------------------------------------------
+        % return dictionary size = N
+        %------------------------------------------------------------------
+            N = size(obj.X,2);
+        end
+        
+        function n = get.n(obj)
+        %------------------------------------------------------------------
+        % return input dimension = n
+        %------------------------------------------------------------------
+            n = size(obj.X,1);
+        end
+        
+        function p = get.p(obj)
+        %------------------------------------------------------------------
+        % return output dimension
+        %------------------------------------------------------------------
+            p = size(obj.Y,2);
+        end
         
         function mean = mu(~,x)
         %------------------------------------------------------------------
         % zero mean function: mean[f(x)] = 0
         % args:
-        %   x: <D,N>
+        %   x: <n,N>
         %------------------------------------------------------------------
             mean = zeros(size(x,2),1);
         end
@@ -61,92 +102,178 @@ classdef GP < handle
         %------------------------------------------------------------------
         % SEQ kernel function: cov[f(x1),f(x2)]
         % args:
-        %   x1: <D,N1>
-        %   x2: <D,N2>
+        %   x1: <n,N1>
+        %   x2: <n,N2>
         % out:
         %   kernel: <N1,N2>
         %------------------------------------------------------------------
-            nx1 = size(x1,2);
-            nx2 = size(x2,2);
-            kernel = zeros(nx1,nx2);
-            for i=1:nx1
-                for j=1:nx2
-                    % kernel(i,j) = obj.sigmaf^2 * exp( - norm(x1(:,i)-x2(:,j))^2 / (2*obj.L^2) );
-                    kernel(i,j) = obj.sigmaf^2 * exp( -0.5 * (x1(:,i)-x2(:,j))'/obj.L*(x1(:,i)-x2(:,j)) );
-                end
+            
+            % ---------------- (DEPRECATED - TOO SLOW) --------------------
+            % nx1 = size(x1,2);
+            % nx2 = size(x2,2);
+            % kernel = zeros(nx1,nx2);
+            % invl = inv(obj.l);
+            % for i=1:nx1
+            %     for j=1:nx2
+            %         dx = x1(:,i) - x2(:,j);
+            %         kernel(i,j) = obj.sigmaf^2 * exp( -0.5 * dx'*invl*dx );
+            %     end
+            % end
+            % ---------------- (DEPRECATED - TOO SLOW) --------------------
+            
+            % ---------------- (DEPRECATED - TOO SLOW) --------------------
+            %D = pdist2(x1',x2','mahalanobis',obj.l).^2;
+            %kernel = obj.sigmaf^2 * exp( -0.5 * D );
+            % ---------------- (DEPRECATED - TOO SLOW) --------------------
+            
+            D = pdist2(x1',x2','seuclidean',diag((obj.l).^0.5)).^2;
+            kernel = obj.sigmaf^2 * exp( -0.5 * D );
+        end
+        
+        function updateModel(obj)
+        % ----------------------------------------------------------------- 
+        % Update precomputed matrices L and alpha
+        % -----------------------------------------------------------------
+            if obj.outdated
+                obj.outdated = false;
+                % store cholesky L and alpha matrices
+                I = eye(obj.N);
+                obj.L = chol( obj.K(obj.X,obj.X) + obj.sigman^2 * I ,'lower');
+                % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.sigman^2*I) ) < 1e-12
+                obj.alpha = obj.L'\(obj.L\(obj.Y-obj.mu(obj.X)));
+                
+                %-------------------- (DEPRECATED) ------------------------ 
+                % % SLOW BUT RETURNS THE FULL COVARIANCE MATRIX INSTEAD OF ONLY THE DIAGONAL (VAR)
+                % % precompute inv(K(X,X) + sigman^2*I)
+                % I = eye(obj.N);
+                % obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.sigman^2 * I );
+                %-------------------- (DEPRECATED) ------------------------
+
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % TODO:
+                %       - call optimizeHyperParams every time data is added ???
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
         end
         
-        function set.X(obj, X)
-        %------------------------------------------------------------------
-        % precompute inv(K(X,X) + sigman^2*I), every time X changes
-        %------------------------------------------------------------------
-            % set variable
-            obj.X = X;
-            % precompute inv(K(X,X) + sigman^2*I)
-            I = eye(size(obj.X,2));
-            obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.sigman^2 * I );
+        function L = get.L(obj)
+            if obj.outdated
+                obj.updateModel();
+            end
+            L = obj.L;
         end
         
+        function alpha = get.alpha(obj)
+            if obj.outdated
+                obj.updateModel();
+            end
+            alpha = obj.alpha;
+        end
+        
+        function set.X(obj,X)
+            obj.X = X;
+            % data has been added. GP is outdated. Please call obj.updateModel
+            obj.outdated = true;
+        end
+        
+        function set.Y(obj,Y)
+            obj.Y = Y;
+            % data has been added. GP is outdated. Please call obj.updateModel
+            obj.outdated = true;
+        end
         
         function add(obj,X,Y)
         %------------------------------------------------------------------
+        % - add new data points [X,Y] to the dictionary
+        % - precompute cholesky L and alpha matrices that will be used when
+        %   evaluating new points. See [Rasmussen, pg19].
+        %
+        % - (DEPRECATED) precompute inv(K(X,X) + sigman^2*I), every time X changes
+        %
         % args:
-        %   X: <D,N>
-        %   Y: <1,N>
+        %   X: <n,N>
+        %   Y: <N,p>
         %------------------------------------------------------------------
-            if size(obj.X,2) + size(X,2) > obj.maxsize
+            if obj.N + size(X,2) > obj.Nmax
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % TODO:
                 %       - decide how to select the induction points
                 %       - READ the paper from AMZ. They give hints there
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             else
-                obj.X = [obj.X, X];
-                obj.Y = [obj.Y; Y];
+                obj.X = [obj.X, X];     % concatenation in the 2st dim.
+                obj.Y = [obj.Y; Y];     % concatenation in the 1st dim.
             end
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % TODO:
-            %       - call optimizeHyperParams ???
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
         
         
-        function [muy, covary] = eval(obj,x)
+        function [muy, vary] = eval(obj,x)
         %------------------------------------------------------------------
-        % evaluate GP at the points x
+        % Evaluate GP at the points x
+        % This is a fast implementation of [Rasmussen, pg19]
+        %
         % args:
-        %   x: <D,N> point coordinates
+        %   x: <n,N> point coordinates
+        % out:
+        %   muy:  <N,p>    E[Y]
+        %   vary: <N,1>  Var[Y] is the same for all output dimensions
+        %   (DEPRECATED) covary: <N,N>
         %------------------------------------------------------------------
-            KxX = obj.K(x,obj.X);
-            muy  = obj.mu(x) + KxX * obj.inv_KXX_sn * (obj.Y-obj.mu(obj.X));
-            covary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KxX';
+            if obj.N == 0
+                error('GP dataset is empty. Please add data points before evaluating!');
+            end
+        
+            muy = obj.mu(x) + obj.K(x,obj.X) * obj.alpha;
+            
+            Nx = size(x,2);  % size of dataset to be evaluated
+            vary = zeros(Nx,1);
+            for i=1:Nx
+                v = obj.L\obj.K(x(:,i),obj.X)';
+                vary(i) = obj.K(x(:,i),x(:,i)) - v'*v;
+            end
+            
+            % --------------------- (DEPRECATED) ------------------------- 
+            % % SLOW BUT RETURNS THE FULL COVARIANCE MATRIX INSTEAD OF ONLY THE DIAGONAL (VAR)
+            % KxX = obj.K(x,obj.X);
+            % muy  = obj.mu(x) + KxX * obj.inv_KXX_sn * (obj.Y-obj.mu(obj.X));
+            % covary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KxX';
+            % --------------------- (DEPRECATED) ------------------------- 
         end
         
         
         function optimizeHyperParams(obj)
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % TODO:
-            %       - Implement ML/MAP optimization of hyper parameters
-            %       - See Rasmussen's book Sec. 5.4.1
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            for ip = 1:obj.p
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % TODO:
+                %       - Implement ML/MAP optimization of hyper parameters
+                %       - See Rasmussen's book Sec. 5.4.1
+                %
+                %       - Each output dimension is a separate GP and must 
+                %       be optimized separately.
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            end
             return;
         end
         
         
         function plot2d(obj, truthfun, varargin)
         %------------------------------------------------------------------
-        % plot mean and covariance of GP with 2D states
+        % Make analysis of the GP quality (only for the first output dimension.
+        % This function can only be called when the GP input is 2D
+        %
         % args:
         %   truthfun: anonymous function @(x) which returns the true function
         %   varargin{1} = rangeX1: 
         %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
         %                           will be evaluated and ploted
-        %------------------------------------------------------------------   
-            if size(obj.X,1) ~= 2
-                error('This function can only be used when dim(X)=2');
-            end
+        %------------------------------------------------------------------
             
+            % output dimension to be analyzed
+            pi = 1;
+        
+            assert(obj.N>0, 'Dataset is empty. Aborting...')
+            % we can not plot more than in 3D
+            assert(obj.n==2, 'This function can only be used when dim(X)=2. Aborting...');
             
             % Generate grid where the mean and variance will be calculated
             if numel(varargin) ~= 2
@@ -169,14 +296,15 @@ classdef GP < handle
             for i=1:size(X1,1)
                 for j=1:size(X1,2)
                     % evaluate true function
-                    Ytrue(i,j) = truthfun([X1(i,j);X2(i,j)]);
+                    mutrue = truthfun([X1(i,j);X2(i,j)]);
+                    Ytrue(i,j) = mutrue(pi); % select desired output dim
                     % evaluate GP model
                     [mu,var] = obj.eval([X1(i,j);X2(i,j)]);
                     if var < 0
                         error('GP obtained a negative variance... aborting');
                     end
                     Ystd(i,j)  = sqrt(var);
-                    Ymean(i,j) = mu;
+                    Ymean(i,j) = mu(:,pi);    % select desired output dim
                 end
             end 
             
@@ -186,7 +314,7 @@ classdef GP < handle
             % surf(X1,X2,Y, 'FaceAlpha',0.3)
             surf(X1,X2,Ymean+2*Ystd ,Ystd, 'FaceAlpha',0.3)
             surf(X1,X2,Ymean-2*Ystd,Ystd, 'FaceAlpha',0.3)
-            scatter3(obj.X(1,:),obj.X(2,:),obj.Y,'filled','MarkerFaceColor','red')
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red')
             title('mean\pm2*stddev Prediction Curves')
             shading interp;
             colormap(gcf,jet);
@@ -197,8 +325,8 @@ classdef GP < handle
             subplot(1,2,1); hold on; grid on;
             surf(X1,X2,Ytrue, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'True function');
             % surf(X1,X2,Ymean, 'FaceAlpha',.5, 'FaceColor','g', 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
-            scatter3(obj.X(1,:),obj.X(2,:),obj.Y,'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
-            zlim([ min(obj.Y)-range(obj.Y),max(obj.Y)+range(obj.Y) ]);
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+            zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
             legend;
             xlabel('X1'); ylabel('X2');
             title('True Function')
@@ -206,8 +334,8 @@ classdef GP < handle
             subplot(1,2,2); hold on; grid on;
             % surf(X1,X2,Y, 'FaceAlpha',.5, 'FaceColor','b', 'EdgeColor', 'none', 'DisplayName', 'True function');
             surf(X1,X2,Ymean, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
-            scatter3(obj.X(1,:),obj.X(2,:),obj.Y,'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
-            zlim([ min(obj.Y)-range(obj.Y),max(obj.Y)+range(obj.Y) ]);
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+            zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
             legend;
             xlabel('X1'); ylabel('X2');
             title('Prediction Mean')

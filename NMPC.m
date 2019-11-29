@@ -5,7 +5,7 @@
 %   -
 %------------------------------------------------------------------
 
-classdef NMPC
+classdef NMPC < handle
     %------------------------------------------------------------------
     % Nonlinear MPC class
     % 
@@ -29,14 +29,14 @@ classdef NMPC
     properties
         % Optimizer settings
         maxiter = 200       % max solver iterations
-        tol     = 1e-8      % optimizer tolerance
+        tol     = 1e-6      % optimizer tolerance
         N       = 30        % prediction horizon
         
         % Define optimization problem
         fo      % @fun nonlinear cost function
         fend    % @fend nonlinear cost function for the final state
         f       % @fun nonlinear dynamics
-        d @GP   % [GP,GP,...] vector of Gaussian process models representing each disturbance dimension
+        d @GP   % Gaussian Process model representing disturbance
         Bd
         sigmaw  % discrete noise covariance of w
         h       % equality constraint function 
@@ -46,16 +46,14 @@ classdef NMPC
         n   % state space dimension
         m   % input diension
         ne  % extra variable dimension
-        
-        % time step
         dt  % time step size
-        
-        isGPactive = false  % if inactive, NMPC will consider d(zk)=0
     end
     
     properties(Access=private)
         % save last optimal results computed, in order to use as initial guess
         vars_opt_old = []
+        
+        isGPactive = false  % if inactive, NMPC will consider d(zk)=0
     end
     
     methods
@@ -63,11 +61,6 @@ classdef NMPC
         function obj = NMPC(fo, fend, f, d, Bd, N, sigmaw, h, g, n, m, ne, dt)
         %------------------------------------------------------------------
         % MPC constructor
-        % args:
-        %   f0: <1> signal/output stddev
-        %   f:  <1> evaluation noise stddev
-        %   d:  <n,n> length scale covariance matrix
-        %   Bd: <1> maximum dictionary size
         %------------------------------------------------------------------
            obj.fo = fo;
            obj.f  = f;
@@ -84,22 +77,63 @@ classdef NMPC
            obj.dt = dt;
         end
         
+        function activateGP(obj)
+            if obj.d.N == 0
+                error('GP dataset is empty. Please add data points before activating!');
+            end
+            obj.isGPactive = true;
+        end
+        
+        function deactivateGP(obj)
+            obj.isGPactive = false;
+        end
+        
+        
+        function numvars = optSize(obj)
+        %------------------------------------------------------------------
+        % How many variables we need to optimize?
+        %
+        %   vars_opt = [x0,...,xN, u0,...,uN-1, e0,...,eN]
+        %------------------------------------------------------------------
+            numvars = (obj.N+1)*(obj.n) + (obj.N)*(obj.m) + (obj.N+1)*(obj.ne);
+        end
+        
         
         function u0_opt = optimize(obj, x0, e0, t0, r)
-            z0 = obj.Bd'*x0;
+        %------------------------------------------------------------------
+        % Calculate first uptimal control input
+        %------------------------------------------------------------------
             
+        
+            %-------- Set initial guess for optimization variables  -------
+            % initialize optimization variables initial guesses
             if isempty(obj.vars_opt_old)
-                % initialize optimization variables initial guesses
-                xguess = x0*ones(obj.n * obj.N+1,1);     % [ x0,...,xN-1,xN ]
-                uguess = zeros(obj.m * obj.N,1);         % [ u0,...,uN-1    ]
-                eguess = e0*ones(obj.ne * obj.N+1,1);    % [ e0,...,eN-1,eN ]
+                % if this is the first optimization
+                xguess = x0*ones(obj.n * (obj.N+1),1);     % [ x0,...,xN-1,xN ]
+                uguess = zeros(obj.m * obj.N,1);           % [ u0,...,uN-1    ]
+                eguess = e0*ones(obj.ne * (obj.N+1),1);    % [ e0,...,eN-1,eN ]
                 % vector of initial guesses
                 varsguess = [xguess; uguess; eguess];
             else
+                varsguess = obj.vars_opt_old;
+                varsguess(1:obj.n) = x0;
+                
                 % use last optimization results as initial guess in case
                 % they have already been calculated once
-                varsguess = obj.vars_opt_old;
+                % % [xvec, uvec, evec] = obj.splitvariables(obj.vars_opt_old);
+                % % 
+                % % varsguess = [ x0; xvec(2*obj.n+1:end); xvec(end-obj.n+1:end);
+                % %               uvec(obj.m+1:end); uvec(end-obj.m+1:end)];
+                % % if ~isempty(evec) && numel(evec) > 1
+                % %     varsguess = [varguess; evec(2:end); evec(end)];
+                % % else
+                % %     varsguess = [varsguess; evec];
+                % % end
             end
+            %--------------------------------------------------------------
+            
+            assert( numel(varsguess) == obj.optSize(), ...
+                'There is something wrong with the code. Number of optimization variables does not match!' );
                 
             % We currently dont need this parameters in fmincon
             A = [];
@@ -116,13 +150,22 @@ classdef NMPC
             
             % define optimizer settings
             options = optimoptions('fmincon',...
-                                    'Display','none',...
+                                   'Display','iter',...
                                    'Algorithm','sqp',...
                                    'ConstraintTolerance',obj.tol,...
                                    'MaxIterations',obj.maxiter);
             
             % solve optimization problem                   
             vars_opt = fmincon(costfun,varsguess,A,b,Aeq,beq,lb,ub,nonlcon,options);
+            
+            % if ~isempty(obj.vars_opt_old)
+            %     [xerr, uerr, eerr] = obj.splitvariables(vars_opt-obj.vars_opt_old);
+            %     fprintf('\nOld guess error. x:%.3f - u:%.3f - e: %.3f\n', ...
+            %          norm(xerr), norm(uerr), norm(eerr) );
+            %      [xerr, uerr, eerr] = obj.splitvariables(vars_opt-varsguess);
+            %     fprintf('\nNew guess error. x:%.3f - u:%.3f - e: %.3f\n', ...
+            %          norm(xerr), norm(uerr), norm(eerr) );
+            % end
             
             % store current optimization results to use as initial guess
             % for future optimizations
@@ -150,26 +193,24 @@ classdef NMPC
         
 
         function cost = costfun(obj, vars, t0, r)
-            % to make the notation shorter
-            n = obj.n;
-            m = obj.m;
-            ne = obj.ne;
-            N = obj.N;
+        %------------------------------------------------------------------
+        % Evaluate cost function for the whole horizon, given variables
+        %------------------------------------------------------------------
 
             % split variables
             [xvec, uvec, evec] = obj.splitvariables(vars);
 
             cost = 0;
             t = t0;
-            for iN=1:N+1      % i=0:N
+            for iN=1:obj.N+1      % i=0:N
                 
-                % which are the indices of the current time k?
-                idx_xk =  n*(iN-1)+1 : n*iN;
-                idx_uk =  m*(iN-1)+1 : m*iN;
-                idx_ek = ne*(iN-1)+1 : ne*iN;
+                % which are the indices of the current vector at time k?
+                idx_xk =  obj.n*(iN-1)+1 : obj.n*iN;
+                idx_uk =  obj.m*(iN-1)+1 : obj.m*iN;
+                idx_ek = obj.ne*(iN-1)+1 : obj.ne*iN;
 
                 % calculate cost for t = tk
-                if iN <= N
+                if iN <= obj.N
                     % cost for current state
                     cost = cost + obj.fo( t, xvec(idx_xk), uvec(idx_uk), evec(idx_ek), r );
                 else
@@ -185,28 +226,35 @@ classdef NMPC
         
 
         function [cineq,ceq] = nonlcon(obj,vars, t0, x0)
-
-            % to make the notation shorter
-            n = obj.n;
-            m = obj.m;
-            ne = obj.ne;
-            N = obj.N;
+        %------------------------------------------------------------------
+        % Evaluate nonlinear equality and inequality constraints
+        % args
+        %   cineq = g(x,u)
+        %   ceq   = h(x,u)
+        %------------------------------------------------------------------ 
 
             % split variables
             [xvec, uvec, evec] = obj.splitvariables(vars);
             
-            % initial state constraint: x0 - x(0) = 0
-            ceq = [ x0 - xvec(1) ];
+            % initialize state constraint: x0 - x(0) = 0
+            ceq = x0 - xvec(1);
+            % initialize inequality constraint
             cineq = [];
             
             t = t0;
-            for iN=1:N
+            for iN=1:obj.N
 
                 % which are the indices of the current time k?
-                idx_xk   =  n*(iN-1)+1 : n*iN;
-                idx_uk   =  m*(iN-1)+1 : m*iN;
-                idx_ek   = ne*(iN-1)+1 : ne*iN;
-
+                idx_xk   = obj.n*(iN-1)+1 : obj.n*iN;
+                idx_uk   = obj.m*(iN-1)+1 : obj.m*iN;
+                idx_ek   = obj.ne*(iN-1)+1 : obj.ne*iN;
+                
+                % get current timestep variables
+                xk   = xvec(idx_xk);
+                xkp1 = xvec(idx_xk + obj.n);
+                uk   = uvec(idx_uk);
+                ek   = evec(idx_ek);
+                zk   = obj.Bd * xk;
                 
                 if obj.isGPactive
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -217,17 +265,31 @@ classdef NMPC
                     %       EKF
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     
+                    % dynamics constraints
+                    [mu_dzk,var_dzk] = obj.d.eval([zk;uk]);
+                    ceq = [ceq ;
+                           xkp1 - obj.f(t,xk,uk) - obj.Bd * mu_dzk];
+                       
+                    % cineq = [cineq;
+                    %         ];
+                    
                 else % add constraints without GP disturbance estimation
                     
-                    % dynamics (xk+1-f(xk,uk)=0) and provided equality (h=0) constraints
+                    % dynamics constraints
                     ceq = [ceq ;
-                           xvec(idx_xk+n) - obj.f(t,xvec(idx_xk),uvec(idx_uk)) ;
-                           obj.h(t,xvec(idx_xk),uvec(idx_uk),evec(idx_ek))     ];
-                    
-                    % provided inequality constraints (g<=0)   
-                    cineq = [cineq;
-                             obj.g(t,xvec(idx_xk),uvec(idx_uk),evec(idx_ek)) ];
+                           xkp1 - obj.f(t,xk,uk) ];
                 end
+                
+                % provided equality constraints (h==0)
+                if ~isempty(obj.h)
+                    ceq = [ceq ; obj.h(t,xk,uk,ek) ];
+                end
+                
+                % provided inequality constraints (g<=0)
+                if ~isempty(obj.g)
+                    cineq = [cineq; obj.g(t,xk,uk,ek) ];
+                end
+                
                 t = t + iN * obj.dt;
             end
 

@@ -26,6 +26,7 @@ ydata = truthfun(xdata) + sigman*randn(size(xdata,2),1);
 
 % add sampled data to gp dictionary
 gp.add(xdata,ydata)
+% gp.add(xdata,[ydata,ydata])   % test 2D output case
 
 % evaluate at some arbitrary points to check if GP works
 x = [25:35; 25:35];
