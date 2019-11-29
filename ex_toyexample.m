@@ -53,7 +53,7 @@ fd_true = @(x,u,dt,inclnoise) x + dt*f_true(x,u) + inclnoise*sqrt(dt)*Bd*sigmaw*
 
 % GP hyperparameters
 sigmaf  = 0.1;              % output variance (std)
-lambda  = diag([2,10].^2);   % length scale
+lambda  = diag([2,10].^2);  % length scale
 sigman  = sigmaw*sqrt(dt);  % stddev of measurement noise
 maxsize = 100;              % maximum number of points in the dictionary
 
