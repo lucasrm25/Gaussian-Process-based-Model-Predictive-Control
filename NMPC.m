@@ -43,9 +43,10 @@ classdef NMPC < handle
         g       % inequality constraint function
         
         % Optimization dimension
-        n   % state space dimension
-        m   % input diension
-        ne  % extra variable dimension
+        n   % dim(x) state space dimension
+        m   % dim(u) input diension
+        ne  % dim(e) extra variable dimension
+        nz  % dim(z) selected variable dimension - z = Bd*x
         dt  % time step size
     end
     
@@ -75,6 +76,7 @@ classdef NMPC < handle
            obj.m = m;
            obj.ne = ne;
            obj.dt = dt;
+           obj.nz = size(Bd,1);
         end
         
         function activateGP(obj)
@@ -241,12 +243,19 @@ classdef NMPC < handle
             % initialize inequality constraint
             cineq = [];
             
+            if obj.isGPactive
+                % evaluate GP for all points in the horizon
+                zvec = obj.Bd*xvec;
+                [mu_dz,var_dz] = obj.d.eval([zvec(1:end-obj.nz),uvec]');
+            end
+            
             t = t0;
             for iN=1:obj.N
 
                 % which are the indices of the current time k?
-                idx_xk   = obj.n*(iN-1)+1 : obj.n*iN;
-                idx_uk   = obj.m*(iN-1)+1 : obj.m*iN;
+                idx_xk   = obj.n *(iN-1)+1 : obj.n *iN;
+                idx_zk   = obj.nz*(iN-1)+1 : obj.nz*iN;
+                idx_uk   = obj.m *(iN-1)+1 : obj.m *iN;
                 idx_ek   = obj.ne*(iN-1)+1 : obj.ne*iN;
                 
                 % get current timestep variables
@@ -254,7 +263,7 @@ classdef NMPC < handle
                 xkp1 = xvec(idx_xk + obj.n);
                 uk   = uvec(idx_uk);
                 ek   = evec(idx_ek);
-                zk   = obj.Bd * xk;
+                zk   = zvec(idx_zk); %obj.Bd * xk;
                 
                 if obj.isGPactive
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -266,7 +275,8 @@ classdef NMPC < handle
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     
                     % dynamics constraints
-                    [mu_dzk,var_dzk] = obj.d.eval([zk;uk]);
+                    % (DEPRECATED) [mu_dzk,var_dzk] = obj.d.eval([zk;uk]);
+                    mu_dzk = mu_dz(idx_zk);
                     ceq = [ceq ;
                            xkp1 - obj.f(t,xk,uk) - obj.Bd * mu_dzk];
                        

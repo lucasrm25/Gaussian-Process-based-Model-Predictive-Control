@@ -223,12 +223,14 @@ classdef GP < handle
                 error('GP dataset is empty. Please add data points before evaluating!');
             end
         
-            muy = obj.mu(x) + obj.K(x,obj.X) * obj.alpha;
+            KxX = obj.K(x,obj.X);
+            muy = obj.mu(x) + KxX * obj.alpha;
             
             Nx = size(x,2);  % size of dataset to be evaluated
             vary = zeros(Nx,1);
             for i=1:Nx
-                v = obj.L\obj.K(x(:,i),obj.X)';
+                % v = obj.L\obj.K(x(:,i),obj.X)';
+                v = obj.L\KxX(i,:)';
                 vary(i) = obj.K(x(:,i),x(:,i)) - v'*v;
             end
             
