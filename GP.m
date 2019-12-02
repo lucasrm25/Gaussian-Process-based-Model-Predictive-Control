@@ -39,7 +39,8 @@ classdef GP < handle
         alpha   % <N,1>: L'\(L\(Y-muX));
         % (DEPRECATED) inv_KXX_sn  % <N,N>
         
-        outdated % <bool> tells if data has been added withouth updating L and alpha matrices
+        isOutdated  = false % <bool> model is outdated if data has been added withouth updating L and alpha matrices
+        isOptimized = false % <bool> true if model had its kernel parameters optimized and no new data has been added
     end
     
     methods
@@ -134,8 +135,8 @@ classdef GP < handle
         % ----------------------------------------------------------------- 
         % Update precomputed matrices L and alpha
         % -----------------------------------------------------------------
-            if obj.outdated
-                obj.outdated = false;
+            if obj.isOutdated
+                obj.isOutdated = false;
                 % store cholesky L and alpha matrices
                 I = eye(obj.N);
                 obj.L = chol( obj.K(obj.X,obj.X) + obj.sigman^2 * I ,'lower');
@@ -157,14 +158,14 @@ classdef GP < handle
         end
         
         function L = get.L(obj)
-            if obj.outdated
+            if obj.isOutdated
                 obj.updateModel();
             end
             L = obj.L;
         end
         
         function alpha = get.alpha(obj)
-            if obj.outdated
+            if obj.isOutdated
                 obj.updateModel();
             end
             alpha = obj.alpha;
@@ -173,13 +174,13 @@ classdef GP < handle
         function set.X(obj,X)
             obj.X = X;
             % data has been added. GP is outdated. Please call obj.updateModel
-            obj.outdated = true;
+            obj.isOutdated = true;
         end
         
         function set.Y(obj,Y)
             obj.Y = Y;
             % data has been added. GP is outdated. Please call obj.updateModel
-            obj.outdated = true;
+            obj.isOutdated = true;
         end
         
         function add(obj,X,Y)
@@ -244,6 +245,7 @@ classdef GP < handle
         
         
         function optimizeHyperParams(obj)
+            error('not yet implemented!!!');
             for ip = 1:obj.p
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % TODO:
@@ -254,7 +256,7 @@ classdef GP < handle
                 %       be optimized separately.
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
-            return;
+            obj.isOptimized = true;
         end
         
         

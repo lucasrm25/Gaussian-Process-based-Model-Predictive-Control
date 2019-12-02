@@ -36,7 +36,7 @@ classdef NMPC < handle
         fo      % @fun nonlinear cost function
         fend    % @fend nonlinear cost function for the final state
         f       % @fun nonlinear dynamics
-        d @GP   % Gaussian Process model representing disturbance
+        d_gp @GP   % Gaussian Process model representing disturbance
         Bd
         sigmaw  % discrete noise covariance of w
         h       % equality constraint function 
@@ -66,7 +66,7 @@ classdef NMPC < handle
            obj.fo = fo;
            obj.f  = f;
            obj.fend = fend;
-           obj.d  = d;
+           obj.d_gp  = d;
            obj.Bd = Bd;
            obj.N = N;
            obj.sigmaw = sigmaw;
@@ -80,7 +80,7 @@ classdef NMPC < handle
         end
         
         function activateGP(obj)
-            if obj.d.N == 0
+            if obj.d_gp.N == 0
                 error('GP dataset is empty. Please add data points before activating!');
             end
             obj.isGPactive = true;
@@ -198,7 +198,6 @@ classdef NMPC < handle
         %------------------------------------------------------------------
         % Evaluate cost function for the whole horizon, given variables
         %------------------------------------------------------------------
-
             % split variables
             [xvec, uvec, evec] = obj.splitvariables(vars);
 
@@ -223,7 +222,6 @@ classdef NMPC < handle
                 % update current time
                 t = t + iN * obj.dt;
             end
-            
         end
         
 
@@ -237,16 +235,16 @@ classdef NMPC < handle
 
             % split variables
             [xvec, uvec, evec] = obj.splitvariables(vars);
+            zvec = obj.Bd*xvec;
             
             % initialize state constraint: x0 - x(0) = 0
             ceq = x0 - xvec(1);
             % initialize inequality constraint
             cineq = [];
             
-            if obj.isGPactive
+            if obj.isGPactive 
                 % evaluate GP for all points in the horizon
-                zvec = obj.Bd*xvec;
-                [mu_dz,var_dz] = obj.d.eval([zvec(1:end-obj.nz),uvec]');
+                [mu_dz,var_dz] = obj.d_gp.eval([zvec(1:end-obj.nz),uvec]');
             end
             
             t = t0;
@@ -263,7 +261,7 @@ classdef NMPC < handle
                 xkp1 = xvec(idx_xk + obj.n);
                 uk   = uvec(idx_uk);
                 ek   = evec(idx_ek);
-                zk   = zvec(idx_zk); %obj.Bd * xk;
+                zk   = obj.Bd * xk; %zvec(idx_zk);
                 
                 if obj.isGPactive
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -275,7 +273,6 @@ classdef NMPC < handle
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     
                     % dynamics constraints
-                    % (DEPRECATED) [mu_dzk,var_dzk] = obj.d.eval([zk;uk]);
                     mu_dzk = mu_dz(idx_zk);
                     ceq = [ceq ;
                            xkp1 - obj.f(t,xk,uk) - obj.Bd * mu_dzk];

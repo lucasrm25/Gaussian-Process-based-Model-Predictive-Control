@@ -16,7 +16,7 @@
 clear vars; close all; clc;
 
 dt = 0.05;  % simulation timestep size
-tf = 5;     % simulation time
+tf = 2;     % simulation time
 
 %% Dynamic Model
 %------------------------------------------------------------------
@@ -58,7 +58,7 @@ sigman  = sigmaw*sqrt(dt);  % stddev of measurement noise
 maxsize = 100;              % maximum number of points in the dictionary
 
 % create GP object
-gp = GP(sigmaf, sigman, lambda, maxsize);
+d_gp = GP(sigmaf, sigman, lambda, maxsize);
 
 
 
@@ -97,7 +97,7 @@ h    = []; % @(t,x,u,e) 0;
 g    = []; % @(t,x,u,e) 0;
 ne   = 0;
 
-mpc = NMPC(fo, fend, f, gp, Bd, N, sigmaw, h, g, n, m, ne, dt);
+mpc = NMPC(fo, fend, f, d_gp, Bd, N, sigmaw, h, g, n, m, ne, dt);
 mpc.tol     = 1e-3;
 mpc.maxiter = 30;
 
@@ -114,7 +114,7 @@ u0 = mpc.optimize(x0, e0, t0, r );
 % define input
 % r = @(t) -3;
 % r = @(t) 1*sin(10*t);
-r = @(t) 5*sin(5*t) + 5*sin(15*t) + 10*exp(-t);
+r = @(t) 2*sin(5*t) + 2*sin(15*t) + 6*exp(-t) - 4 ;
 nr = 1; % dimension of r(t)
 
 % initial state
@@ -157,10 +157,10 @@ for i = 1:numel(out.t)-1
         % select subset of coordinates that will be used in GP prediction
         zhat = Bd*out.xhat(:,i);
         % add data point to the GP dictionary
-        gp.add( [zhat;out.u(:,i)], disturb );
+        mpc.d_gp.add( [zhat;out.u(:,i)], disturb );
     end
     
-    if gp.N > 10
+    if mpc.d_gp.N > 50
         mpc.activateGP();
     end
     
@@ -179,7 +179,7 @@ close all;
 gptrue = @(x) Bd \ ( fd_true(x(1),x(2),dt,false) - fd(x(1),x(2),dt) );
 
 % plot prediction bias and variance
-gp.plot2d( gptrue )
+mpc.d_gp.plot2d( gptrue )
        
 % plot reference and state signal
 figure; 
