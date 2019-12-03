@@ -114,7 +114,8 @@ u0 = mpc.optimize(x0, e0, t0, r );
 % define input
 % r = @(t) -3;
 % r = @(t) 1*sin(10*t);
-r = @(t) 2*sin(5*t) + 2*sin(15*t) + 6*exp(-t) - 4 ;
+% r = @(t) 2*sin(5*t) + 2*sin(15*t) + 6*exp(-t) - 4 ;
+r = @(t) 4*sin(5*t) + 4*sin(15*t);
 nr = 1; % dimension of r(t)
 
 % initial state
@@ -151,7 +152,7 @@ for i = 1:numel(out.t)-1
     
     % add data to GP model
     out.xnom(:,i+1) = fd(out.xhat(:,i),out.u(:,i),dt);
-    if mod(i-1,2)==0
+    if mod(i-1,1)==0
         % calculate disturbance (error between measured and nominal)
         disturb = Bd \ (out.xhat(:,i+1) - out.xnom(:,i+1));
         % select subset of coordinates that will be used in GP prediction
@@ -160,7 +161,7 @@ for i = 1:numel(out.t)-1
         mpc.d_gp.add( [zhat;out.u(:,i)], disturb );
     end
     
-    if mpc.d_gp.N > 50
+    if mpc.d_gp.N > 10
         mpc.activateGP();
     end
     
