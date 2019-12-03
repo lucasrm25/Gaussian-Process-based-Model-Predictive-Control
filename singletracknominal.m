@@ -64,6 +64,23 @@ classdef singletracknominal
             % discretize continuous time model
             xkp1 = xk + dt * xdot;
         end
+        
+        
+        function r = ref(obj, tk, xk, t_r, t_l)
+            %     xk = [2,1]';
+            % calculate trajectory center line
+            t_c = (t_r + t_l)/2;
+            % find closest trajectory point w.r.t. the vehicle
+            [~,idx] = min( pdist2(xk',t_c,'seuclidean',[1 1].^0.5).^2 );
+            % set target as 3 poins ahead
+            idx_target = idx +3;
+            % loop around when track is over
+            idx_target = mod(idx_target, size(t_c,1));
+            % return reference signal
+            r = t_c(idx_target,:);
+        end
+
+
     end
 end
 
