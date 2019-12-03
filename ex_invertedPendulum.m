@@ -29,28 +29,23 @@ M = 0.5;
 m = 0.2;
 b = 0.1;
 I = 0.006;
-g = 9.8;
 l = 0.3;
-
-% true model
-Bd = eye(2);
 
 % disturbance noise stddev - in continuous time
 sigmaw = 0.01/sqrt(dt);
 
-n = size(A,2);
-m = size(B,2);
-md = size(Bd,2);
-
 % create system dynamics model object
-model = invertedPendulum(M, m, b, I, l, Bd, sigmaw);
+model = invertedPendulum(M, m, b, I, l, sigmaw);
+
+n = model.n;
+m = model.m;
 
 
 %% Gaussian Process
 
 % GP hyperparameters
 sigmaf  = 0.1;              % output variance (std)
-lambda  = diag([2,10].^2);  % length scale
+lambda  = diag([1,1].^2);   % length scale
 sigman  = sigmaw*sqrt(dt);  % stddev of measurement noise
 maxsize = 100;              % maximum number of points in the dictionary
 
