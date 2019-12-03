@@ -18,8 +18,8 @@ classdef GP < handle
     
     properties
         % kernel parameters (one for each output dimension)
-        sigmaf  % <p> signal/output stddev
-        sigman  % <p> evaluation noise stddev
+        sigmaf2 % <p> signal/output covariance
+        sigman2 % <p> evaluation noise stddev
         l       % <n,n,p> length scale covariance matrix
     end
     
@@ -44,19 +44,19 @@ classdef GP < handle
     end
     
     methods
-        function obj = GP(sigmaf, sigman, lambda, maxsize)
+        function obj = GP(sigmaf2, sigman2, lambda, maxsize)
         %------------------------------------------------------------------
         % GP constructor
         % args:
-        %   sigmaf: <p> signal/output stddev
-        %   sigman: <p> evaluation noise stddev
-        %   lambda: <n,n,p> length scale covariance matrix
+        %   sigmaf:  <p> signal/output covariance
+        %   sigman2: <p> evaluation noise covariance
+        %   lambda:  <n,n,p> length scale covariance matrix
         %   maxsize: <1> maximum dictionary size
         %------------------------------------------------------------------
             obj.X       = [];
             obj.Y       = [];
-            obj.sigmaf  = sigmaf;
-            obj.sigman  = sigman;
+            obj.sigmaf2 = sigmaf2;
+            obj.sigman2 = sigman2;
             obj.l       = lambda;
             obj.Nmax    = maxsize;
         end
@@ -117,18 +117,15 @@ classdef GP < handle
             % for i=1:nx1
             %     for j=1:nx2
             %         dx = x1(:,i) - x2(:,j);
-            %         kernel(i,j) = obj.sigmaf^2 * exp( -0.5 * dx'*invl*dx );
+            %         kernel(i,j) = obj.sigmaf2 * exp( -0.5 * dx'*invl*dx );
             %     end
             % end
             % ---------------- (DEPRECATED - TOO SLOW) --------------------
             
-            % ---------------- (DEPRECATED - TOO SLOW) --------------------
-            %D = pdist2(x1',x2','mahalanobis',obj.l).^2;
-            %kernel = obj.sigmaf^2 * exp( -0.5 * D );
-            % ---------------- (DEPRECATED - TOO SLOW) --------------------
-            
+
+            %D = pdist2(x1',x2','mahalanobis',obj.l).^2;    % TOO SLOW
             D = pdist2(x1',x2','seuclidean',diag((obj.l).^0.5)).^2;
-            kernel = obj.sigmaf^2 * exp( -0.5 * D );
+            kernel = obj.sigmaf2 * exp( -0.5 * D );
         end
         
         function updateModel(obj)
@@ -139,15 +136,15 @@ classdef GP < handle
                 obj.isOutdated = false;
                 % store cholesky L and alpha matrices
                 I = eye(obj.N);
-                obj.L = chol( obj.K(obj.X,obj.X) + obj.sigman^2 * I ,'lower');
-                % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.sigman^2*I) ) < 1e-12
+                obj.L = chol( obj.K(obj.X,obj.X) + obj.sigman2 * I ,'lower');
+                % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.sigman2*I) ) < 1e-12
                 obj.alpha = obj.L'\(obj.L\(obj.Y-obj.mu(obj.X)));
                 
                 %-------------------- (DEPRECATED) ------------------------ 
                 % % SLOW BUT RETURNS THE FULL COVARIANCE MATRIX INSTEAD OF ONLY THE DIAGONAL (VAR)
                 % % precompute inv(K(X,X) + sigman^2*I)
                 % I = eye(obj.N);
-                % obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.sigman^2 * I );
+                % obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.sigman2 * I );
                 %-------------------- (DEPRECATED) ------------------------
 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -225,7 +222,10 @@ classdef GP < handle
         %   (DEPRECATED) covary: <N,N>
         %------------------------------------------------------------------
             if obj.N == 0
-                error('GP dataset is empty. Please add data points before evaluating!');
+                % warning('GP dataset is empty. Please add data points before evaluating!');
+                muy  = obj.mu(x); 
+                vary = zeros(size(x,2),1);
+                return;
             end
         
             KxX = obj.K(x,obj.X);

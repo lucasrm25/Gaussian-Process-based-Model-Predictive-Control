@@ -18,59 +18,53 @@ clear vars; close all; clc;
 dt = 0.05;  % simulation timestep size
 tf = 2;     % simulation time
 
-%% True Dynamic Model
-%------------------------------------------------------------------
-%   dot_x(t) = f_true(x(t),u(t)) + Bd*(du(t) + w(t)),    wk=N(0,sigmaw^2)
-%------------------------------------------------------------------
-
-
 % inverted pendulum parameters
-M = 0.5;
-m = 0.2;
+Mc = 0.5;
+Mp = 0.2;
 b = 0.1;
 I = 0.006;
 l = 0.3;
 
-% disturbance noise stddev - in continuous time
-sigmaw = 0.01/sqrt(dt);
 
-% create system dynamics model object
-model = invertedPendulum(M, m, b, I, l, sigmaw);
+%% True Dynamics Model
+%------------------------------------------------------------------
+%   dot_x(t) = f_true(x(t),u(t)) + Bd*(d(z(t))),    d~N(mu_d(z),var_d(z))
+%------------------------------------------------------------------
 
-n = model.n;
-m = model.m;
+% define model (mean and variance) for true disturbance
+mu_d  = @(z) [20 -20]*[mvnpdf(z,[2,2],diag([2,20])) mvnpdf(z,[-2,-2],diag([2,20]))]';
+var_d = @(z) 0.01;
+d_true  = @(z) deal(mu_d(z),var_d(z)); 
+
+% create true dynamics model
+trueModel = invertedPendulum(Mc, Mp, b, I, l, d_true);
 
 
-%% Gaussian Process
+%% Create Nominal Model
 
+% define model (mean and variance) for estimated disturbance
 % GP hyperparameters
-sigmaf  = 0.1;              % output variance (std)
+sigmaf2 = 0.01;             % output variance (std)
 lambda  = diag([1,1].^2);   % length scale
-sigman  = sigmaw*sqrt(dt);  % stddev of measurement noise
+sigman2 = 0.01;             % measurement noise variance
 maxsize = 100;              % maximum number of points in the dictionary
-
 % create GP object
-d_gp = GP(sigmaf, sigman, lambda, maxsize);
+d_GP = GP(sigmaf, sigman2, lambda, maxsize);
 
+% create nominal dynamics model
+nomModel = invertedPendulum(Mc, Mp, b, I, l, @d_GP.eval);
 
 
 %% Controller
 
 % -------------------------------------------------------------------------
-% DEFINE NOMINAL MODEL
-% nominal continuous time model
-f = @(x,u) A*x + B*u;
-% discretize nominal model
-fd = @(x,u,dt) x + dt*f(x,u);
-% -------------------------------------------------------------------------
-
-% -------------------------------------------------------------------------
 % LQR CONTROLLER
+[A,B] = nomModel.linearize();
 Ak = eye(n)+dt*A;
 Bk = B*dt;
-K = place(Ak,Bk,0.9);
+K = place(Ak,Bk,[0.5 0.7 0.8 0.9]);
 % Prefilter
-Kr = inv((eye(n)-Ak+Bk*K)\Bk);
+Kr = pinv((eye(n)-Ak+Bk*K)\Bk);
 % check eigenvalues
 eig(Ak-Bk*K);
 % -------------------------------------------------------------------------
@@ -82,38 +76,37 @@ N = 20;     % prediction horizon
 Q = 100;
 Qf= 100;
 R = 1;
-f    = @(t,x,u) fd(x,u,dt);     % nominal model
-fo   = @(t,x,u,e,r) (x-r(t))'*Q *(x-r(t)) + R*u^2;  % cost function
-fend = @(t,x,e,r)   (x-r(t))'*Qf*(x-r(t));  % end cost function
-h    = []; % @(t,x,u,e) 0;  % h(x)==0
-g    = []; % @(t,x,u,e) 0;  % g(x)<=0
-ne   = 0;
+fo   = @(t,x,u,r) (x-r(t))'*Q *(x-r(t)) + R*u^2;  % cost function
+fend = @(t,x,r)   (x-r(t))'*Qf*(x-r(t));            % end cost function
+f    = @(x,u) nomModel.fd(x,u,dt);
+h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
+g    = @(x,u) []; % @(x,u) 0;  % g(x)<=0
 
-mpc = NMPC(fo, fend, f, d_gp, Bd, N, sigmaw, h, g, n, m, ne, dt);
+% mpc = NMPC(fo, fend, f, d_GP, Bd, Bz, N, sigmaw, h, g, n, m, ne, dt);
+mpc = NMPC(f, h, g, n, m, fo, fend, N, dt);
 mpc.tol     = 1e-3;
 mpc.maxiter = 30;
 % -------------------------------------------------------------------------
 
 % TEST NMPC
 % x0 = 10;
-% e0 = 0;
 % t0 = 0;
 % r  = @(t)2;    % desired trajectory
-% u0 = mpc.optimize(x0, e0, t0, r );
+% u0 = mpc.optimize(x0, t0, r );
 
 
 
 %% Simulate
 
 % define input
-% r = @(t) -3;
+r = @(t) 0;
 % r = @(t) 1*sin(10*t);
 % r = @(t) 2*sin(5*t) + 2*sin(15*t) + 6*exp(-t) - 4 ;
-r = @(t) 4*sin(5*t) + 4*sin(15*t);
+% r = @(t) 4*sin(5*t) + 4*sin(15*t);
 nr = 1; % dimension of r(t)
 
 % initial state
-x0 = 0;
+x0 = [0,0,deg2rad(10),0]';
 
 % initialize variables to store simulation results
 out.t = 0:dt:tf;
@@ -135,7 +128,7 @@ for i = 1:numel(out.t)-1
     x0 = out.xhat(:,i);
     e0 = 0;
     t0 = out.t(i);
-    out.u(:,i) = mpc.optimize(x0, e0, t0, r);
+    out.u(:,i) = mpc.optimize(x0, t0, r);
     
     % simulate real model
     out.x(:,i+1) = model.fd(out.x(:,i),out.u(:,i),dt,true);
