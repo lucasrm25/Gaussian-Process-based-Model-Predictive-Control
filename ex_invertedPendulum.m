@@ -20,10 +20,7 @@ tf = 2;     % simulation time
 
 %% True Dynamic Model
 %------------------------------------------------------------------
-%   dot_x(t) = f_true(x(t),u(t)) + Bd*(d_true(t) + w(t)),    wk=N(0,sigmaw^2)
-%   
-%   x = [x1]        1D state
-%   u = [u1]        1D input
+%   dot_x(t) = f_true(x(t),u(t)) + Bd*(du(t) + w(t)),    wk=N(0,sigmaw^2)
 %------------------------------------------------------------------
 
 
@@ -34,7 +31,6 @@ b = 0.1;
 I = 0.006;
 g = 9.8;
 l = 0.3;
-q = (M+m)*(I+m*l^2)-(m*l)^2;
 
 % true model
 Bd = eye(2);
@@ -46,15 +42,8 @@ n = size(A,2);
 m = size(B,2);
 md = size(Bd,2);
 
-% true disturbance model
-d_true = @(x,u) 1/dt*[20 -20]*[mvnpdf([x,u],[2,2],diag([2,20])) mvnpdf([x,u],[-2,-2],diag([2,20]))]';
-
-% true model
-f_true = @(x,u) A*x + B*u + Bd*(d_true(x,u));
-
-% dicretize true model - ODE1 Euler integration
-fd_true = @(x,u,dt,inclnoise) x + dt*f_true(x,u) + inclnoise*sqrt(dt)*Bd*sigmaw*randn(md);
-
+% create system dynamics model object
+model = invertedPendulum(M, m, b, I, l, Bd, sigmaw);
 
 
 %% Gaussian Process
@@ -154,7 +143,7 @@ for i = 1:numel(out.t)-1
     out.u(:,i) = mpc.optimize(x0, e0, t0, r);
     
     % simulate real model
-    out.x(:,i+1) = fd_true(out.x(:,i),out.u(:,i),dt,true);
+    out.x(:,i+1) = model.fd(out.x(:,i),out.u(:,i),dt,true);
     
     % measure data
     out.xhat(:,i+1) = out.x(:,i+1); % perfect observer
