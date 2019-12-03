@@ -90,23 +90,25 @@ N = 20;     % prediction horizon
 Q = 100;
 Qf= 100;
 R = 1;
-f    = @(t,x,u) fd(x,u,dt);
-fo   = @(t,x,u,e,r) (x-r(t))'*Q *(x-r(t)) + R*u^2;
-fend = @(t,x,e,r)   (x-r(t))'*Qf*(x-r(t));
-h    = []; % @(t,x,u,e) 0;
-g    = []; % @(t,x,u,e) 0;
+f    = @(t,x,u) fd(x,u,dt);     % nominal model
+fo   = @(t,x,u,e,r) (x-r(t))'*Q *(x-r(t)) + R*u^2;  % cost function
+fend = @(t,x,e,r)   (x-r(t))'*Qf*(x-r(t));  % end cost function
+h    = []; % @(t,x,u,e) 0;  % h(x)==0
+g    = []; % @(t,x,u,e) 0;  % g(x)<=0
 ne   = 0;
 
 mpc = NMPC(fo, fend, f, d_gp, Bd, N, sigmaw, h, g, n, m, ne, dt);
 mpc.tol     = 1e-3;
 mpc.maxiter = 30;
-
-x0 = 10;
-e0 = 0;
-t0 = 0;
-r  = @(t)2;    % desired trajectory
-u0 = mpc.optimize(x0, e0, t0, r );
 % -------------------------------------------------------------------------
+
+% TEST NMPC
+% x0 = 10;
+% e0 = 0;
+% t0 = 0;
+% r  = @(t)2;    % desired trajectory
+% u0 = mpc.optimize(x0, e0, t0, r );
+
 
 
 %% Simulate

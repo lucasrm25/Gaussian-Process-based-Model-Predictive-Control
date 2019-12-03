@@ -201,6 +201,10 @@ classdef GP < handle
                 %       - decide how to select the induction points
                 %       - READ the paper from AMZ. They give hints there
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                % For now, we just keep the most recent data
+                obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
+                obj.Y = [obj.Y(2:end,:),; Y];     % concatenation in the 1st dim.
             else
                 obj.X = [obj.X, X];     % concatenation in the 2st dim.
                 obj.Y = [obj.Y; Y];     % concatenation in the 1st dim.

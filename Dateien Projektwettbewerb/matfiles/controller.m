@@ -64,6 +64,12 @@ zeta=0.5; %braking force distribution
 phi=0.2; % gas pedal position
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% OUTPUT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 U=[delta G Fb zeta phi]; % input vector
+
+
+
+
 end
 
