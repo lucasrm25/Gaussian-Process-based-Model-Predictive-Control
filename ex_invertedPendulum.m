@@ -26,10 +26,18 @@ tf = 2;     % simulation time
 %   u = [u1]        1D input
 %------------------------------------------------------------------
 
+
+% inverted pendulum parameters
+M = 0.5;
+m = 0.2;
+b = 0.1;
+I = 0.006;
+g = 9.8;
+l = 0.3;
+q = (M+m)*(I+m*l^2)-(m*l)^2;
+
 % true model
-A = -0.1;
-B = 3;
-Bd = [0 1]; % select state velocity as input to be learned to the GP
+Bd = eye(2);
 
 % disturbance noise stddev - in continuous time
 sigmaw = 0.01/sqrt(dt);
@@ -45,7 +53,7 @@ d_true = @(x,u) 1/dt*[20 -20]*[mvnpdf([x,u],[2,2],diag([2,20])) mvnpdf([x,u],[-2
 f_true = @(x,u) A*x + B*u + Bd*(d_true(x,u));
 
 % dicretize true model - ODE1 Euler integration
-fd_true = @(x,u,dt,inclnoise) x + dt*f_true(x,u) + inclnoise*Bd*sqrt(dt)*sigmaw*randn(md);
+fd_true = @(x,u,dt,inclnoise) x + dt*f_true(x,u) + inclnoise*sqrt(dt)*Bd*sigmaw*randn(md);
 
 
 
