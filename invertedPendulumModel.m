@@ -28,16 +28,16 @@ classdef invertedPendulumModel < handle
     end
     
     properties(SetAccess=private)
-        Bd = [0;            % how unmodeled dynamics affect states
+        Bd = [0;            % xk+1 = fd(xk,uk) + Bd*d(zk)
               0;
               1;
               0]
         Bz = [0 0 1 0       % z = Bz*x
               0 0 0 1];     
-        n = 4       % number of outputs x(t)
-        m = 1       % number of inputs u(t)
-        nd          % output dimension of du(z)
-        nz          % dimension of z(t)
+        n = 4               % number of outputs x(t)
+        m = 1               % number of inputs u(t)
+        nd                  % output dimension of du(z)
+        nz                  % dimension of z(t)
     end
     
     
@@ -169,9 +169,3 @@ classdef invertedPendulumModel < handle
         
     end
 end
-
-
-
-
-
-
