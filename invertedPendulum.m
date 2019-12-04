@@ -1,15 +1,20 @@
 classdef invertedPendulum
 %--------------------------------------------------------------------------
-%   dot_x(t) = f(x(t),u(t)) + Bd*d(z(t)),    
+%   xk+1 = fd(xk,uk) + Bd*d(zk),    
 %
-%       where: z(t)=Bz*x(t) and  d~N(mean_d(z),var_d(z))
+%       where: zk=Bz*xk and  d~N(mean_d(zk),var_d(zk))
 %
 %   
 %   x = [s, ds, th, dth]'   carriage position and pole angle (and derivatives)
 %   u = [F]'                force on the carriage and torque on the pole joint
 %   
 %--------------------------------------------------------------------------
-    
+
+%--------------------------------------------------------------------------
+% TODO:
+%       -[ ] Implement the case for multiple inputs
+%--------------------------------------------------------------------------
+
     properties
         Mc      % mass of the carriage
         Mp      % mass of the pole
@@ -93,8 +98,6 @@ classdef invertedPendulum
             th = x(3);
             dth= x(4);
             
-            z = obj.Bz * x;
-            
             F = u(1);
             T = 0;
             
@@ -105,17 +108,14 @@ classdef invertedPendulum
             th = th + pi;
             dds  = (8*F*I - 8*I*b*ds + 2*F*l^2*Mp - 2*b*ds*l^2*Mp - 4*T*l*Mp*cos(th) + dth^2*l^3*Mp^2*sin(th) + 2*g*l^2*Mp^2*cos(th)*sin(th) + 4*I*dth^2*l*Mp*sin(th))/(2*((1 - 2*cos(th)^2)*l^2*Mp^2 + Mc*l^2*Mp + 4*I*Mp + 4*I*Mc));
             ddth = -(2*(2*F*l*Mp*cos(th) - 2*T*Mp - 2*Mc*T + g*l*Mp^2*sin(th) + dth^2*l^2*Mp^2*cos(th)*sin(th) + Mc*g*l*Mp*sin(th) - 2*b*ds*l*Mp*cos(th)))/((1 - 2*cos(th)^2)*l^2*Mp^2 + Mc*l^2*Mp + 4*I*Mp + 4*I*Mc);
-
-            % get disturbance mean of covariance
-            [mu_d, var_d] = obj.d(z);
             
             % calculate xdot mean and covariance
-            mu_xdot  = [ds, dds, dth, ddth]' + obj.Bd * mu_d;
-            var_xdot = obj.Bd * var_d * obj.Bd';
+            mu_xdot  = [ds, dds, dth, ddth]';
+            var_xdot = zeros(obj.n);
         end
         
         
-        function [mu_xkp1,var_xkp1] = fd (obj,xk,uk,dt)
+        function [mu_xkp1, var_xkp1] = fd (obj,xk,uk,dt)
         %------------------------------------------------------------------
         %   Discrete time dynamics of the inverted pendulum (including
         %   disturbance)
@@ -126,6 +126,27 @@ classdef invertedPendulum
             % discretize mean and variance
             mu_xkp1  = xk + dt * mu_xdot;
             var_xkp1 =      dt * var_xdot;
+        end
+        
+        
+        function [mu_xkp1,var_xkp1] = xkp1 (obj,xk,uk,dt)
+        %------------------------------------------------------------------
+        %   Discrete time dynamics of the inverted pendulum (including
+        %   disturbance)
+        %
+        %       xk+1 = fd(xk,uk) + Bd*d(zk)
+        %
+        %------------------------------------------------------------------
+            % calculate continous time dynamics
+            [mu_fd, var_fd] = obj.fd(xk,uk,dt);
+            
+            % evaluate disturbance
+            z = obj.Bz * xk;
+            [mu_d, var_d] = obj.d(z);
+            
+            % discretize mean and variance
+            mu_xkp1  = mu_fd  + obj.Bd * mu_d;
+            var_xkp1 = var_fd + obj.Bd * var_d * obj.Bd';
         end
         
         

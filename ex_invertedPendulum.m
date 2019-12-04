@@ -15,8 +15,8 @@
 
 clear all; close all; clc;
 
-dt = 0.05;  % simulation timestep size
-tf = 2.5;     % simulation time
+dt = 0.1;  % simulation timestep size
+tf = 7;     % simulation time
 
 % inverted pendulum parameters
 Mc = 5;
@@ -29,12 +29,12 @@ l = 3;
 
 %% True Dynamics Model
 %------------------------------------------------------------------
-%   dot_x(t) = f_true(x(t),u(t)) + Bd*(d(z(t))),    d~N(mu_d(z),var_d(z))
+%   xk+1 = fd(xk,uk) + Bd*d(zk),    zk=Bz*xk and  d~N(mean_d(zk),var_d(zk))
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
 % mu_d  = @(z) 1 * mvnpdf(z',[0,0], eye(2)*0.1);
-mu_d  = @(z) 0.5 * z(1)^0.5 - 0.1*z(2);
+mu_d  = @(z) 0.1 * z(1) - 0.01*z(2) + deg2rad(3);
 var_d = @(z) 0*1e-5;
 d_true  = @(z) deal(mu_d(z),var_d(z));
 
@@ -86,13 +86,13 @@ eig(Ak-Bk*K);
 % NONLINEAR MPC CONTROLLER
 % define cost function
 N = 10;     % prediction horizon
-Q = diag([1e-1 1e4 1]);
-Qf= diag([1e-1 1e4 1]);
+Q = diag([1e-1 1e5 1]);
+Qf= diag([1e-1 1e5 1]);
 R = 1;
 Ck = [0 1 0 0; 0 0 1 0; 0 0 0 1];
 fo   = @(t,x,u,r) (Ck*x-r(t))'*Q *(Ck*x-r(t)) + R*u^2;  % cost function
 fend = @(t,x,r)   (Ck*x-r(t))'*Qf*(Ck*x-r(t));            % end cost function
-f    = @(x,u) estModel.fd(x,u,dt);
+f    = @(x,u) estModel.xkp1(x,u,dt);
 h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
 g    = @(x,u) []; % @(x,u) 0;  % g(x)<=0
 
@@ -148,14 +148,14 @@ for i = 1:numel(out.t)-1
     out.u(:,i) = mpc.optimize(x0, t0, r);
     
     % simulate real model
-    [mu_xkp1,var_xkp1] = trueModel.fd(out.x(:,i),out.u(:,i),dt);
+    [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,i),out.u(:,i),dt);
     out.x(:,i+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
     % measure data
     out.xhat(:,i+1) = out.x(:,i+1); % perfect observer
     
     % calculate nominal model
-    out.xnom(:,i+1) = nomModel.fd(out.xhat(:,i),out.u(:,i),dt);
+    out.xnom(:,i+1) = nomModel.xkp1(out.xhat(:,i),out.u(:,i),dt);
     
     % add data to GP model
     if mod(i-1,1)==0
@@ -167,12 +167,12 @@ for i = 1:numel(out.t)-1
         d_GP.add(zhat,d_est);
     end
     
-    if d_GP.N > 20 && out.t(i) > 2
+    if d_GP.N > 20 && out.t(i) > 3
         d_GP.isActive = true;
     end
     
     % check if these values are the same:
-    % d_est == mu_d(zhat)*dt == ([mud,~]=trueModel.d(zhat); mud*dt)
+    % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
 end
 
 
@@ -198,8 +198,8 @@ Bd = trueModel.Bd;
 
 % define the true expected disturbance model
 % z = [0;0.1];
-% gptrue = @(z) mu_d(z)*dt; % also works
-gptrue = @(z) trueModel.Bd'*(trueModel.fd(trueModel.Bz'*z,0,dt) - nomModel.fd(trueModel.Bz'*z,0,dt));
+% gptrue = @(z) mu_d(z);
+gptrue = @(z) trueModel.Bd'*(trueModel.xkp1(trueModel.Bz'*z,0,dt) - nomModel.xkp1(trueModel.Bz'*z,0,dt));
 
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )
