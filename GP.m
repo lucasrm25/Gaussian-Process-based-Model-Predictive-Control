@@ -110,24 +110,11 @@ classdef GP < handle
         % out:
         %   kernel: <N1,N2>
         %------------------------------------------------------------------
-            
-            % ---------------- (DEPRECATED - TOO SLOW) --------------------
-            % nx1 = size(x1,2);
-            % nx2 = size(x2,2);
-            % kernel = zeros(nx1,nx2);
-            % invl = inv(obj.l);
-            % for i=1:nx1
-            %     for j=1:nx2
-            %         dx = x1(:,i) - x2(:,j);
-            %         kernel(i,j) = obj.sigmaf2 * exp( -0.5 * dx'*invl*dx );
-            %     end
-            % end
-            % ---------------- (DEPRECATED - TOO SLOW) --------------------
-            
             D = pdist2(x1',x2','mahalanobis',obj.l).^2;
             %D = pdist2(x1',x2','seuclidean',diag((obj.l).^0.5)).^2;
             kernel = obj.sigmaf2 * exp( -0.5 * D );
         end
+        
         
         function updateModel(obj)
         % ----------------------------------------------------------------- 
@@ -147,11 +134,6 @@ classdef GP < handle
                 % I = eye(obj.N);
                 % obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.sigman2 * I );
                 %-------------------- (DEPRECATED) ------------------------
-
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % TODO:
-                %       - call optimizeHyperParams every time data is added ???
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
         end
         
@@ -215,32 +197,33 @@ classdef GP < handle
         %   x: <n,N> point coordinates
         % out:
         %   muy:  <N,p>    E[Y]
-        %   vary: <N,1>  Var[Y] is the same for all output dimensions
+        %   vary: <N,N>    Var[Y] is the same for all output dimensions
         %   (DEPRECATED) covary: <N,N>
         %------------------------------------------------------------------
+            Nx = size(x,2);  % size of dataset to be evaluated
+        
             if obj.N == 0 || ~obj.isActive
-                % warning('GP dataset is empty. Please add data points before evaluating!');
+                % warning('GP dataset is empty.');
                 muy  = obj.mu(x); 
-                vary = zeros(size(x,2),1);
+                vary = zeros(Nx,Nx);
                 return;
             end
         
             KxX = obj.K(x,obj.X);
             muy = obj.mu(x) + KxX * obj.alpha;
             
-            Nx = size(x,2);  % size of dataset to be evaluated
-            vary = zeros(Nx,1);
+            vary = zeros(Nx,Nx);
             for i=1:Nx
                 % v = obj.L\obj.K(x(:,i),obj.X)';
                 v = obj.L\KxX(i,:)';
-                vary(i) = obj.K(x(:,i),x(:,i)) - v'*v;
+                vary(i,i) = obj.K(x(:,i),x(:,i)) - v'*v;
             end
             
             % --------------------- (DEPRECATED) ------------------------- 
             % % SLOW BUT RETURNS THE FULL COVARIANCE MATRIX INSTEAD OF ONLY THE DIAGONAL (VAR)
             % KxX = obj.K(x,obj.X);
             % muy  = obj.mu(x) + KxX * obj.inv_KXX_sn * (obj.Y-obj.mu(obj.X));
-            % covary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KxX';
+            % vary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KxX';
             % --------------------- (DEPRECATED) ------------------------- 
         end
         

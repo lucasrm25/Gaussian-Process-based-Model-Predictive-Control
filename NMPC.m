@@ -175,7 +175,6 @@ classdef NMPC < handle
                 % update current time
                 t = t + iN * obj.dt;
             end
-            
             % final cost
             cost = cost + obj.fend(t,xk(:,end-obj.n+1),r);
         end

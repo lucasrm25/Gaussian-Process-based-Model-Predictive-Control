@@ -1,5 +1,5 @@
 classdef invertedPendulum
-%------------------------------------------------------------------
+%--------------------------------------------------------------------------
 %   dot_x(t) = f(x(t),u(t)) + Bd*d(z(t)),    
 %
 %       where: z(t)=Bz*x(t) and  d~N(mean_d(z),var_d(z))
@@ -8,8 +8,7 @@ classdef invertedPendulum
 %   x = [s, ds, th, dth]'   carriage position and pole angle (and derivatives)
 %   u = [F]'                force on the carriage and torque on the pole joint
 %   
-%   du = unmodeled disturbances
-%------------------------------------------------------------------
+%--------------------------------------------------------------------------
     
     properties
         Mc      % mass of the carriage
@@ -26,8 +25,8 @@ classdef invertedPendulum
     properties(SetAccess=private)
         Bd = [0;            % how unmodeled dynamics affect states
               0;
-              0;
-              1]
+              1;
+              0]
         Bz = [0 0 1 0       % z = Bz*x
               0 0 0 1];     
         n = 4       % number of outputs x(t)
