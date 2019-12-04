@@ -21,6 +21,8 @@ classdef GP < handle
         sigmaf2 % <p> signal/output covariance
         sigman2 % <p> evaluation noise stddev
         l       % <n,n,p> length scale covariance matrix
+        
+        isActive = true
     end
     
     properties(SetAccess=private)
@@ -122,9 +124,8 @@ classdef GP < handle
             % end
             % ---------------- (DEPRECATED - TOO SLOW) --------------------
             
-
-            %D = pdist2(x1',x2','mahalanobis',obj.l).^2;    % TOO SLOW
-            D = pdist2(x1',x2','seuclidean',diag((obj.l).^0.5)).^2;
+            D = pdist2(x1',x2','mahalanobis',obj.l).^2;
+            %D = pdist2(x1',x2','seuclidean',diag((obj.l).^0.5)).^2;
             kernel = obj.sigmaf2 * exp( -0.5 * D );
         end
         
@@ -192,16 +193,12 @@ classdef GP < handle
         %   X: <n,N>
         %   Y: <N,p>
         %------------------------------------------------------------------
+            % dictionary is full
             if obj.N + size(X,2) > obj.Nmax
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % TODO:
-                %       - decide how to select the induction points
-                %       - READ the paper from AMZ. They give hints there
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
                 % For now, we just keep the most recent data
                 obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
-                obj.Y = [obj.Y(2:end,:),; Y];     % concatenation in the 1st dim.
+                obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
+            % append to dictionary
             else
                 obj.X = [obj.X, X];     % concatenation in the 2st dim.
                 obj.Y = [obj.Y; Y];     % concatenation in the 1st dim.
@@ -221,7 +218,7 @@ classdef GP < handle
         %   vary: <N,1>  Var[Y] is the same for all output dimensions
         %   (DEPRECATED) covary: <N,N>
         %------------------------------------------------------------------
-            if obj.N == 0
+            if obj.N == 0 || ~obj.isActive
                 % warning('GP dataset is empty. Please add data points before evaluating!');
                 muy  = obj.mu(x); 
                 vary = zeros(size(x,2),1);

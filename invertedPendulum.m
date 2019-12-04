@@ -24,11 +24,11 @@ classdef invertedPendulum
     end
     
     properties(SetAccess=private)
-        Bd = [0;            % unmodeled dynamics only affect velocity components
+        Bd = [0;            % how unmodeled dynamics affect states
               0;
-              1; 
-              0]
-        Bz = [0 1 0 0       % z = Bz*x
+              0;
+              1]
+        Bz = [0 0 1 0       % z = Bz*x
               0 0 0 1];     
         n = 4       % number of outputs x(t)
         m = 1       % number of inputs u(t)
@@ -103,6 +103,7 @@ classdef invertedPendulum
             Mc=obj.Mc; Mp=obj.Mp; I=obj.I; g=obj.g; l=obj.l; b=obj.b;
             
             % equations of motion
+            th = th + pi;
             dds  = (8*F*I - 8*I*b*ds + 2*F*l^2*Mp - 2*b*ds*l^2*Mp - 4*T*l*Mp*cos(th) + dth^2*l^3*Mp^2*sin(th) + 2*g*l^2*Mp^2*cos(th)*sin(th) + 4*I*dth^2*l*Mp*sin(th))/(2*((1 - 2*cos(th)^2)*l^2*Mp^2 + Mc*l^2*Mp + 4*I*Mp + 4*I*Mc));
             ddth = -(2*(2*F*l*Mp*cos(th) - 2*T*Mp - 2*Mc*T + g*l*Mp^2*sin(th) + dth^2*l^2*Mp^2*cos(th)*sin(th) + Mc*g*l*Mp*sin(th) - 2*b*ds*l*Mp*cos(th)))/((1 - 2*cos(th)^2)*l^2*Mp^2 + Mc*l^2*Mp + 4*I*Mp + 4*I*Mc);
 
@@ -121,7 +122,7 @@ classdef invertedPendulum
         %   disturbance)
         %------------------------------------------------------------------
             % calculate continous time dynamics
-            [mu_xdot, var_xdot] = f (obj,xk,uk);
+            [mu_xdot, var_xdot] = obj.f(xk,uk);
             
             % discretize mean and variance
             mu_xkp1  = xk + dt * mu_xdot;

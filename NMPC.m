@@ -46,6 +46,8 @@ classdef NMPC < handle
         n   % dim(x) state space dimension
         m   % dim(u) input diension
         dt  % time step size
+        nh  % number of additional eq. constraints for every time step
+        ng  % number of additional ineq. constraints for every time step
     end
     
     properties(Access=private)
@@ -66,6 +68,10 @@ classdef NMPC < handle
            obj.f  = f;
            obj.h = h;
            obj.g = g;
+           % get size of additional constraints
+           obj.nh = length(h(zeros(n,1),zeros(m,1)));
+           obj.ng = length(h(zeros(n,1),zeros(m,1)));
+           
            % variable dimensions
            obj.n = n;
            obj.m = m;
@@ -75,17 +81,6 @@ classdef NMPC < handle
            % optimizer parameters
            obj.N = N;
            obj.dt = dt;
-        end
-        
-        function activateGP(obj)
-            if obj.d_gp.N == 0
-                error('GP dataset is empty. Please add data points before activating!');
-            end
-            obj.isGPactive = true;
-        end
-        
-        function deactivateGP(obj)
-            obj.isGPactive = false;
         end
         
         
@@ -108,7 +103,7 @@ classdef NMPC < handle
             % initialize optimization variables initial guesses
             if isempty(obj.vars_opt_old)
                 % if this is the first optimization
-                xguess = x0*ones(obj.n * (obj.N+1),1);     % [ x0,...,xN-1,xN ]
+                xguess =  repmat(x0,obj.N+1,1);  % [ x0,...,xN-1,xN ]
                 uguess = zeros(obj.m * obj.N,1);           % [ u0,...,uN-1    ]
                 % vector of initial guesses
                 varsguess = [xguess; uguess];
@@ -150,14 +145,17 @@ classdef NMPC < handle
             
             % split variables since vars_opt = [x_opt; u_opt; e_opt]
             [~, u_opt] = splitvariables(obj, vars_opt);
-            u0_opt = u_opt(1:obj.m);
+            u0_opt = u_opt(:,1);
         end
         
     
-        function [xvec, uvec, evec] = splitvariables(obj, vars)
+        function [xvec, uvec] = splitvariables(obj, vars)
             % split variables
             xvec = vars(1:(obj.N+1)*obj.n);
             uvec = vars( (1:obj.N*obj.m)  + length(xvec) );
+            % reshape the column vector to <n,N+1> and <m,N>
+            xvec = reshape(xvec, obj.n, obj.N+1);
+            uvec = reshape(uvec, obj.m, obj.N);
         end
         
 
@@ -166,29 +164,20 @@ classdef NMPC < handle
         % Evaluate cost function for the whole horizon, given variables
         %------------------------------------------------------------------
             % split variables
-            [xvec, uvec] = obj.splitvariables(vars);
+            [xk, uk] = obj.splitvariables(vars);
 
             cost = 0;
             t = t0;
             for iN=1:obj.N      % i=0:N-1
-                
-                % which are the indices of the current vector at time k?
-                idx_xk =  obj.n*(iN-1)+1 : obj.n*iN;
-                idx_uk =  obj.m*(iN-1)+1 : obj.m*iN;
-                % get current timestep variables
-                xk   = xvec(idx_xk);
-                uk   = uvec(idx_uk);
-
                 % add cost
-                cost = cost + obj.fo(t,xk,uk,r);
+                cost = cost + obj.fo(t,xk(:,iN),uk(:,iN),r);
                 
                 % update current time
                 t = t + iN * obj.dt;
             end
             
             % final cost
-            xend = xvec(obj.n*obj.N+1:obj.n*(obj.N+1));
-            cost = cost + obj.fend(t,xend,r);
+            cost = cost + obj.fend(t,xk(:,end-obj.n+1),r);
         end
         
 
@@ -200,38 +189,36 @@ classdef NMPC < handle
         %   ceq   = h(x,u)
         %------------------------------------------------------------------ 
 
+            % init vectors to speedup calculations
+            ceq_dyn = zeros(obj.n,  obj.N+1);
+            ceq_h   = zeros(obj.nh, obj.N);
+            cineq_g = zeros(obj.ng, obj.N);
+        
             % split variables
-            [xvec, uvec] = obj.splitvariables(vars);
+            [xk, uk] = obj.splitvariables(vars);
             
-            % initialize state constraint: x0 - x(0) = 0
-            ceq = x0 - xvec(1);
-            % initialize inequality constraint
-            cineq = [];
+            % set initial state constraint: x0 - x(0) = 0
+            ceq_dyn(:,1) = x0 - xk(:,1);
             
-            t = t0;
+            t = t0;            
             for iN=1:obj.N
-
-                % which are the indices of the current time k?
-                idx_xk   = obj.n *(iN-1)+1 : obj.n *iN;
-                idx_uk   = obj.m *(iN-1)+1 : obj.m *iN;
                 
-                % get current timestep variables
-                xk   = xvec(idx_xk);
-                xkp1 = xvec(idx_xk + obj.n);
-                uk   = uvec(idx_uk);
+                % evaluate dynamics
+                [mu_xkp1,var_xkp1] = obj.f(xk(:,iN),uk(:,iN));
                 
-                % dynamics constraints and provided equality constraints(h==0)
-                [mu_xkp1,var_xkp1] = obj.f(xk,uk);
-                ceq = [ceq ;
-                       xkp1 - mu_xkp1;
-                       obj.h(xk,uk)];
+                % append dynamics constraints
+                ceq_dyn(:,iN+1) = xk(:,iN+1) - mu_xkp1;
+                
+                % append provided equality constraints(h==0)
+                ceq_h(:,iN) = obj.h(xk(:,iN),uk(:,iN));
                 
                 % provided inequality constraints (g<=0)
-                cineq = [cineq; obj.g(xk,uk) ];
+                cineq_g(:,iN) = obj.g(xk(:,iN),uk(:,iN));
 
                 t = t + iN * obj.dt;
             end
-
+            ceq   = [ceq_dyn(:); ceq_h(:)];
+            cineq = cineq_g(:);
         end
         
     end
