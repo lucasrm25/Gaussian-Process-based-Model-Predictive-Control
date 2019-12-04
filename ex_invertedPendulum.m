@@ -16,7 +16,7 @@
 clear all; close all; clc;
 
 dt = 0.05;  % simulation timestep size
-tf = 2;     % simulation time
+tf = 1;     % simulation time
 
 % inverted pendulum parameters
 Mc = 5;
@@ -33,9 +33,10 @@ l = 3;
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
-mu_d  = @(z) [2 -2]*[mvnpdf(z',[0.1,0.4],diag(([.1,.1]/3).^2)) mvnpdf(z',[-0.1,-0.4],diag(([.1,.1]/3).^2))]';
-var_d = @(z) 0.01;
-d_true  = @(z) deal(mu_d(z),var_d(z)); 
+% mu_d  = @(z) [2 -2]*[mvnpdf(z',[0.1,0.4],diag(([.1,.1]/3).^2)) mvnpdf(z',[-0.1,-0.4],diag(([.1,.1]/3).^2))]';
+mu_d  = @(z) 1 * mvnpdf(z',[0,0], eye(2)*0.1);
+var_d = @(z) 1e-5;
+d_true  = @(z) deal(mu_d(z),var_d(z));
 
 % create true dynamics model
 trueModel = invertedPendulum(Mc, Mp, b, I, l, d_true);
@@ -46,10 +47,10 @@ trueModel = invertedPendulum(Mc, Mp, b, I, l, d_true);
 
 % define model (mean and variance) for estimated disturbance
 % GP hyperparameters
-sigmaf2 = 0.01;             % output variance (std)
-lambda  = diag([1,1].^2);   % length scale
-sigman2 = 0.01;             % measurement noise variance
-maxsize = 100;              % maximum number of points in the dictionary
+sigmaf2 = 0.01;         % output variance (std)
+lambda  = diag([1e-1,1e-1].^2);   % length scale
+sigman2 = 1e-5;       % measurement noise variance
+maxsize = 100;          % maximum number of points in the dictionary
 % create GP object
 d_GP = GP(sigmaf2, sigman2, lambda, maxsize);
 
@@ -156,7 +157,7 @@ for i = 1:numel(out.t)-1
         % calculate disturbance (error between measured and nominal)
         d_est = nomModel.Bd \ (out.xhat(:,i+1) - out.xnom(:,i+1));
         % select subset of coordinates that will be used in GP prediction
-        zhat = nomModel.Bz*out.xhat(:,i);
+        zhat = nomModel.Bz * out.xhat(:,i);
         % add data point to the GP dictionary
         d_GP.add(zhat,d_est);
     end
@@ -166,9 +167,9 @@ for i = 1:numel(out.t)-1
 %     end
     
     % check if these tree values are the same:
-    %     ddata
-    %     gptrue( [out.xhat(:,i),out.u(:,i)] )
-    %     d_true( out.xhat(:,i),out.u(:,i) )*dt
+    % d_est
+    % mu_d(zhat)*dt
+    % [mud,~]=trueModel.d(zhat); mud*dt
     
 end
 
@@ -182,8 +183,12 @@ d_GP.isActive = true;
 figure; 
 subplot(2,1,1); hold on; grid on;
 plot(out.t(1:end-1), rad2deg(out.r), 'DisplayName', 'r(t)')
-plot(out.t, rad2deg(out.x(3,:)), 'DisplayName', 'x(t)')
-ylabel('[deg]');
+yyaxis left
+plot(out.t, rad2deg(out.x(3,:)), 'DisplayName', 'x(t) [deg]')
+ylabel('[rad]');
+yyaxis right
+plot(out.t, out.x(3,:), 'DisplayName', 'x(t) [rad]')
+ylabel('[rad]');
 legend;
 subplot(2,1,2); hold on; grid on;
 plot(out.t(1:end-1), out.u, 'DisplayName', 'u(t)')
@@ -192,10 +197,9 @@ legend;
 % true GP function that is ment to be learned
 Bz = trueModel.Bz;
 Bd = trueModel.Bd;
-z=[1;2];
-% gptrue = @(z) Bz(2,:)*(trueModel.fd(Bz'*z,0,dt) - nomModel.fd(Bz'*z,0,dt));
-gptrue = @(z) mu_d(z); %Bd'*trueModel.fd(Bz'*z,0,dt);
 
+% here we multiply the true disturbance mean by dt to compensate the discretization
+gptrue = @(z) mu_d(z)*dt; %Bd'*trueModel.fd(Bz'*z,0,dt);
 
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )

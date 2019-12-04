@@ -129,9 +129,10 @@ classdef invertedPendulum
             var_xkp1 =      dt * var_xdot;
         end
         
+        
         function [A,B] = linearize (obj)
         %------------------------------------------------------------------
-        % Return continuous time linearized model parameters
+        % Return continuous time linearized model parameters A,B
         %       xdot = A*x + B*u
         %------------------------------------------------------------------
             Mc=obj.Mc; Mp=obj.Mp; b=obj.b; I=obj.I; l=obj.l; g=obj.g;
