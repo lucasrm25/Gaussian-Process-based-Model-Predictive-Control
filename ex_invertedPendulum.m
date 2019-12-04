@@ -39,7 +39,7 @@ var_d = @(z) 0*1e-5;
 d_true  = @(z) deal(mu_d(z),var_d(z));
 
 % create true dynamics model
-trueModel = invertedPendulum(Mc, Mp, b, I, l, d_true);
+trueModel = invertedPendulumModel(Mc, Mp, b, I, l, d_true);
 
 
 
@@ -56,10 +56,10 @@ d_GP = GP(sigmaf2, sigman2, lambda, maxsize);
 
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
-estModel = invertedPendulum(Mc, Mp, b, I, l, @d_GP.eval);
+estModel = invertedPendulumModel(Mc, Mp, b, I, l, @d_GP.eval);
 
 % create nominal dynamics model (no disturbance)
-nomModel = invertedPendulum(Mc, Mp, b, I, l, @(z) deal(0,0) ); 
+nomModel = invertedPendulumModel(Mc, Mp, b, I, l, @(z) deal(0,0) ); 
 
 
 %% Controller
@@ -143,9 +143,7 @@ for i = 1:numel(out.t)-1
     % LQR controller
     % % out.u(:,i) = Kr*out.r(:,i) - K*out.xhat(:,i);
     % NMPC controller
-    x0 = out.xhat(:,i);
-    t0 = out.t(i);
-    out.u(:,i) = mpc.optimize(x0, t0, r);
+    out.u(:,i) = mpc.optimize(out.xhat(:,i), out.t(i), r);
     
     % simulate real model
     [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,i),out.u(:,i),dt);

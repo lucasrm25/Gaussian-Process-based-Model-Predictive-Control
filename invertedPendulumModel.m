@@ -1,4 +1,4 @@
-classdef invertedPendulum
+classdef invertedPendulumModel < handle
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd*d(zk),    
 %
@@ -43,7 +43,7 @@ classdef invertedPendulum
     
     methods
         
-        function obj = invertedPendulum (Mc, Mp, b, I, l, d)
+        function obj = invertedPendulumModel (Mc, Mp, b, I, l, d)
         %------------------------------------------------------------------
         %   object constructor
         %------------------------------------------------------------------
