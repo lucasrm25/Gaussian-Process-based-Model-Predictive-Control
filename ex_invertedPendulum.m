@@ -59,7 +59,7 @@ d_GP = GP(sigmaf2, sigman2, lambda, maxsize);
 estModel = invertedPendulumModel(Mc, Mp, b, I, l, @d_GP.eval);
 
 % create nominal dynamics model (no disturbance)
-nomModel = invertedPendulumModel(Mc, Mp, b, I, l, @(z) deal(0,0) ); 
+nomModel = invertedPendulumModel(Mc, Mp, b, I, l, @(z)deal(0,0) ); 
 
 
 %% Controller
