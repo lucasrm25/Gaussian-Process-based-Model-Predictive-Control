@@ -1,1 +1,4 @@
 *.m~
+*.slxc
+*slprj/*
+*.mat
