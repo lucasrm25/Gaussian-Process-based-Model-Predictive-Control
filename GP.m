@@ -178,7 +178,7 @@ classdef GP < handle
             % dictionary is full
             if obj.N + size(X,2) > obj.Nmax
                 % For now, we just keep the most recent data
-                obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
+                obj.X = [obj.X(:,2:end), X];    % concatenation in the 2st dim.
                 obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
             % append to dictionary
             else
