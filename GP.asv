@@ -209,7 +209,7 @@ classdef GP < handle
                 return;
             end
             
-%             obj.optimizeHyperParams;
+            obj.optimizeHyperParams;
         
             KxX = obj.K(x,obj.X);
             muy = obj.mu(x) + KxX * obj.alpha;
@@ -242,9 +242,9 @@ classdef GP < handle
                 %       be optimized separately.
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
-%                 alpha = inv(obj.K(obj.X,obj.X))*obj.Y;
-%                 deriv_log_p = 0.5*trace((alpha*alpha'-inv(obj.K(obj.X,obj.X)))*diff(obj.K,obj.sigmaf2))
-%                 fzero(deriv_log_p,obj.sigmaf2)
+                alpha = inv(obj.K(obj.X,obj.X))*obj.Y;
+                deriv_log_p = 0.5*tr((alpha*alpha'-inv(obj.K(obj.X,obj.X)))*diff(obj.K,obj.sigmaf2))
+                fzero(deriv_log_p,obj.sigmaf2)
             end
             obj.isOptimized = true;
         end

@@ -19,11 +19,11 @@ dt = 0.1;  % simulation timestep size
 tf = 7;     % simulation time
 
 % inverted pendulum parameters
-Mc = 5;
-Mp = 2;
-b = 0.1;
-I = 0.6;
-l = 3;
+Mc = 5;  % mass of the carriage
+Mp = 2;  % mass of the pole
+b = 0.1; % friction coefficient between the carriage and the floor
+I = 0.6; % inertia matrix of the pole CG
+l = 3;   % pole length
 
 
 
@@ -201,7 +201,11 @@ gptrue = @(z) trueModel.Bd'*(trueModel.xkp1(trueModel.Bz'*z,0,dt) - nomModel.xkp
 
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )
-       
+
+
+% simulation of inverse pendulum
+g = 9.81;
+drawpendulum(out.t,out.x,Mc,Mp,g,l)     
 
 
 
