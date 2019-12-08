@@ -28,18 +28,23 @@ l = 3;
 
 
 %% True Dynamics Model
-%------------------------------------------------------------------
-%   xk+1 = fd(xk,uk) + Bd*d(zk),    zk=Bz*xk and  d~N(mean_d(zk),var_d(zk))
+%--------------------------------------------------------------------------
+%   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
+%
+%       where: zk = Bz*xk,
+%              d ~ N(mean_d(zk),var_d(zk))
+%              w ~ N(0,sigmaw)
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
 % mu_d  = @(z) 1 * mvnpdf(z',[0,0], eye(2)*0.1);
 mu_d  = @(z) 0.1 * z(1) - 0.01*z(2) + deg2rad(3);
-var_d = @(z) 0*1e-5;
+var_d = @(z) 0;
 d_true  = @(z) deal(mu_d(z),var_d(z));
-
+% true measurement noise
+sigmaw = 1e-8;
 % create true dynamics model
-trueModel = invertedPendulumModel(Mc, Mp, b, I, l, d_true);
+trueModel = invertedPendulumModel(Mc, Mp, b, I, l, d_true, sigmaw);
 
 
 
@@ -48,18 +53,18 @@ trueModel = invertedPendulumModel(Mc, Mp, b, I, l, d_true);
 % define model (mean and variance) for estimated disturbance
 % GP hyperparameters
 sigmaf2 = 0.01;         % output variance (std)
-lambda  = diag([1e-1,1e-1].^2);   % length scale
+M       = diag([1e-1,1e-1].^2);   % length scale
 sigman2 = 1e-5;         % measurement noise variance
 maxsize = 100;          % maximum number of points in the dictionary
 % create GP object
-d_GP = GP(sigmaf2, sigman2, lambda, maxsize);
+d_GP = GP(sigmaf2, sigman2, M, maxsize);
 
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
-estModel = invertedPendulumModel(Mc, Mp, b, I, l, @d_GP.eval);
+estModel = invertedPendulumModel(Mc, Mp, b, I, l, @d_GP.eval, sigmaw);
 
 % create nominal dynamics model (no disturbance)
-nomModel = invertedPendulumModel(Mc, Mp, b, I, l, @(z)deal(0,0) ); 
+nomModel = invertedPendulumModel(Mc, Mp, b, I, l, @(z)deal(0,0), 0); 
 
 
 %% Controller
@@ -180,7 +185,7 @@ close all;
 d_GP.isActive = true;
 
 % plot reference and state signal
-figure; 
+figure('Position',[-1836 535 560 420]); 
 subplot(2,1,1); hold on; grid on;
 plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
 plot(out.t, out.x(3,:), 'DisplayName', 'x(t) [rad]')

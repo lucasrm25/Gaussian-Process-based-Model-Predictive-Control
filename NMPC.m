@@ -165,10 +165,20 @@ classdef NMPC < handle
         %------------------------------------------------------------------
             % split variables
             [xk, uk] = obj.splitvariables(vars);
-
+            
+            % lets adjust the xk vector to the given uk vector to improve
+            % convergence speed
+            for iN=1:obj.N
+                [xk(:,iN+1),~] = obj.f(xk(:,iN),uk(:,iN));
+            end
+            
             cost = 0;
             t = t0;
             for iN=1:obj.N      % i=0:N-1
+                
+                % evaluate dynamics
+%                 [mu_xkp1,var_xkp1] = obj.f(xk(:,iN),uk(:,iN));
+                
                 % add cost
                 cost = cost + obj.fo(t,xk(:,iN),uk(:,iN),r);
                 
@@ -199,7 +209,7 @@ classdef NMPC < handle
             % set initial state constraint: x0 - x(0) = 0
             ceq_dyn(:,1) = x0 - xk(:,1);
             
-            t = t0;            
+            t = t0;
             for iN=1:obj.N
                 
                 % evaluate dynamics

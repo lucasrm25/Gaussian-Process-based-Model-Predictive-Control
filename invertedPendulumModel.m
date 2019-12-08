@@ -1,8 +1,10 @@
 classdef invertedPendulumModel < handle
 %--------------------------------------------------------------------------
-%   xk+1 = fd(xk,uk) + Bd*d(zk),    
+%   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
-%       where: zk=Bz*xk and  d~N(mean_d(zk),var_d(zk))
+%       where: zk = Bz*xk,
+%              d ~ N(mean_d(zk),var_d(zk))
+%              w ~ N(0,sigmaw)
 %
 %   
 %   x = [s, ds, th, dth]'   carriage position and pole angle (and derivatives)
@@ -22,7 +24,8 @@ classdef invertedPendulumModel < handle
         I       % inertia matrix of the pole CG
         l       % pole length
         
-        d       % [mean_dz,var_dz] = d(z): disturbace model
+        d       % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
+        w       % [E[w] , Var[w]] = w: measurement noise
         
         g = 9.8;
     end
@@ -43,7 +46,7 @@ classdef invertedPendulumModel < handle
     
     methods
         
-        function obj = invertedPendulumModel (Mc, Mp, b, I, l, d)
+        function obj = invertedPendulumModel (Mc, Mp, b, I, l, d, sigmaw)
         %------------------------------------------------------------------
         %   object constructor
         %------------------------------------------------------------------
@@ -53,12 +56,13 @@ classdef invertedPendulumModel < handle
             obj.I = I;
             obj.l = l;
             obj.d = d;
+            obj.w = @(z) deal(zeros(obj.nd,1),eye(obj.nd)*sigmaw);
         end
         
         
         function nd = get.nd(obj)
         %------------------------------------------------------------------
-        %   output dimension of du(z)
+        %   output dimension of d(z)
         %------------------------------------------------------------------
             nd = size(obj.Bd,2);
         end
@@ -143,10 +147,11 @@ classdef invertedPendulumModel < handle
             % evaluate disturbance
             z = obj.Bz * xk;
             [mu_d, var_d] = obj.d(z);
+            [mu_w, var_w] = obj.w(z);
             
-            % discretize mean and variance
-            mu_xkp1  = mu_fd  + obj.Bd * mu_d;
-            var_xkp1 = var_fd + obj.Bd * var_d * obj.Bd';
+            % propagate mean and variance
+            mu_xkp1  = mu_fd  + obj.Bd * ( mu_d + mu_w );
+            var_xkp1 = var_fd + obj.Bd * ( var_d + var_w ) * obj.Bd';
         end
         
         
