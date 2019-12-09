@@ -44,8 +44,7 @@ d_true  = @(z) deal(mu_d(z),var_d(z));
 % true measurement noise
 sigmaw = 1e-8;
 % create true dynamics model
-trueModel = invertedPendulumModel(Mc, Mp, b, I, l, d_true, sigmaw);
-
+trueModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, d_true, sigmaw);
 
 
 %% Create Estimation Model and Nominal Model
@@ -61,10 +60,10 @@ d_GP = GP(sigmaf2, sigman2, M, maxsize);
 
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
-estModel = invertedPendulumModel(Mc, Mp, b, I, l, @d_GP.eval, sigmaw);
+estModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @d_GP.eval, sigmaw);
 
 % create nominal dynamics model (no disturbance)
-nomModel = invertedPendulumModel(Mc, Mp, b, I, l, @(z)deal(0,0), 0); 
+nomModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @(z)deal(0,0), 0); 
 
 
 %% Controller
@@ -95,9 +94,9 @@ Q = diag([1e-1 1e5 1]);
 Qf= diag([1e-1 1e5 1]);
 R = 1;
 Ck = [0 1 0 0; 0 0 1 0; 0 0 0 1];
-fo   = @(t,x,u,r) (Ck*x-r(t))'*Q *(Ck*x-r(t)) + R*u^2;  % cost function
-fend = @(t,x,r)   (Ck*x-r(t))'*Qf*(Ck*x-r(t));            % end cost function
-f    = @(x,u) estModel.xkp1(x,u,dt);
+fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + R*u^2;  % cost function
+fend = @(t,mu_x,var_x,r)   (Ck*mu_x-r(t))'*Qf*(Ck*mu_x-r(t));          % end cost function
+f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
 h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
 g    = @(x,u) []; % @(x,u) 0;  % g(x)<=0
 
@@ -151,14 +150,14 @@ for i = 1:numel(out.t)-1
     out.u(:,i) = mpc.optimize(out.xhat(:,i), out.t(i), r);
     
     % simulate real model
-    [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,i),out.u(:,i),dt);
+    [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,i),zeros(trueModel.n),out.u(:,i),dt);
     out.x(:,i+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
     % measure data
     out.xhat(:,i+1) = out.x(:,i+1); % perfect observer
     
     % calculate nominal model
-    out.xnom(:,i+1) = nomModel.xkp1(out.xhat(:,i),out.u(:,i),dt);
+    out.xnom(:,i+1) = nomModel.xkp1(out.xhat(:,i),zeros(nomModel.n),out.u(:,i),dt);
     
     % add data to GP model
     if mod(i-1,1)==0
@@ -202,7 +201,8 @@ Bd = trueModel.Bd;
 % define the true expected disturbance model
 % z = [0;0.1];
 % gptrue = @(z) mu_d(z);
-gptrue = @(z) trueModel.Bd'*(trueModel.xkp1(trueModel.Bz'*z,0,dt) - nomModel.xkp1(trueModel.Bz'*z,0,dt));
+gptrue = @(z) trueModel.Bd'*( trueModel.xkp1(trueModel.Bz'*z,zeros(trueModel.n),0,dt)...
+                             -nomModel.xkp1(trueModel.Bz'*z,zeros(nomModel.n),0,dt)  );
 
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )
