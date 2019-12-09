@@ -67,8 +67,8 @@ m = estModel.m;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% NONLINEAR MPC CONTROLLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % define cost function
 N = 10;     % prediction horizon
-Q = eye(3)*1000;
-Qf= eye(3)*1000;
+Q = eye(2)*1000;
+Qf= eye(2)*1000;
 R = eye(5);
 Ck = [eye(3), zeros(3,7)];
 fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + u'*R*u;  % cost function
@@ -94,12 +94,9 @@ idx_target = idx + 10;
 % loop around when track is over
 idx_target = mod(idx_target, size(t_c,1));
 
-r = @(t) [t_c(idx_target,:) 20]';
+r = @(t) [t_c(idx_target,:) ]';
 U = mpc.optimize(X, 0, r);
 
-X(1:3)
-r(3234)
-1;
 
 
 

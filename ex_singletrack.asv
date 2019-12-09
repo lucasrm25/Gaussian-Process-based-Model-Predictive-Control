@@ -1,0 +1,8 @@
+d = @(z)deal(0,0);
+sigmaw = 0;
+
+x0 = [0 0 0 0 0 0 0 0 0 0]';
+u0 = [ 
+obj = MotionModelGP_SingleTrack(d,sigmaw)
+
+obj.f(x0,)

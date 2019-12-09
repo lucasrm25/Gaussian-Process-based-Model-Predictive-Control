@@ -52,5 +52,6 @@ Y = zeros(neq,N);
 Y(:,1) = y0;
 for i = 1:N-1 
   Y(:,i+1) = Y(:,i) + h(i)*feval(odefun,tspan(i),Y(:,i),varargin{:});
+  tspan(i)
 end
 Y = Y.';

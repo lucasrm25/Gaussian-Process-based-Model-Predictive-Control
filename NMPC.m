@@ -142,6 +142,8 @@ classdef NMPC < handle
             % split variables since vars_opt = [x_opt; u_opt; e_opt]
             [~, u_opt] = splitvariables(obj, vars_opt);
             u0_opt = u_opt(:,1);
+            
+            u0_opt(2) = 2;
         end
         
     
