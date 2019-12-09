@@ -54,11 +54,12 @@ t_r_x=t_r(:,1); % x coordinate of right racetrack boundary
 t_r_y=t_r(:,2); % y coordinate of right racetrack boundary
 t_l_x=t_l(:,1); % x coordinate of left racetrack boundary
 t_l_y=t_l(:,2); % y coordinate of left racetrack boundary
-dt = 0.05;
+dt = 0.1;
 %% 
 d = @(z)deal(0,0);
 sigmaw = 0;
-estModel = MotionModelGP_SingleTrack(d,sigmaw);
+% estModel = MotionModelGP_SingleTrack(d,sigmaw);
+estModel = MotionModelGP_TrueSingleTrack(d,sigmaw);
 
 n = estModel.n;
 m = estModel.m;
@@ -67,8 +68,8 @@ m = estModel.m;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% NONLINEAR MPC CONTROLLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % define cost function
 N = 10;     % prediction horizon
-Q = eye(3)*1000;
-Qf= eye(3)*1000;
+Q = [1000,0, 0;0,1000,0;0, 0, 1000];
+Qf= [1000,0, 0;0,1000,0;0, 0, 1000];
 R = eye(5);
 Ck = [eye(3), zeros(3,7)];
 fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + u'*R*u;  % cost function
@@ -94,12 +95,12 @@ idx_target = idx + 10;
 % loop around when track is over
 idx_target = mod(idx_target, size(t_c,1));
 
-r = @(t) [t_c(idx_target,:) 20]';
+r = @(t) [t_c(idx_target,:) 10]';
 U = mpc.optimize(X, 0, r);
 
 X(1:3)
 r(3234)
-1;
+
 
 
 
