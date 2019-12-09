@@ -20,7 +20,7 @@ classdef GP < handle
         % kernel parameters (one for each output dimension)
         sigmaf2 % <p> signal/output covariance
         sigman2 % <p> evaluation noise stddev
-        l       % <n,n,p> length scale covariance matrix
+        M       % <n,n,p> length scale covariance matrix
         
         isActive = true
     end
@@ -46,7 +46,7 @@ classdef GP < handle
     end
     
     methods
-        function obj = GP(sigmaf2, sigman2, lambda, maxsize)
+        function obj = GP(sigmaf2, sigman2, M, maxsize)
         %------------------------------------------------------------------
         % GP constructor
         % args:
@@ -59,7 +59,7 @@ classdef GP < handle
             obj.Y       = [];
             obj.sigmaf2 = sigmaf2;
             obj.sigman2 = sigman2;
-            obj.l       = lambda;
+            obj.M       = M;
             obj.Nmax    = maxsize;
         end
         
@@ -104,14 +104,16 @@ classdef GP < handle
         function kernel = K(obj,x1,x2)
         %------------------------------------------------------------------
         % SEQ kernel function: cov[f(x1),f(x2)]
+        %     k(x1,x2) = sigmaf2 * exp( 0.5 * ||x1-x2||^2_M )
+        %
         % args:
         %   x1: <n,N1>
         %   x2: <n,N2>
         % out:
         %   kernel: <N1,N2>
         %------------------------------------------------------------------
-            D = pdist2(x1',x2','mahalanobis',obj.l).^2;
-            %D = pdist2(x1',x2','seuclidean',diag((obj.l).^0.5)).^2;
+            D = pdist2(x1',x2','mahalanobis',obj.M).^2;
+            %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
             kernel = obj.sigmaf2 * exp( -0.5 * D );
         end
         
@@ -297,7 +299,7 @@ classdef GP < handle
             end 
             
             % plot data points, and +-2*stddev surfaces 
-            figure('Color','w', 'Position', [123   124   550   420])
+            figure('Color','w', 'Position', [-1827 27 550 420])
             hold on; grid on;
             % surf(X1,X2,Y, 'FaceAlpha',0.3)
             surf(X1,X2,Ymean+2*Ystd ,Ystd, 'FaceAlpha',0.3)
@@ -309,7 +311,7 @@ classdef GP < handle
             view(30,30)
             
             % Comparison between true and prediction mean
-            figure('Color','w', 'Position',[286 146 1138 423])
+            figure('Color','w', 'Position',[-1269 32 1148 423])
             subplot(1,2,1); hold on; grid on;
             surf(X1,X2,Ytrue, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'True function');
             % surf(X1,X2,Ymean, 'FaceAlpha',.5, 'FaceColor','g', 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
@@ -330,7 +332,7 @@ classdef GP < handle
             view(24,12)
             
             % plot bias and variance
-            figure('Color','w', 'Position',[708   166   894   264])
+            figure('Color','w', 'Position',[-1260 547 894 264])
             subplot(1,2,1); hold on; grid on;
             contourf(X1,X2, abs(Ymean-Ytrue), 50,'LineColor','none')
             title('Absolute Prediction Bias')

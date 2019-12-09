@@ -1,8 +1,10 @@
-classdef invertedPendulumModel < handle
+classdef InvertedPendulumModel < handle
 %--------------------------------------------------------------------------
-%   xk+1 = fd(xk,uk) + Bd*d(zk),    
+%   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
-%       where: zk=Bz*xk and  d~N(mean_d(zk),var_d(zk))
+%       where: zk = Bz*xk,
+%              d ~ N(mean_d(zk),var_d(zk))
+%              w ~ N(0,sigmaw)
 %
 %   
 %   x = [s, ds, th, dth]'   carriage position and pole angle (and derivatives)
@@ -22,7 +24,8 @@ classdef invertedPendulumModel < handle
         I       % inertia matrix of the pole CG
         l       % pole length
         
-        d       % [mean_dz,var_dz] = d(z): disturbace model
+        d       % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
+        w       % [E[w] , Var[w]] = w: measurement noise
         
         g = 9.8;
     end
@@ -43,7 +46,7 @@ classdef invertedPendulumModel < handle
     
     methods
         
-        function obj = invertedPendulumModel (Mc, Mp, b, I, l, d)
+        function obj = InvertedPendulumModel (Mc, Mp, b, I, l, d, sigmaw)
         %------------------------------------------------------------------
         %   object constructor
         %------------------------------------------------------------------
@@ -53,12 +56,13 @@ classdef invertedPendulumModel < handle
             obj.I = I;
             obj.l = l;
             obj.d = d;
+            obj.w = @(z) deal(zeros(obj.nd,1),eye(obj.nd)*sigmaw);
         end
         
         
         function nd = get.nd(obj)
         %------------------------------------------------------------------
-        %   output dimension of du(z)
+        %   output dimension of d(z)
         %------------------------------------------------------------------
             nd = size(obj.Bd,2);
         end
@@ -70,12 +74,12 @@ classdef invertedPendulumModel < handle
             nz = size(obj.Bz,1);
         end
         
-        function [mu_xdot, var_xdot] = f (obj,x,u)
+        function [xdot, grad_xdot] = f (obj, x, u)
         %------------------------------------------------------------------
         %   Continuous time dynamics of the inverted pendulum (including
         %   disturbance):
         %
-        %       p(xdot | x,u) = N(mu_xdot,var_xdot)
+        %       p(xdot | x,u) = N(xdot, grad_xdot'*var_xdot*grad_xdot)
         %
         %   (Mc+Mp)*dds + b*ds + Mp*l/2*ddth*cos(th) - Mp*l/2*dth^2*sin(th) = F
         %   (I+Mp*(l/2)^2)*ddth + Mp*g*l/2*sin(th) + Mp*l*dds*cos(th) = T
@@ -83,70 +87,69 @@ classdef invertedPendulumModel < handle
         %   x = [s, ds, th, dth]'
         %   u = [F]'
         %
-        %   (HOW TO GENERATE THIS EQUATIONS:)
+        %   (HOW TO GENERATE THESE EQUATIONS:)
         %
-        %   syms g Mc Mp b I l F T s ds dds  th dth ddth
-        %   fzero = [(Mc+Mp)*ddx + b*ds + Mp*l/2*ddth*cos(th) - Mp*l/2*dth^2*sin(th) - F ;
-        %            (I+Mp*(l/2)^2)*ddth + Mp*g*l/2*sin(th) + Mp*l*dds*cos(th) - T  ];
-        %   sol = solve(fzero,[dds,ddth])
-        %   dds = simplify(sol.dds)
-        %   ddth = simplify(sol.ddth)
-        %   matlabFunction([dds;ddth],'file','invertedPendulum_f_true')
+        % syms g Mc Mp b I l F T s ds dds  th dth ddth real
+        % fzero = [(Mc+Mp)*dds + b*ds + Mp*l/2*ddth*cos(th) - Mp*l/2*dth^2*sin(th) - F ;
+        %        (I+Mp*(l/2)^2)*ddth + Mp*g*l/2*sin(th) + Mp*l*dds*cos(th) - T  ];
+        % sol = solve(fzero,[dds,ddth])
+        % dds = simplify(sol.dds)
+        % ddth = simplify(sol.ddth)
+        % 
+        % u = [F,T]';
+        % x = [s, ds, th, dth]'
+        % xdot = [ds, dds, dth, ddth]';
+        % params = [Mc Mp I g l b ]';
+        % 
+        % grad_xdot = simplify(jacobian(xdot,x)');
+        % matlabFunction( xdot, grad_xdot, 'Vars', {x;u;params} ,'File', 'invertedPendulumModel_f' )
         %------------------------------------------------------------------
-            s  = x(1);
-            ds = x(2);
-            th = x(3);
-            dth= x(4);
             
-            F = u(1);
-            T = 0;
-            
-            % simplify code notation
-            Mc=obj.Mc; Mp=obj.Mp; I=obj.I; g=obj.g; l=obj.l; b=obj.b;
-            
-            % equations of motion
-            th = th + pi;
-            dds  = (8*F*I - 8*I*b*ds + 2*F*l^2*Mp - 2*b*ds*l^2*Mp - 4*T*l*Mp*cos(th) + dth^2*l^3*Mp^2*sin(th) + 2*g*l^2*Mp^2*cos(th)*sin(th) + 4*I*dth^2*l*Mp*sin(th))/(2*((1 - 2*cos(th)^2)*l^2*Mp^2 + Mc*l^2*Mp + 4*I*Mp + 4*I*Mc));
-            ddth = -(2*(2*F*l*Mp*cos(th) - 2*T*Mp - 2*Mc*T + g*l*Mp^2*sin(th) + dth^2*l^2*Mp^2*cos(th)*sin(th) + Mc*g*l*Mp*sin(th) - 2*b*ds*l*Mp*cos(th)))/((1 - 2*cos(th)^2)*l^2*Mp^2 + Mc*l^2*Mp + 4*I*Mp + 4*I*Mc);
-            
-            % calculate xdot mean and covariance
-            mu_xdot  = [ds, dds, dth, ddth]';
-            var_xdot = zeros(obj.n);
+            params = [obj.Mc obj.Mp obj.I obj.g obj.l obj.b]';
+            u(2,1) = 0;  % set Torque to zero
+            [xdot, grad_xdot] = invertedPendulumModel_f( x, u, params );
         end
         
         
-        function [mu_xkp1, var_xkp1] = fd (obj,xk,uk,dt)
+        function [xkp1, grad_xkp1] = fd (obj, xk, uk, dt)
         %------------------------------------------------------------------
         %   Discrete time dynamics of the inverted pendulum (including
         %   disturbance)
         %------------------------------------------------------------------
             % calculate continous time dynamics
-            [mu_xdot, var_xdot] = obj.f(xk,uk);
+            [xdot, grad_xdot] = obj.f(xk,uk);
             
-            % discretize mean and variance
-            mu_xkp1  = xk + dt * mu_xdot;
-            var_xkp1 =      dt * var_xdot;
+            % discretize
+            xkp1      = xk + dt * xdot;
+            grad_xkp1 = eye(obj.n) + dt * grad_xdot;
         end
         
         
-        function [mu_xkp1,var_xkp1] = xkp1 (obj,xk,uk,dt)
+        function [mu_xkp1,var_xkp1] = xkp1 (obj, mu_xk, var_xk, uk, dt)
         %------------------------------------------------------------------
-        %   Discrete time dynamics of the inverted pendulum (including
-        %   disturbance)
+        %   State prediction (motion model) of inverted pendulum using
+        %   Extended Kalman Filter approach
         %
-        %       xk+1 = fd(xk,uk) + Bd*d(zk)
+        %       xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),  zk=Bz*xk
         %
         %------------------------------------------------------------------
-            % calculate continous time dynamics
-            [mu_fd, var_fd] = obj.fd(xk,uk,dt);
+            % calculate discrete time dynamics
+            [fd, grad_fd] = obj.fd(mu_xk,uk,dt);
+            
+            % calculate grad_{x,d,w} xk+1
+            grad_xkp1 = [grad_fd; obj.Bd'; obj.Bd'];
             
             % evaluate disturbance
-            z = obj.Bz * xk;
+            z = obj.Bz * mu_xk;
             [mu_d, var_d] = obj.d(z);
+            [mu_w, var_w] = obj.w(z);
             
-            % discretize mean and variance
-            mu_xkp1  = mu_fd  + obj.Bd * mu_d;
-            var_xkp1 = var_fd + obj.Bd * var_d * obj.Bd';
+            % a) Mean Equivalent Approximation:
+            var_x_d_w = blkdiag(var_xk, var_d, var_w);
+            
+            % predict mean and variance (Extended Kalman Filter)
+            mu_xkp1  = fd  + obj.Bd * ( mu_d + mu_w );
+            var_xkp1 = grad_xkp1' * var_x_d_w * grad_xkp1;
         end
         
         

@@ -19,11 +19,10 @@ classdef NMPC < handle
     %
     %   where the motion model evaluates   [E[xk+1],Var[xk+1]] = f(xk,uk)
     %
-    %   for x0,...,xN, u0,...,uN-1, e0,...,eN
+    %   for x0, u0,...,uN-1, e0,...,eN
     %
     %   where xk: state variables
     %         zk: selected state variables zk=Bd'*xk
-    %         ek: extra variables
     %         r(tk): trajectory
     %         tk: current time
     %------------------------------------------------------------------
@@ -88,9 +87,9 @@ classdef NMPC < handle
         %------------------------------------------------------------------
         % How many variables we need to optimize?
         %
-        %   vars_opt = [x0,...,xN, u0,...,uN-1, e0,...,eN]
+        %   vars_opt = [u0,...,uN-1]
         %------------------------------------------------------------------
-            numvars = (obj.N+1)*(obj.n) + (obj.N)*(obj.m);
+            numvars = obj.n + obj.N*obj.m;
         end
         
         
@@ -101,16 +100,13 @@ classdef NMPC < handle
             
             %-------- Set initial guess for optimization variables  -------
             % initialize optimization variables initial guesses
-            if isempty(obj.vars_opt_old)
-                % if this is the first optimization
-                xguess =  repmat(x0,obj.N+1,1);  % [ x0,...,xN-1,xN ]
-                uguess = zeros(obj.m * obj.N,1);           % [ u0,...,uN-1    ]
-                % vector of initial guesses
-                varsguess = [xguess; uguess];
+            if isempty(obj.vars_opt_old)  % if this is the first optimization
+                uguess = zeros(obj.m * obj.N,1);      % [ u0,...,uN-1]
             else
-                varsguess = obj.vars_opt_old;
-                varsguess(1:obj.n) = x0;
+                [~,uguess] = obj.splitvariables(obj.vars_opt_old);
+                uguess = uguess(:); % <m,N> to <m+N,1>
             end
+            varsguess = [x0; uguess];
             %--------------------------------------------------------------
             
             assert( numel(varsguess) == obj.optSize(), ...
@@ -149,38 +145,65 @@ classdef NMPC < handle
         end
         
     
-        function [xvec, uvec] = splitvariables(obj, vars)
+        function [x0, uvec] = splitvariables(obj, vars)
+        %------------------------------------------------------------------
+        % args:
+        %   vars: <optSize,1> optimization variables
+        % out:
+        %   x0: <n,1>
+        %   uvec: <m,N>
+        %------------------------------------------------------------------
             % split variables
-            xvec = vars(1:(obj.N+1)*obj.n);
-            uvec = vars( (1:obj.N*obj.m)  + length(xvec) );
-            % reshape the column vector to <n,N+1> and <m,N>
-            xvec = reshape(xvec, obj.n, obj.N+1);
+            x0   = vars(1:obj.n);
+            uvec = vars( (1:obj.N*obj.m)  + length(x0) );
+            % reshape the column vector to <m,N>
             uvec = reshape(uvec, obj.m, obj.N);
         end
         
+        
+        function [mu_xk,var_xk] = calculateStateSequence(obj, mu_x0, var_x0, uk)
+        %------------------------------------------------------------------
+        % Propagate mean and covariance of state sequence, given control
+        % input sequence.
+        %------------------------------------------------------------------
+            mu_xk  = zeros(obj.n,obj.N+1);
+            var_xk = zeros(obj.n,obj.n,obj.N+1);
+            
+            mu_xk(:,1) = mu_x0;
+            var_xk(:,:,1) = var_x0;
+            
+            for iN=1:obj.N      % [x1,...,xN]
+                [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
+            end
+        end
 
+        
         function cost = costfun(obj, vars, t0, r)
         %------------------------------------------------------------------
         % Evaluate cost function for the whole horizon, given variables
         %------------------------------------------------------------------
             % split variables
-            [xk, uk] = obj.splitvariables(vars);
-
+            [mu_x0, uk] = obj.splitvariables(vars);
+            var_x0 = zeros(obj.n);
+            
+            % calculate state sequence for given control input sequence and x0
+            [mu_xk,var_xk] = obj.calculateStateSequence(mu_x0, var_x0, uk);
+                        
             cost = 0;
             t = t0;
             for iN=1:obj.N      % i=0:N-1
                 % add cost
-                cost = cost + obj.fo(t,xk(:,iN),uk(:,iN),r);
-                
+                cost = cost + obj.fo(t, mu_xk(:,iN), var_xk(:,:,iN), uk(:,iN), r);
+
                 % update current time
                 t = t + iN * obj.dt;
             end
             % final cost
-            cost = cost + obj.fend(t,xk(:,end-obj.n+1),r);
+            cost = cost + obj.fend(t, mu_xk(:,end), var_xk(:,:,end), r);
         end
         
 
-        function [cineq,ceq] = nonlcon(obj,vars, t0, x0)
+        function [cineq,ceq] = nonlcon(obj, vars, t0, x0)
         %------------------------------------------------------------------
         % Evaluate nonlinear equality and inequality constraints
         % args
@@ -189,30 +212,28 @@ classdef NMPC < handle
         %------------------------------------------------------------------ 
 
             % init vectors to speedup calculations
-            ceq_dyn = zeros(obj.n,  obj.N+1);
+            ceq_dyn = zeros(obj.n,  1);
             ceq_h   = zeros(obj.nh, obj.N);
             cineq_g = zeros(obj.ng, obj.N);
         
             % split variables
-            [xk, uk] = obj.splitvariables(vars);
+            [mu_x0, uk] = obj.splitvariables(vars);
+            var_x0 = zeros(obj.n);
+            
+            % calculate state sequence for given control input sequence and x0
+            [mu_xk,var_xk] = obj.calculateStateSequence(mu_x0, var_x0, uk);
             
             % set initial state constraint: x0 - x(0) = 0
-            ceq_dyn(:,1) = x0 - xk(:,1);
+            ceq_dyn(:,1) = x0 - mu_xk(:,1);
             
-            t = t0;            
+            t = t0;
             for iN=1:obj.N
                 
-                % evaluate dynamics
-                [mu_xkp1,var_xkp1] = obj.f(xk(:,iN),uk(:,iN));
-                
-                % append dynamics constraints
-                ceq_dyn(:,iN+1) = xk(:,iN+1) - mu_xkp1;
-                
                 % append provided equality constraints(h==0)
-                ceq_h(:,iN) = obj.h(xk(:,iN),uk(:,iN));
+                ceq_h(:,iN) = obj.h(mu_xk(:,iN),uk(:,iN));
                 
                 % provided inequality constraints (g<=0)
-                cineq_g(:,iN) = obj.g(xk(:,iN),uk(:,iN));
+                cineq_g(:,iN) = obj.g(mu_xk(:,iN),uk(:,iN));
 
                 t = t + iN * obj.dt;
             end
