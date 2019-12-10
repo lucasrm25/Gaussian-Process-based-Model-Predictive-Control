@@ -1,21 +1,29 @@
 classdef SingleTrackAnimation
     
     properties
-        track_l         % <2,L>: left track coordinates
-        track_r         % <2,L>: right track coordinates
+        racetrack       @RaceTrack
         TruePred        % <2,N>: true state predictions
         AppPred         % <2,N>: approximated state predictions
         ref             % <2,N>: references for each prediction
+        
+        figh
+        ltrackh
+        rtrackh
     end
     
     methods
-        function obj = SingleTrackAnimation(track_l, track_r)
-            obj.track_l = track_l;
-            obj.track_r = track_r;
+        function obj = SingleTrackAnimation(racetrack)
+            obj.racetrack = racetrack;
         end
         
         function initGraphics(obj)
+            obj.figh = figure;
+            hold on;
+            grid on;
+            axis equal;
             
+            obj.ltrackh = plot(obj.racetrack.track_l(1,:),obj.racetrack.track_l(2,:));
+            obj.rtrackh = plot(obj.racetrack.track_r(1,:),obj.racetrack.track_r(2,:));
         end
         
         function updateGraphics(obj)

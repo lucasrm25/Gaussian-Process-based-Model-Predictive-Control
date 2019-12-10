@@ -14,22 +14,26 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
 %              w ~ N(0,sigmaw)
 %
 %   
-%   x = [x          (x position), 
-%        y          (y position), 
-%        v          (velocity), 
-%        beta       (side slip angle), 
-%        psi        (yaw angle), 
-%        omega      (yaw rate), 
-%        x_dot      (longitudinal velocity), 
-%        y_dot      (lateral velocity), 
-%        psi_dot    (yaw rate (redundant)), 
-%        varphi_dot (wheel rotary frequency)]'   
+%   x = [x              (x position), 
+%        y              (y position), 
+%        v              (velocity), 
+%        beta           (side slip angle), 
+%        psi            (yaw angle), 
+%        omega          (yaw rate), 
+%        x_dot          (longitudinal velocity), 
+%        y_dot          (lateral velocity), 
+%        psi_dot        (yaw rate (redundant)), 
+%        varphi_dot     (wheel rotary frequency),
+%        track_dist     (distance traveled in the track centerline)
+%        ]
 %
-%   u = [delta      (steering angle), 
-%        G          (gear), 
-%        F_b        (brake force), 
-%        zeta       (brake force distribution), 
-%        phi        (acc pedal position)]'              
+%   u = [delta          (steering angle), 
+%        G              (gear), 
+%        F_b            (brake force), 
+%        zeta           (brake force distribution), 
+%        phi            (acc pedal position),
+%        track_vel      (velocity in the track centerline)
+%       ]
 %   
 %--------------------------------------------------------------------------
  
@@ -49,8 +53,8 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
     properties(SetAccess=private)
         Bd = [0 0 1 0 0 0 0 0 0 0]';       % xk+1 = fd(xk,uk) + Bd*d(zk)
         Bz = eye(10)        % z = Bz*x     
-        n = 10              % number of outputs x(t)
-        m = 5               % number of inputs u(t)
+        n = 11              % number of outputs x(t)
+        m = 6               % number of inputs u(t)
     end
     
     methods
@@ -93,17 +97,23 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             y_dot = x(8);
             psi_dot = x(9);
             varphi_dot = x(10);
+            track_dist = x(11);
             
             %--------------------------------------------------------------
             % Inputs
             %--------------------------------------------------------------
             u = obj.constraintInputs(u);
-            delta = u(1);  % steering angle
-            G     = u(2);  % gear
-            F_b   = u(3);  % brake force
-            zeta  = u(4);  % brake force distribution
-            phi   = u(5);  % acc pedal position
+            delta = u(1);       % steering angle
+            G     = u(2);       % gear
+            F_b   = u(3);       % brake force
+            zeta  = u(4);       % brake force distribution
+            phi   = u(5);       % acc pedal position
+            track_vel = u(6);   % track centerline velocity
             
+            %--------------------------------------------------------------
+            % Traveled distance in the track centerline
+            %--------------------------------------------------------------
+            track_dist_dot = track_vel;
             
             %--------------------------------------------------------------
             % Slip
@@ -170,7 +180,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             %--------------------------------------------------------------
             % write outputs
             %--------------------------------------------------------------
-            xdot  = [x_dot; y_dot; v_dot; beta_dot; psi_dot; omega_dot; x_dot_dot; y_dot_dot; psi_dot_dot; varphi_dot_dot];
+            xdot  = [x_dot; y_dot; v_dot; beta_dot; psi_dot; omega_dot; x_dot_dot; y_dot_dot; psi_dot_dot; varphi_dot_dot; track_dist_dot];
             grad_xdot = zeros(obj.n);
             
             if any(isnan(xdot)) || any(isinf(xdot))
