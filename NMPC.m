@@ -179,7 +179,7 @@ classdef NMPC < handle
                     error('System dynamics evaluated to error!!!')
                 end
                 if sum(isnan(mu_xk),'all') || sum(isinf(mu_xk),'all')
-                    error('System dynamics evaluated to NaN of Inf')
+                    error('System dynamics evaluated to NaN or Inf')
                 end
             end
         end
@@ -206,7 +206,7 @@ classdef NMPC < handle
                     error('Cost function evaluated to error!!!')
                 end
                 if sum(isnan(cost),'all') || sum(isinf(cost),'all')
-                    error('Cost function evaluated to NaN of Inf')
+                    error('Cost function evaluated to NaN or Inf')
                 end
                 % update current time
                 t = t + iN * obj.dt;

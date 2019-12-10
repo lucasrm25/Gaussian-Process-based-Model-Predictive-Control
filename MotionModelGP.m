@@ -22,10 +22,10 @@ classdef (Abstract) MotionModelGP < handle
 %--------------------------------------------------------------------------
 
     properties (Abstract, SetAccess=private)
-        Bd  % xk+1 = fd(xk,uk) + Bd*d(zk)
-        Bz  % z = Bz*x   
-        n   % number of outputs x(t)
-        m   % number of inputs u(t)
+        Bd  % <n,xx> xk+1 = fd(xk,uk) + Bd*d(zk)
+        Bz  % <yy,n> z = Bz*x   
+        n   % <1>    number of outputs x(t)
+        m   % <1>    number of inputs u(t)
     end
     
     properties (SetAccess=private)
