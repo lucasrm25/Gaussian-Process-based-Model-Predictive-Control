@@ -33,13 +33,13 @@ function [X_dot] = singletrack(t,X)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% vehicle parameters
-m=1239; % vehicle mass
+m=200; % vehicle mass
 g=9.81; % gravitation
 l_f=1.19016; % distance of the front wheel to the center of mass 
 l_r=1.37484; % distance of the rear wheel to the center of mass
 %l=l_f+l_r; % vehicle length (obsolete)
 R=0.302; % wheel radius
-I_z=1752; % vehicle moment of inertia (yaw axis)
+I_z=500; % vehicle moment of inertia (yaw axis)
 I_R=1.5; % wheel moment of inertia
 i_g=[3.91 2.002 1.33 1 0.805]; % transmissions of the 1st ... 5th gear
 i_0=3.91; % motor transmission

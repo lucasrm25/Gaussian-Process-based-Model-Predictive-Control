@@ -20,10 +20,10 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
 %--------------------------------------------------------------------------
  
     properties
-        cf  = 100  % front coornering stiffness
-        cr  = 100  % rear coornering stiffness
-        M   = 1239 % vehicle mass
-        Iz  = 1752 % vehicle moment of inertia (yaw axis)
+        cf  = 500  % front coornering stiffness
+        cr  = 500  % rear coornering stiffness
+        M   = 200 % vehicle mass
+        I_z  = 500 % vehicle moment of inertia (yaw axis)
         g   = 9.81 % gravitation
         l_f  = 1.19016 % distance of the front wheel to the center of mass 
         l_r  = 1.37484 % distance of the rear wheel to the center of mass
@@ -48,12 +48,23 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
             obj = obj@MotionModelGP(d,sigmaw);
         end
         
+        function x = clip(~,x,lb,ub)
+            x = min(max(x,lb),ub);
+        end
+        
+        function U = constraintInputs(obj,U)
+            U(1) = obj.clip( U(1), -deg2rad(30), deg2rad(30) );      % steering angle
+            U(2) = floor(obj.clip( U(2), 1, 5) );   % gear
+            U(3) = obj.clip( U(3), 0, 1);           % brake force
+            U(4) = obj.clip( U(4), 0, 1);           % brake force distribution
+            U(5) = obj.clip( U(5), 0, 1);           % acc pedal position
+        end
+        
         function [xdot, grad_xdot] = f (obj, x, u)
         %------------------------------------------------------------------
         %   Continuous time dynamics of the single track (including
         %   disturbance):
         %------------------------------------------------------------------
-            
             sx = x(1);
             sy = x(2);
             v = x(3);
@@ -65,9 +76,10 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
             psi_dot = x(9);
             varphi_dot = x(10);
             
+            u = obj.constraintInputs(u);
             delta = u(1);  % steering angle
-            G     = 1; %u(2);  % gear
-            F_b    = u(3);  % brake force
+            G     = u(2);  % gear
+            F_b   = u(3);  % brake force
             zeta  = u(4);  % brake force distribution
             phi   = u(5);  % acc pedal position
             
@@ -80,10 +92,8 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
             if isnan(S) % wheel slip well-defined?
                 S=0; % recover wheel slip
             end
-%             S=0; % neglect wheel slip
             
             n=v*obj.i_g(G)*obj.i_0*(1/(1-S))/obj.R; % motor rotary frequency
-            
             if isnan(n) % rotary frequency well defined?
                 n=0; %recover rotary frequency
             end
@@ -96,7 +106,6 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
             %slip angles and steering
             a_f=delta-atan((obj.l_f*psi_dot-v*sin(beta))/(v*cos(beta))); % front slip angle
             a_r=atan((obj.l_r*psi_dot+v*sin(beta))/(v*cos(beta))); %rear slip angle
-            
             if isnan(a_f) % front slip angle well-defined?
                 a_f=0; % recover front slip angle
             end
@@ -110,45 +119,29 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
             F_y_f = obj.cf * a_f;   % front lateral force
 
             % vector field (right-hand side of differential equation)
-            
             x_dot = v*cos(psi-beta); % longitudinal velocity
             y_dot = v*sin(psi-beta); % lateral velocity
             v_dot = (F_x_r*cos(beta)+F_x_f*cos(delta+beta)-F_y_r*sin(beta) -F_y_f*sin(delta+beta))/obj.M; % acceleration
             beta_dot = omega-(F_x_r*sin(beta)+F_x_f*sin(delta+beta)+F_y_r*cos(beta) +F_y_f*cos(delta+beta))/(obj.M*v); % side slip rate
             psi_dot  = omega; % yaw rate
-            omega_dot=(F_y_f*obj.l_f*cos(delta)-F_y_r*obj.l_r +F_x_f*obj.l_f*sin(delta))/obj.Iz; % yaw angular acceleration
+            omega_dot=(F_y_f*obj.l_f*cos(delta)-F_y_r*obj.l_r +F_x_f*obj.l_f*sin(delta))/obj.I_z; % yaw angular acceleration
             x_dot_dot=(F_x_r*cos(psi)+F_x_f*cos(delta+psi)-F_y_f*sin(delta+psi) -F_y_r*sin(psi))/obj.M; % longitudinal acceleration
             y_dot_dot=(F_x_r*sin(psi)+F_x_f*sin(delta+psi)+F_y_f*cos(delta+psi) +F_y_r*cos(psi))/obj.M; % lateral acceleration
-            psi_dot_dot=(F_y_f*obj.l_f*cos(delta)-F_y_r*obj.l_r  +F_x_f*obj.l_f*sin(delta))/obj.Iz; % yaw angular acceleration
-            varphi_dot_dot=(F_x_r*obj.R)/obj.Iz; % wheel rotary acceleration
+            psi_dot_dot=(F_y_f*obj.l_f*cos(delta)-F_y_r*obj.l_r  +F_x_f*obj.l_f*sin(delta))/obj.I_z; % yaw angular acceleration
+            varphi_dot_dot=(F_x_r*obj.R)/obj.I_z; % wheel rotary acceleration
             
-            if isnan(beta_dot) % side slip angle well defined?
+            if isnan(beta_dot) || isinf(beta_dot) % side slip angle well defined?
                 beta_dot=0; % recover side slip angle
             end
 
-
-            
             % calculate xdot and gradient
             xdot  = [x_dot; y_dot; v_dot; beta_dot; psi_dot; omega_dot; x_dot_dot; y_dot_dot; psi_dot_dot; varphi_dot_dot];
             grad_xdot = zeros(obj.n);
+            
+            if any(isnan(xdot)) || any(isinf(xdot))
+                error('Single Track Model evaluated to Inf of NaN... CHECK MODEL!!!')
+            end
         end
-        
-
-        function r = ref(obj, tk, xk, t_r, t_l)
-            %     xk = [2,1]';
-            % calculate trajectory center line
-            t_c = (t_r + t_l)/2;
-            % find closest trajectory point w.r.t. the vehicle
-            [~,idx] = min( pdist2(xk',t_c,'seuclidean',[1 1].^0.5).^2 );
-            % set target as 3 poins ahead
-            idx_target = idx +3;
-            % loop around when track is over
-            idx_target = mod(idx_target, size(t_c,1));
-            % return reference signal
-            r = t_c(idx_target,:);
-        end
-
-
     end
 end
 

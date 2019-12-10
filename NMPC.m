@@ -69,7 +69,7 @@ classdef NMPC < handle
            obj.g = g;
            % get size of additional constraints
            obj.nh = length(h(zeros(n,1),zeros(m,1)));
-           obj.ng = length(h(zeros(n,1),zeros(m,1)));
+           obj.ng = length(g(zeros(n,1),zeros(m,1)));
            
            % variable dimensions
            obj.n = n;
@@ -142,8 +142,6 @@ classdef NMPC < handle
             % split variables since vars_opt = [x_opt; u_opt; e_opt]
             [~, u_opt] = splitvariables(obj, vars_opt);
             u0_opt = u_opt(:,1);
-            
-            u0_opt(2) = 2;
         end
         
     
@@ -175,7 +173,14 @@ classdef NMPC < handle
             var_xk(:,:,1) = var_x0;
             
             for iN=1:obj.N      % [x1,...,xN]
-                [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
+                try
+                    [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
+                catch e
+                    error('System dynamics evaluated to error!!!')
+                end
+                if sum(isnan(mu_xk),'all') || sum(isinf(mu_xk),'all')
+                    error('System dynamics evaluated to NaN of Inf')
+                end
             end
         end
 
@@ -195,8 +200,14 @@ classdef NMPC < handle
             t = t0;
             for iN=1:obj.N      % i=0:N-1
                 % add cost
-                cost = cost + obj.fo(t, mu_xk(:,iN), var_xk(:,:,iN), uk(:,iN), r);
-
+                try
+                    cost = cost + obj.fo(t, mu_xk(:,iN), var_xk(:,:,iN), uk(:,iN), r);
+                catch e
+                    error('Cost function evaluated to error!!!')
+                end
+                if sum(isnan(cost),'all') || sum(isinf(cost),'all')
+                    error('Cost function evaluated to NaN of Inf')
+                end
                 % update current time
                 t = t + iN * obj.dt;
             end
@@ -230,12 +241,14 @@ classdef NMPC < handle
             
             t = t0;
             for iN=1:obj.N
-                
-                % append provided equality constraints(h==0)
-                ceq_h(:,iN) = obj.h(mu_xk(:,iN),uk(:,iN));
-                
-                % provided inequality constraints (g<=0)
-                cineq_g(:,iN) = obj.g(mu_xk(:,iN),uk(:,iN));
+                try
+                    % append provided equality constraints(h==0)
+                    ceq_h(:,iN) = obj.h(mu_xk(:,iN),uk(:,iN));
+                    % provided inequality constraints (g<=0)
+                    cineq_g(:,iN) = obj.g(mu_xk(:,iN),uk(:,iN));
+                catch e
+                    error('Constraints h(h) or g(x) evaluated to error!!!')
+                end
 
                 t = t + iN * obj.dt;
             end
