@@ -57,6 +57,9 @@ classdef (Abstract) MotionModelGP < handle
         %------------------------------------------------------------------
             obj.d = d;
             obj.w = @(z) deal(zeros(obj.nd,1),eye(obj.nd)*sigmaw);
+
+            assert(size(obj.Bd,1) == obj.n, 'obj.Bd matrix has wrong number of rows')
+            assert(size(obj.Bz,2) == obj.n, 'obj.Bz matrix has wrong number of rows')
         end        
         
         function nd = get.nd(obj)

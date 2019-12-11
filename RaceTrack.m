@@ -1,4 +1,4 @@
-classdef RaceTrack
+classdef RaceTrack < handle
 %------------------------------------------------------------------
 %   The Race Track constitutes of a left lane, right lane and center line
 %   coordinates, which are parametrized by the traveled distance. 
@@ -95,7 +95,17 @@ classdef RaceTrack
             psi_c = obj.psi_c(1,idx_dist);
             R_c   = obj.w/2;
         end
+        
+        function dist = getTrackDistance(obj,pos_vehicle)
+        %------------------------------------------------------------------
+        %   Given a distance the vehicle position, calculate the vehicle 
+        %   progress 'dist' on the centerline of the track
+        %------------------------------------------------------------------
+            [~,I] = pdist2(obj.track_c',pos_vehicle','euclidean','Smallest',1);
+            dist = obj.dist(I);
+        end
     end
+    
        
     methods(Static)
         function [track_l,track_r,psi_c] = generateTrackPoints(trackdata, x0, th0, w)

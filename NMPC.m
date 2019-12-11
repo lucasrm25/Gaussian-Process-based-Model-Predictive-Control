@@ -35,8 +35,10 @@ classdef NMPC < handle
         
         % Define optimization problem
         f       % @fun nonlinear dynamics:  [E[xk+1],Var[xk+1]] = f(xk,uk)
-        h       % equality constraint function 
-        g       % inequality constraint function
+        h       % nonlinear equality constraint function 
+        g       % nonlinear inequality constraint function        
+        u_lb    % inputs lower bound constraint  u_lb <= u
+        u_ub    % inputs upper bound constraint          u <= u_ub
         
         fo      % @fun nonlinear cost function
         fend    % @fend nonlinear cost function for the final state
@@ -58,7 +60,7 @@ classdef NMPC < handle
     
     methods
         
-        function obj = NMPC (f, h, g, n, m, ne, fo, fend, N, dt)
+        function obj = NMPC (f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt)
         %------------------------------------------------------------------
         % MPC constructor
         %
@@ -68,6 +70,8 @@ classdef NMPC < handle
            obj.f  = f;
            obj.h = h;
            obj.g = g;
+           obj.u_lb = u_lb;
+           obj.u_ub = u_ub;
            % variable dimensions
            obj.n = n;
            obj.m = m;
@@ -106,6 +110,7 @@ classdef NMPC < handle
                 eguess = zeros(obj.ne*obj.N, 1);     % [ e1,...,eN]
             else
                 [~,uguess,eguess] = obj.splitvariables(obj.vars_opt_old);
+                % uguess(1,:) = 0;
                 uguess = uguess(:); % <m,N>  to <m*N,1>
                 eguess = eguess(:); % <ne,N> to <ne*N,1>
             end
@@ -115,28 +120,29 @@ classdef NMPC < handle
             assert( numel(varsguess) == obj.optSize(), ...
                 'There is something wrong with the code. Number of optimization variables does not match!' );
                 
-            % We currently dont need this parameters in fmincon
-            A = [];
-            b = [];
-            Aeq = [];
-            beq = [];
-            lb = [];
-            ub = [];
-            
             % define cost and constr. functions, as a function only of the
             % optimazation variables. This is a prerequisite for the function fmincon
             costfun = @(vars) obj.costfun(vars, t0, r);
             nonlcon = @(vars) obj.nonlcon(vars, t0, x0);
             
+            % define lower and upper bound constraints
+            lb = [-Inf(obj.n,1);
+                   repmat(obj.u_lb,obj.N,1);    % repeat lower bound for all u0,...,uN-1
+                   -Inf(obj.ne*obj.N,1)];             
+               
+            ub = [Inf(obj.n,1);
+                  repmat(obj.u_ub,obj.N,1);     % repeat upper bound for all u0,...,uN-1
+                  Inf(obj.ne*obj.N,1)];
+            
             % define optimizer settings
             options = optimoptions('fmincon',...
                                    'Display','iter',...
-                                   'Algorithm','sqp',...
+                                   'Algorithm','interior-point',... % 'spq'
                                    'ConstraintTolerance',obj.tol,...
                                    'MaxIterations',obj.maxiter);
             
             % solve optimization problem                   
-            vars_opt = fmincon(costfun,varsguess,A,b,Aeq,beq,lb,ub,nonlcon,options);
+            vars_opt = fmincon(costfun,varsguess,[],[],[],[],lb,ub,nonlcon,options);
 
             % store current optimization results to use as initial guess
             % for future optimizations
@@ -167,7 +173,7 @@ classdef NMPC < handle
         end
         
         
-        function [mu_xk,var_xk] = calculateStateSequence(obj, mu_x0, var_x0, uk)
+        function [mu_xk,var_xk] = predictStateSequence(obj, mu_x0, var_x0, uk)
         %------------------------------------------------------------------
         % Propagate mean and covariance of state sequence, given control
         % input sequence.
@@ -203,7 +209,7 @@ classdef NMPC < handle
             var_x0 = zeros(obj.n);
             
             % calculate state sequence for given control input sequence and x0
-            [mu_xvec,var_xvec] = obj.calculateStateSequence(mu_x0, var_x0, uvec);
+            [mu_xvec,var_xvec] = obj.predictStateSequence(mu_x0, var_x0, uvec);
                         
             cost = 0;
             t = t0;
@@ -243,7 +249,7 @@ classdef NMPC < handle
             var_x0 = zeros(obj.n);
             
             % calculate state sequence for given control input sequence and x0
-            [mu_xvec,var_xvec] = obj.calculateStateSequence(mu_x0, var_x0, uvec);
+            [mu_xvec,var_xvec] = obj.predictStateSequence(mu_x0, var_x0, uvec);
             
             % set initial state constraint: x0 - x(0) = 0
             ceq_dyn(:,1) = x0 - mu_xvec(:,1);
