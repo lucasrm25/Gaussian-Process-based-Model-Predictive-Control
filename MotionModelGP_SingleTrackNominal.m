@@ -24,11 +24,9 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
 %        track_dist       (distance traveled in the track centerline)
 %        ]
 %
-%   u = [delta_dot      (steering angle velocity), 
-%        G              (gear), 
-%        F_b            (brake force),
-%        zeta           (brake force distribution), 
-%        phi            (acc pedal position),
+%   u = [delta_dot      (steering angle velocity),
+%        T              (wheel torque gain),  -1=max.braking, 1=max acc.
+%        zeta           (wheel torque longitudinal distribution), 
 %        track_vel      (velocity in the track centerline)
 %       ]
 %   
@@ -42,17 +40,24 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         l_r  = 1.37484 % distance of the rear wheel to the center of mass
         i_g = [3.91 2.002 1.33 1 0.805] % transmissions of the 1st ... 5th gear
         i_0 = 3.91 % motor transmission
-        cf  = 5000  % front coornering stiffness
-        cr  = 5000  % rear coornering stiffness
         R = 0.302 % wheel radius
         nmax = 4800*2*pi/60 % maximum motor rotation
+        
+        deltamax = deg2rad(30)  % maximum steering amplitude
+        deltadotmax = deg2rad(10) % maximum steering velocity amplitude
+        
+        maxbrakeWForce % = -2*g*M;  % allow ~ 2g brake
+        maxmotorWForce % =  1*g*M;  % allow ~ 1g acc
+        
+        cf  % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
+        cr  % = 2*g*M/deltamax  % rear coornering stiffness
     end
     
     properties(SetAccess=private)
         Bd = zeros(8,1);   % xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
         Bz = eye(8)        % z = Bz*x     
         n = 8              % number of outputs x(t)
-        m = 6              % number of inputs u(t)
+        m = 4              % number of inputs u(t)
     end
     
     methods
@@ -62,18 +67,16 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         %------------------------------------------------------------------
             % call superclass constructor
             obj = obj@MotionModelGP(d,sigmaw);
+            
+            obj.maxbrakeWForce = -2*obj.g*obj.M;  % allow ~ 2g brake
+            obj.maxmotorWForce =  1*obj.g*obj.M;  % allow ~ 1g acc
+
+            obj.cf  = 1*obj.g*obj.M/obj.deltamax;  % front coornering stiffness (C*delta=Fy~M*a)
+            obj.cr  = 2*obj.g*obj.M/obj.deltamax;  % rear coornering stiffness
         end
         
         function x = clip(~,x,lb,ub)
             x = min(max(x,lb),ub);
-        end
-        
-        function u = clipInputs(obj,u)
-            u(1) = obj.clip( u(1), -deg2rad(10), deg2rad(10) ); % max steering angle velocity
-            u(2) = floor(obj.clip( u(2), 1, 5) );   % gear
-            u(3) = obj.clip( u(3), 0, 5000);        % brake force
-            u(4) = obj.clip( u(4), 0, 1);           % brake force distribution
-            u(5) = obj.clip( u(5), 0, 1);           % acc pedal position
         end
         
         function [xdot, grad_xdot] = f (obj, x, u)
@@ -96,28 +99,23 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             track_dist = x(8);
             
             % saturate steering angle
-            delta = obj.clip(delta, -deg2rad(30), deg2rad(30));
+            delta = obj.clip(delta, -obj.deltamax, obj.deltamax);
             
             % calculate sideslip angle
             beta = atan2(V_vy,V_vx);
             
-            % if V_vx < 0
-            %     error('Vehicle is driving backwards... aborting');
-            % end
-            % if abs(rad2deg(beta)) > 90
-            %     error('Vehicle has a huge sideslip angle... aborting')
-            % end
-            
             %--------------------------------------------------------------
             % Inputs
             %--------------------------------------------------------------
-            u = obj.clipInputs(u);
             delta_dot = u(1);   % steering angle velocity
-            G     = u(2);       % gear
-            F_b   = u(3);       % brake force
-            zeta  = u(4);       % brake force distribution
-            phi   = u(5);       % acc pedal position
-            track_vel = u(6);   % track centerline velocity
+            T         = u(2);   % wheel torque gain,  -1=max.braking, 1=max acc.
+            zeta      = u(3);   % wheel torque longitudinal distribution
+            track_vel = u(4);   % track centerline velocity
+            
+            % saturate inputs to valid ranges
+            delta_dot = obj.clip( delta_dot, -obj.deltadotmax, obj.deltadotmax);
+            T         = obj.clip( T, -1, 1);
+            zeta      = obj.clip( zeta,  0, 1);
             
             %--------------------------------------------------------------
             % Traveled distance in the track centerline
@@ -139,29 +137,33 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             %--------------------------------------------------------------
             % Tyre forces
             %--------------------------------------------------------------
-            % motor rotary frequency
-            n = V_vx/obj.R * obj.i_g(G) * obj.i_0;
+            % % motor rotary frequency
+            % n = V_vx/obj.R * obj.i_g(G) * obj.i_0; 
+            % if n > 0 && n < obj.nmax
+                % % motor torque
+                % T_M = 200*phi*(15-14*phi)-200*phi*(15-14*phi)*(((n*(30/pi))^(5*phi))/(4800^(5*phi)));
+            %else
+                %T_M = 0;    % motor outside rotation range
+            %end
+            % % wheel torque
+            % T_W = T_M * obj.i_g(G) * obj.i_0;
+            % W_Fx_r =     -zeta*F_b*(sign(V_vx)) + T_W/obj.R;  
+            % W_Fx_f = -(1-zeta)*F_b*(sign(V_vx));
+            % W_Fy_r = obj.cr * a_r;
+            % W_Fy_f = obj.cf * a_f;
+            % W_Fx_r = obj.clip(W_Fx_r,-5000,5000);
+            % W_Fx_f = obj.clip(W_Fx_f,-5000,5000);
+            % W_Fy_r = obj.clip(W_Fy_r,-5000,5000);
+            % W_Fy_f = obj.clip(W_Fy_f,-5000,5000);
             
-            if n > 0 && n < obj.nmax
-                % motor torque
-                T_M = 200*phi*(15-14*phi)-200*phi*(15-14*phi)*(((n*(30/pi))^(5*phi))/(4800^(5*phi)));
-            else
-                T_M = 0;    % motor outside rotation range
-            end
-                
-            % wheel torque
-            T_W = T_M * obj.i_g(G) * obj.i_0;
+            % desired total wheel torque to be applied
+            totalWForce = T * ( (T>0)*obj.maxmotorWForce+(T<0)*obj.maxbrakeWForce*sign(V_vx) );
             
             % wheel forces in wheel coordinates
-            W_Fx_r =     -zeta*F_b*(sign(V_vx)) + T_W/obj.R;  
-            W_Fx_f = -(1-zeta)*F_b*(sign(V_vx));
+            W_Fx_r = zeta * totalWForce;
+            W_Fx_f = (1-zeta) * totalWForce;
             W_Fy_r = obj.cr * a_r;
             W_Fy_f = obj.cf * a_f;
-
-            W_Fx_r = obj.clip(W_Fx_r,-5000,5000);
-            W_Fx_f = obj.clip(W_Fx_f,-5000,5000);
-            W_Fy_r = obj.clip(W_Fy_r,-5000,5000);
-            W_Fy_f = obj.clip(W_Fy_f,-5000,5000);
             
             %--------------------------------------------------------------
             % Output

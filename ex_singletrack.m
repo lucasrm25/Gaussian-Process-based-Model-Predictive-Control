@@ -15,7 +15,7 @@
 
 clear all; close all; clc;
 
-dt = 0.1;  % simulation timestep size
+dt = 0.05;  % simulation timestep size
 tf = 50;     % simulation time
 
 
@@ -135,17 +135,13 @@ f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
 % define additional constraints
 h  = @(x,u,e) [];
 g  = @(x,u,e) [];
-u_lb = [-deg2rad(10);  % delta_dot >= -10deg/s
-         1;            % gear  >= 1
-         0;            % break >= 0
-         0;            % break distribution >= 0
-         0;            % acceleration pedal >= 0
-         0];           % track velocity >= 0
-u_ub = [deg2rad(10);   % delta_dot <=  10 deg/s
-        5;             % gear  <= 5
-        5000;          % break <= 5000
-        1;             % break distribution <= 1
-        1;             % acceleration pedal <= 1
+u_lb = [-deg2rad(5);  % delta_dot >= -10deg/s
+         -1;           % wheel torque gain >= -1
+         0;            % wheel torque distribution >= 0
+         0.1];           % track velocity >= 0
+u_ub = [deg2rad(5);   % delta_dot <=  10 deg/s
+        1;             % wheel torque gain <= 1
+        1;             % wheel torque distribution <= 1
         10];           % track velocity <= 1
 
 % Initialize NMPC object;
@@ -196,8 +192,8 @@ d_GP.isActive = false;
 trackAnim = SingleTrackAnimation(track,mpc.N);
 trackAnim.initGraphics()
 
-% scopex = figure('Position',[-1006 86 957 808]);
-% scopeu = figure('Position',[-1879 93 867 795]);
+scopex = figure('Position',[-1006 86 957 808]);
+scopeu = figure('Position',[-1879 93 867 795]);
 
 % ---------------------------------------------------------------------
 % Start simulation
@@ -216,8 +212,8 @@ for k = 1:kmax
     % calculate optimal input
     [x0_opt, u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), 0);
     out.u(:,k) = u_opt(:,1); % get first input and discard last virtual input (track velocity)
-    sprintf('\nSteering angle: %d\nGear: %d\nF_b: %.1f\nBrake dist: %.1f\nAcc pedal: %.1f\n',rad2deg(out.u(1,k)),out.u(2,k),out.u(3,k),out.u(4,k),out.u(5,k))
-    
+    sprintf('\nSteering angle velocity: %d\nTorque gain: %.1f\nTorque dist: %.1f\nTrack vel: %.1f\n',rad2deg(out.u(1,k)),out.u(2,k),out.u(3,k),out.u(4,k))
+
     % ---------------------------------------------------------------------
     % plot
     % ---------------------------------------------------------------------
@@ -225,7 +221,7 @@ for k = 1:kmax
     trackAnim.estPred  = estPred(1:2,:); % we only need X,Y
     trackAnim.ref = track.getTrackInfo(estPred(end,:));
     trackAnim.updateGraphics();
-    % plotScope(scopex,scopeu,out.xhat,out.u);
+    plotScope(scopex,scopeu,out.xhat,out.u);
     
     % ---------------------------------------------------------------------
     % simulate real model
@@ -242,6 +238,19 @@ for k = 1:kmax
     % state of the nominal model)
     out.xhat(end,k+1) = track.getTrackDistance(out.xhat([1,2],k+1));
     
+    
+    % ---------------------------------------------------------------------
+    % safety
+    % ---------------------------------------------------------------------
+    V_vx = out.xhat(4,k+1);
+    V_vy = out.xhat(5,k+1);
+    beta = atan2(V_vy,V_vx);
+    if V_vx < 0
+        error('Vehicle is driving backwards... aborting');
+    end
+    if abs(rad2deg(beta)) > 90
+        error('Vehicle has a huge sideslip angle... aborting')
+    end    
     
     % ---------------------------------------------------------------------
     % calculate nominal model
@@ -299,8 +308,8 @@ function plotScope(figx, figu, x, u)
     figure(figx);
     names = {'I-x','I-y','psi','V-vx','V-vy','psidot','delta','track_dist'};
     angles = [0 0 1 0 0 1 1 0];
-    for i=1:8
-        subplot(5,2,i);
+    for i=1:numel(names)
+        subplot(4,2,i);
         if angles(i)
             plot(rad2deg(x(i,:)),'DisplayName',names{i});
         else
@@ -308,12 +317,11 @@ function plotScope(figx, figu, x, u)
         end
         legend('Location', 'west');
     end
-    
     figure(figu);
-    names = {'deltadot','G','F_b','Breaking dist.','Acc pedal'};
-    angles = [1 0 0 0 0];
-    for i=1:5
-        subplot(5,1,i);
+    names = {'deltadot','T','T_dist','Track vel'};
+    angles = [1 0 0 0];
+    for i=1:numel(names)
+        subplot(2,2,i);
         if angles(i)
             plot(rad2deg(u(i,:)),'DisplayName',names{i});
         else
@@ -326,15 +334,22 @@ end
 function cost = costFunction(mu_x, var_x, u, track)
     q_l   = 1e2; % penalization of lag error
     q_c   = 1e5; % penalization of contouring error
-    q_r   = 1e1; % penalization when vehicle is outside track
-    q_br  = 1e0; % penalization of breaking
+    q_r   = 1e5; % penalization when vehicle is outside track
+    q_br  = 1e2; % penalization of breaking
     q_acc = 1e2; % reward for acceleration
     q_v   = 1e1; % reward high absolute velocities
     q_d   = 1e1; % reward high track centerline velocites
 
+    % label inputs and outputs
+    I_x = mu_x(1);          % x position in global coordinates
+    I_y = mu_x(2);          % y position in global coordinates
+    V_vx = mu_x(4);         % x velocity in vehicle coordinates
+    track_dist = mu_x(8);   % track velocity
+    T = u(2);               % torque gain (1=max.acc, -1=max.braking)
+    track_vel = u(4);       % track velocity
+    
     % get information (x,y,track radius and track orientation) of the point 
     % in the track that corresponds to a traveled distance of 'dist' meters.
-    track_dist = mu_x(8);
     [pos_c, psi_c, R_c] = track.getTrackInfo(track_dist);
     
     % ---------------------------------------------------------------------
@@ -344,7 +359,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     A_TI = [cos(psi_c) -sin(psi_c);    
             sin(psi_c)  cos(psi_c)];
     % error in the inertial coordinates
-    I_error = pos_c - mu_x(1:2);       
+    I_error = pos_c -[I_x;I_y];       
     % error in the T frame [lag_error; contouring_error]
     T_error = A_TI * I_error;          
     
@@ -364,21 +379,17 @@ function cost = costFunction(mu_x, var_x, u, track)
     % ---------------------------------------------------------------------
     % reward high velocities only if inside track
     % ---------------------------------------------------------------------
-    cost_vel = (~isOusideTrack)*-q_v*mu_x(4);
+    cost_vel = (~isOusideTrack)*-q_v*V_vx;
     
     % ---------------------------------------------------------------------
     % reward track velocities only if inside track
     % ---------------------------------------------------------------------
-    track_vel = u(6);
     cost_dist = (~isOusideTrack)*-q_d*track_vel;
     
-    
     % ---------------------------------------------------------------------
-    % cost for high inputs - penalize high inputs
+    % reward acceleration and penalize braking
     % ---------------------------------------------------------------------
-    brake_force = u(3);
-    acc_pedal   = u(5);
-    cost_inputs = q_br*(brake_force/5000)^2 - q_acc*acc_pedal^2;
+    cost_inputs = (T<0)*q_br*(T)^2 - (T>0)*q_acc*T^2;
     
     % ---------------------------------------------------------------------
     % Calculate final cost

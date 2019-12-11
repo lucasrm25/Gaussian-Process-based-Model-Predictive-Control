@@ -29,8 +29,8 @@ classdef SingleTrackAnimation < handle
             obj.ltrackh = plot(obj.racetrack.track_l(1,:),obj.racetrack.track_l(2,:));
             obj.rtrackh = plot(obj.racetrack.track_r(1,:),obj.racetrack.track_r(2,:));
             
-            obj.estPredh = plot(obj.estPred(1,:),obj.estPred(2,:),'-*','LineWidth',1);
-            obj.refh = plot(obj.ref(1,:),obj.ref(2,:),'-*','LineWidth',1);
+            obj.estPredh = plot(obj.estPred(1,:),obj.estPred(2,:),'-*','LineWidth',1, 'DisplayName','Estimated Prediction');
+            obj.refh = plot(obj.ref(1,:),obj.ref(2,:),'-*','LineWidth',1, 'DisplayName','Optimized target trajectory');
             drawnow
         end
         
