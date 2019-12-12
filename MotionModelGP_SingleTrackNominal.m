@@ -33,24 +33,24 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
 %--------------------------------------------------------------------------
  
     properties
-        M   = 500 % vehicle mass
-        I_z  = 1000 % vehicle moment of inertia (yaw axis)
-        g   = 9.81 % gravitation
-        l_f  = 1.19016 % distance of the front wheel to the center of mass 
-        l_r  = 1.37484 % distance of the rear wheel to the center of mass
-        i_g = [3.91 2.002 1.33 1 0.805] % transmissions of the 1st ... 5th gear
-        i_0 = 3.91 % motor transmission
-        R = 0.302 % wheel radius
+        M    = 500          % vehicle mass
+        I_z  = 800          % vehicle moment of inertia (yaw axis)
+        g    = 9.81         % gravitation
+        l_f  = 1.19016      % distance of the front wheel to the center of mass 
+        l_r  = 1.37484      % distance of the rear wheel to the center of mass
+        i_g  = [3.91 2.002 1.33 1 0.805] % transmissions of the 1st ... 5th gear
+        i_0  = 3.91         % motor transmission
+        R    = 0.302        % wheel radius
         nmax = 4800*2*pi/60 % maximum motor rotation
         
-        deltamax = deg2rad(30)  % maximum steering amplitude
-        deltadotmax = deg2rad(10) % maximum steering velocity amplitude
+        deltamax    = deg2rad(30)   % maximum steering amplitude
+        % deltadotmax = deg2rad(20)   % maximum steering velocity amplitude
         
-        maxbrakeWForce % = -2*g*M;  % allow ~ 2g brake
-        maxmotorWForce % =  1*g*M;  % allow ~ 1g acc
+        maxbrakeWForce = 20000 % = 2*g*M;  % allow ~ 2g brake
+        maxmotorWForce =  6000 % = 1*g*M;  % allow ~ 1g acc
         
-        cf  % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
-        cr  % = 2*g*M/deltamax  % rear coornering stiffness
+        cf = 9.3679e+03 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
+        cr = 1.8736e+04 % = 2*g*M/deltamax  % rear coornering stiffness
     end
     
     properties(SetAccess=private)
@@ -67,12 +67,6 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         %------------------------------------------------------------------
             % call superclass constructor
             obj = obj@MotionModelGP(d,sigmaw);
-            
-            obj.maxbrakeWForce = -2*obj.g*obj.M;  % allow ~ 2g brake
-            obj.maxmotorWForce =  1*obj.g*obj.M;  % allow ~ 1g acc
-
-            obj.cf  = 1*obj.g*obj.M/obj.deltamax;  % front coornering stiffness (C*delta=Fy~M*a)
-            obj.cr  = 2*obj.g*obj.M/obj.deltamax;  % rear coornering stiffness
         end
         
         function x = clip(~,x,lb,ub)
@@ -113,10 +107,10 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             track_vel = u(4);   % track centerline velocity
             
             % saturate inputs to valid ranges
-            delta_dot = obj.clip( delta_dot, -obj.deltadotmax, obj.deltadotmax);
+            % delta_dot = obj.clip( delta_dot, -obj.deltadotmax, obj.deltadotmax);
             T         = obj.clip( T, -1, 1);
             zeta      = obj.clip( zeta,  0, 1);
-            
+
             %--------------------------------------------------------------
             % Traveled distance in the track centerline
             %--------------------------------------------------------------
@@ -126,13 +120,13 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % Slip
             %--------------------------------------------------------------
             % slip angles and steering
-            if V_vx > 3
+%             if V_vx > 3
                 a_r = atan2(V_vy-obj.l_r*psi_dot,V_vx);
                 a_f = atan2(V_vy+obj.l_f*psi_dot,V_vx) - delta;
-            else
-                a_r = 0;
-                a_f = - delta;
-            end
+%             else
+%                 a_r = 0;
+%                 a_f = - delta;
+%             end
                 
             %--------------------------------------------------------------
             % Tyre forces
@@ -159,11 +153,18 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % desired total wheel torque to be applied
             totalWForce = T * ( (T>0)*obj.maxmotorWForce+(T<0)*obj.maxbrakeWForce*sign(V_vx) );
             
-            % wheel forces in wheel coordinates
+            % Wheel forces in wheel coordinates (z-axis points down, x-axis front)
+            % This means positive W_Fy_f turns vehicle to the right
             W_Fx_r = zeta * totalWForce;
             W_Fx_f = (1-zeta) * totalWForce;
-            W_Fy_r = obj.cr * a_r;
+            W_Fy_r = obj.cr * a_r;   
             W_Fy_f = obj.cf * a_f;
+            
+            % Wheel forces in vehicle coordinates (z-axis points up, x-axis front)
+            V_Fx_r = W_Fx_r;
+            V_Fx_f = W_Fx_f;
+            V_Fy_r = - W_Fy_r;
+            V_Fy_f = - W_Fy_f;
             
             %--------------------------------------------------------------
             % Output
@@ -171,13 +172,12 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % vector field (right-hand side of differential equation)
             I_x_dot = V_vx*cos(psi) - V_vy*sin(psi); % longitudinal velocity
             I_y_dot = V_vx*sin(psi) + V_vy*cos(psi); % lateral velocity
-            
-            V_vx_dot = 1/obj.M * (W_Fx_r + W_Fx_f*cos(delta) - W_Fy_f*sin(delta)) + V_vy*psi_dot;
-            V_vy_dot = 1/obj.M * (W_Fy_r + W_Fx_f*sin(delta) + W_Fy_f*cos(delta)) - V_vy*psi_dot;
-            
-             % yaw angular acceleration;
-            psi_dot_dot = 1/obj.I_z * (W_Fy_f*obj.l_f*cos(delta) + W_Fx_f*obj.l_f*sin(delta) - W_Fy_r*obj.l_r);
+            V_vx_dot = 1/obj.M * (V_Fx_r + V_Fx_f*cos(delta) - V_Fy_f*sin(delta)) + V_vy*psi_dot;
+            V_vy_dot = 1/obj.M * (V_Fy_r + V_Fx_f*sin(delta) + V_Fy_f*cos(delta)) - V_vy*psi_dot;
+            psi_dot_dot = 1/obj.I_z * (V_Fy_f*obj.l_f*cos(delta) + V_Fx_f*obj.l_f*sin(delta) - V_Fy_r*obj.l_r);
                     
+            obj.clip(psi_dot_dot,deg2rad(-30),deg2rad(-30));
+            
             %--------------------------------------------------------------
             % write outputs
             %--------------------------------------------------------------

@@ -110,7 +110,6 @@ classdef NMPC < handle
                 eguess = zeros(obj.ne*obj.N, 1);     % [ e1,...,eN]
             else
                 [~,uguess,eguess] = obj.splitvariables(obj.vars_opt_old);
-                % uguess(1,:) = 0;
                 uguess = uguess(:); % <m,N>  to <m*N,1>
                 eguess = eguess(:); % <ne,N> to <ne*N,1>
             end
