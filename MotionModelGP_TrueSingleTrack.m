@@ -200,7 +200,7 @@ classdef MotionModelGP_TrueSingleTrack < MotionModelGP
             % find closest trajectory point w.r.t. the vehicle
             [~,idx] = min( pdist2(xk',t_c,'seuclidean',[1 1].^0.5).^2 );
             % set target as 3 poins ahead
-            idx_target = idx +3;
+            idx_target = idx + 10;
             % loop around when track is over
             idx_target = mod(idx_target, size(t_c,1));
             % return reference signal

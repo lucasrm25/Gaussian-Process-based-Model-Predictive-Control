@@ -68,10 +68,10 @@ m = estModel.m;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% NONLINEAR MPC CONTROLLER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % define cost function
 N = 10;     % prediction horizon
-Q = [1000,0, 0;0,1000,0;0, 0, 1000];
-Qf= [1000,0, 0;0,1000,0;0, 0, 1000];
+Q = [100,0 ;0,100];
+Qf= [100,0;0,100];
 R = eye(5);
-Ck = [eye(3), zeros(3,7)];
+Ck = [eye(2), zeros(2,8)];
 fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + u'*R*u;  % cost function
 fend = @(t,mu_x,var_x,r)   (Ck*mu_x-r(t))'*Qf*(Ck*mu_x-r(t));          % end cost function
 f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
@@ -88,21 +88,26 @@ mpc.maxiter = 30;
 
 % calculate trajectory center line
 t_c = (t_r + t_l)/2;
+% add a few points at end
+t_c = [t_c; t_c(2:20,:)];
 % find closest trajectory point w.r.t. the vehicle
 [~,idx] = min( pdist2(X(1:2)',t_c,'seuclidean',[1 1].^0.5).^2 );
 % set target as 3 poins ahead
-idx_target = idx + 10;
+idx_target = idx + 8;
 % loop around when track is over
 idx_target = mod(idx_target, size(t_c,1));
 
-r = @(t) [t_c(idx_target,:) 10]';
+r = @(t) [t_c(idx_target,:)]';
 U = mpc.optimize(X, 0, r);
 
 X(1:3)
 r(3234)
 
 
-
+%% stop condition
+if X(1)<0 & X(1)>-5 & X(2)<0 & X(2)>-1
+    return
+end
 
 
 %%
