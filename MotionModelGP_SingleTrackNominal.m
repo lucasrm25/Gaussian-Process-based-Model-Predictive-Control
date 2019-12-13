@@ -31,6 +31,10 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
 %--------------------------------------------------------------------------
  
     properties
+        %******************************************************************
+        % PLEASE REMEMBER TO REGENERATE THE GRADIENT FUNCTIONS EVERY TIME A
+        % PARAMETER IS CHANGED !!!! SEE FUNCTION generate_grad_functions()
+        %******************************************************************
         M    = 500      % vehicle mass
         I_z  = 800      % vehicle moment of inertia (yaw axis)
         g    = 9.81     % gravitation
@@ -45,6 +49,10 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         
         c_f = 15000 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
         c_r = 20000 % = 2*g*M/deltamax  % rear coornering stiffness
+        %******************************************************************
+        % PLEASE REMEMBER TO REGENERATE THE GRADIENT FUNCTIONS EVERY TIME A
+        % PARAMETER IS CHANGED !!!! SEE FUNCTION generate_grad_functions()
+        %******************************************************************
     end
     
     properties(SetAccess=private)
@@ -52,6 +60,38 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         Bz = eye(7)        % z = Bz*x     
         n = 7              % number of outputs x(t)
         m = 3              % number of inputs u(t)
+    end
+    
+    
+    methods
+        function x = sclip(obj,x,lb,ub)
+            % Smooth (differentiable) clip function
+            x = x.*obj.gez(x-lb).*obj.lez(x-ub) + ub*obj.gez(x-ub) + lb*obj.lez(x-lb);
+        end
+    end
+    methods(Static)
+        function x = clip(x,lb,ub)
+            x = min(max(x,lb),ub);
+        end
+        function x = srec(x)
+            % Smooth rectangular function
+            x = 0.5*(tanh((x-lb)*alpha)-tanh((x-ub)*alpha));
+        end
+        function x = gez(x)
+            % Smooth >=0 boolean function
+            alpha = 50; % the larger the sharper the clip function
+            x = (1+exp(-alpha*x)).^-1;
+        end
+        function x = lez(x)
+            % Smooth <=0 boolean function
+            alpha = 50; % the larger the sharper the clip function
+            x = 1-(1+exp(-alpha*x)).^-1;
+        end
+        function x = ssign(x)
+            % Smooth sign(x) boolean function
+            alpha = 100; % the larger the sharper the clip function
+            x = tanh(alpha*x);
+        end
     end
     
     methods
@@ -91,11 +131,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             fprintf('\tax_{min} ~ -%.1f [g]\n',obj.maxbrakeWForce/obj.M/obj.g);
         end
         
-        function x = clip(~,x,lb,ub)
-            x = min(max(x,lb),ub);
-        end
-        
-        function [xdot, grad_xdot] = f (obj, x, u)
+        function xdot = f (obj, x, u)
         %------------------------------------------------------------------
         %   Continuous time dynamics of the single track (including
         %   disturbance):
@@ -124,11 +160,13 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % Clip inputs and 
             %--------------------------------------------------------------
             % saturate steering angle
-            %delta = obj.clip(delta, -obj.deltamax, obj.deltamax);
+            % (DEPRECATED - NOT DIFFERENTIABLE) delta = obj.clip(delta, -obj.deltamax, obj.deltamax);
+            delta = obj.sclip(delta, -obj.deltamax, obj.deltamax);
             
             % saturate pedal input
             % delta_dot = obj.clip( delta_dot, -obj.deltadotmax, obj.deltadotmax);
-            %T = obj.clip( T, -1, 1);
+            % (DEPRECATED - NOT DIFFERENTIABLE) T = obj.clip( T, -1, 1);
+            T = obj.sclip( T, -1, 1);
                         
             %--------------------------------------------------------------
             % Traveled distance in the track centerline
@@ -144,8 +182,13 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             %--------------------------------------------------------------
             % Tyre forces
             %--------------------------------------------------------------
+            
+            
             % desired total wheel torque to be applied
-            totalWForce = T * ( (T>0)*obj.maxmotorWForce+(T<0)*obj.maxbrakeWForce*sign(V_vx) );
+            % (DEPRECATED - NOT DIFFERENTIABLE) totalWForce = T * ( (T>0)*obj.maxmotorWForce+(T<0)*obj.maxbrakeWForce*sign(V_vx) );
+            totalWForce = T*(  (obj.gez(T)).*obj.maxmotorWForce ...
+                              +(obj.lez(T)).*obj.maxbrakeWForce.*obj.ssign(V_vx));
+            
             % longitudinal wheel torque distribution
             zeta = 0.5;
             
@@ -176,41 +219,54 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % write outputs
             %--------------------------------------------------------------
             xdot  = [I_x_dot; I_y_dot; psi_dot; V_vx_dot; V_vy_dot; psi_dot_dot; track_dist_dot];
-            grad_xdot = zeros(obj.n);
             
             %--------------------------------------------------------------
             % check model validity
             %--------------------------------------------------------------
-%             if any(isnan(xdot)) || any(isinf(xdot)) || any(imag(xdot)~=0)
-%                 error('Single Track Model evaluated to Inf of NaN... CHECK MODEL!!!')
-%             end
+            if ~isa(x,'sym')    % sym input used for code generation
+                if any(isnan(xdot)) || any(isinf(xdot)) || any(imag(xdot)~=0)
+                    error('Single Track Model evaluated to Inf of NaN... CHECK MODEL!!!')
+                end
+            end
+        end
+        
+        function gradx = gradx_f(~, x, u)
+        %------------------------------------------------------------------
+        %   Continuous time dynamics.
+        %   out:
+        %       gradx: <n,n> gradient of xdot w.r.t. x
+        %------------------------------------------------------------------
+            % gradx = zeros(obj.n);
+            gradx = CODEGEN_gradx_f(x,u);
+        end
+        
+        function gradu = gradu_f(~, x, u)
+        %------------------------------------------------------------------
+        %   Continuous time dynamics.
+        %   out:
+        %       gradu: <m,n> gradient of xdot w.r.t. u
+        %------------------------------------------------------------------
+            % gradu = zeros(obj.m,obj.n);
+            gradu = CODEGEN_gradu_f(x,u);
+        end
+        
+        function generate_grad_functions(obj)
+            % nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0);
+            % nomModel.generate_grad_functions()
+            syms I_x I_y vpsi V_vx V_vy psi_dot track_dist real
+            x = [I_x I_y vpsi V_vx V_vy psi_dot track_dist]';
+            syms delta T track_vel real
+            u = [delta T track_vel]';
+            
+            xdot = obj.f(x,u);
+            gradx = jacobian(xdot,x)';
+            gradu = jacobian(xdot,u)';
+            % gradx = simplify(expand(gradx));
+            % gradu = simplify(expand(gradu));
+
+            matlabFunction(gradx,'Vars',{x,u},'File','CODEGEN_gradx_f','Optimize',true);
+            matlabFunction(gradu,'Vars',{x,u},'File','CODEGEN_gradu_f','Optimize',true);
+            disp('FINISHED! functions CODEGEN_gradx_f and CODEGEN_gradu_f generated!!')
         end
     end
 end
-
-
-
-
-% % SAVE CODE FOR LATER
-% 
-% i_g  = [3.91 2.002 1.33 1 0.805] % transmissions of the 1st ... 5th gear
-% i_0  = 3.91         % motor transmission
-% R    = 0.302        % wheel radius
-% nmax = 4800*2*pi/60 % maximum motor rotation
-% 
-% % motor rotary frequency
-% n = V_vx/obj.R * obj.i_g(G) * obj.i_0; 
-% if n > 0 && n < obj.nmax
-    % % motor torque
-    % T_M = 200*phi*(15-14*phi)-200*phi*(15-14*phi)*(((n*(30/pi))^(5*phi))/(4800^(5*phi)));
-%else
-    %T_M = 0;    % motor outside rotation range
-%end
-% % wheel torque
-% T_W = T_M * obj.i_g(G) * obj.i_0;
-% W_Fx_r =     -zeta*F_b*(sign(V_vx)) + T_W/obj.R;  
-% W_Fx_f = -(1-zeta)*F_b*(sign(V_vx));
-%
-% 
-% 
-

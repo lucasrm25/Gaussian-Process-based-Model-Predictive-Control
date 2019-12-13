@@ -274,11 +274,11 @@ scopex = figure('Position',[-1006 86 957 808]);
 scopeu = figure('Position',[-1879 93 867 795]);
 plotScope(scopex,scopeu);
 for k = 1:kmax
-    trackAnim.estPred  = out.x_opt(:,:,k);
+    trackAnim.estPred  = out.x_pred_opt(:,:,k);
     trackAnim.ref      = out.x_ref(:,:,k);
     trackAnim.updateGraphics();
     drawnow
-    pause(0.2);
+    pause(0.05);
 end
 
 

@@ -42,8 +42,21 @@ classdef (Abstract) MotionModelGP < handle
         %   Continuous time dynamics.
         %   out:
         %       xdot: <n,1> time derivative of x given x and u
-        %       grad_xdot: <n,n> gradient of xdot w.r.t. x
-        %-----------------------------------------------------------------  
+        %------------------------------------------------------------------
+        
+        gradx = gradx_f(obj, x, u)
+        %------------------------------------------------------------------
+        %   Continuous time dynamics.
+        %   out:
+        %       gradx: <n,n> gradient of xdot w.r.t. x
+        %------------------------------------------------------------------
+        
+        gradu = gradu_f(obj, x, u)
+        %------------------------------------------------------------------
+        %   Continuous time dynamics.
+        %   out:
+        %       gradu: <m,n> gradient of xdot w.r.t. u
+        %------------------------------------------------------------------
     end
     
     methods
@@ -76,7 +89,7 @@ classdef (Abstract) MotionModelGP < handle
             nz = size(obj.Bz,1);
         end
         
-        function [xkp1, grad_xkp1] = fd (obj, xk, uk, dt)
+        function [xkp1, gradx_xkp1] = fd (obj, xk, uk, dt)
         %------------------------------------------------------------------
         %   Discrete time dynamics (ODE1 Euler approximation)
         %   args:
@@ -91,9 +104,7 @@ classdef (Abstract) MotionModelGP < handle
                 % Fixed step ODE1
                 %-----------------
                 % calculate continous time dynamics
-                [xdot, grad_xdot] = obj.f(xk,uk);
-                xkp1      = xk + dt * xdot;
-                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
+                xkp1 = xk + dt * obj.f(xk,uk);
                 
             elseif strcmp(solver,'ode2')
                 %-----------------
@@ -101,20 +112,12 @@ classdef (Abstract) MotionModelGP < handle
                 %-----------------
                 [~,xkp1] = ODE.ode2(@(t,x) obj.f(x,uk), xk, dt, dt);
                 
-                % for now, gradient is being discretized using a simple ode1
-                [~, grad_xdot] = obj.f(xk,uk);
-                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
-            
             elseif strcmp(solver,'ode4')
                 %-----------------
                 % Fixed step ODE4 (developed by myself)
                 %-----------------
                 [~,xkp1] = ODE.ode4(@(t,x) obj.f(x,uk), xk, dt, dt);
                 
-                % for now, gradient is being discretized using a simple ode1
-                [~, grad_xdot] = obj.f(xk,uk);
-                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
-                
             elseif strcmp(solver,'ode23')
                 %-----------------
                 % Variable step ODE23
@@ -122,10 +125,6 @@ classdef (Abstract) MotionModelGP < handle
                 opts_1 = odeset('Stats','off','RelTol',1e-1,'AbsTol',1e-1);
                 [~,xkp1_23] = ode23( @(t,x) obj.f(x,uk), [0 dt], xk, opts_1);
                 xkp1 = xkp1_23(end,:)';
-                
-                % for now, gradient is being discretized using a simple ode1
-                [~, grad_xdot] = obj.f(xk,uk);
-                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
             
             elseif strcmp(solver,'ode23')
                 %-----------------
@@ -135,13 +134,13 @@ classdef (Abstract) MotionModelGP < handle
                 [~,xkp1_23] = ode23( @(t,x) obj.f(x,uk), [0 dt], xk, opts_1);
                 xkp1 = xkp1_23(end,:)';
                 
-                % for now, gradient is being discretized using a simple ode1
-                [~, grad_xdot] = obj.f(xk,uk);
-                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
-                
             else
                 error('Not implemented');
             end
+            
+            % for now, gradient is being discretized using a simple ode1
+            gradx_xdot = obj.gradx_f(xk,uk);
+            gradx_xkp1 = eye(obj.n) + dt * gradx_xdot;
         end
         
         function [mu_xkp1,var_xkp1] = xkp1 (obj, mu_xk, var_xk, uk, dt)
@@ -153,10 +152,10 @@ classdef (Abstract) MotionModelGP < handle
         %
         %------------------------------------------------------------------
             % calculate discrete time dynamics
-            [fd, grad_fd] = obj.fd(mu_xk,uk,dt);
+            [fd, gradx_fd] = obj.fd(mu_xk,uk,dt);
             
             % calculate grad_{x,d,w} xk+1
-            grad_xkp1 = [grad_fd; obj.Bd'; obj.Bd'];
+            grad_xkp1 = [gradx_fd; obj.Bd'; obj.Bd'];
             
             % evaluate disturbance
             z = obj.Bz * mu_xk;

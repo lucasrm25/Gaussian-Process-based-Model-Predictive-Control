@@ -5,6 +5,28 @@
 %   -
 %------------------------------------------------------------------
 
+% % SAVE CODE FOR LATER
+% 
+% i_g  = [3.91 2.002 1.33 1 0.805] % transmissions of the 1st ... 5th gear
+% i_0  = 3.91         % motor transmission
+% R    = 0.302        % wheel radius
+% nmax = 4800*2*pi/60 % maximum motor rotation
+% 
+% % motor rotary frequency
+% n = V_vx/obj.R * obj.i_g(G) * obj.i_0; 
+% if n > 0 && n < obj.nmax
+    % % motor torque
+    % T_M = 200*phi*(15-14*phi)-200*phi*(15-14*phi)*(((n*(30/pi))^(5*phi))/(4800^(5*phi)));
+%else
+    %T_M = 0;    % motor outside rotation range
+%end
+% % wheel torque
+% T_W = T_M * obj.i_g(G) * obj.i_0;
+% W_Fx_r =     -zeta*F_b*(sign(V_vx)) + T_W/obj.R;  
+% W_Fx_f = -(1-zeta)*F_b*(sign(V_vx));
+
+
+
 classdef MotionModelGP_SingleTrack < MotionModelGP
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
