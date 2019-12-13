@@ -295,7 +295,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     % Track oriented penalization
     q_l   = 1e3; % penalization of lag error
     q_c   = 1e3; % penalization of contouring error
-    q_o   = 1e1; % penalization for orientation error
+    q_o   = 5e0; % penalization for orientation error
     q_d   = 1e0; % reward high track centerline velocites
     q_r   = 0*1e1; % penalization when vehicle is outside track
     

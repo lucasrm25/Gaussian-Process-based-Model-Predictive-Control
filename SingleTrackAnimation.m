@@ -65,6 +65,7 @@ classdef SingleTrackAnimation < handle
             legend([obj.estPredh,obj.refh],'Location','southwest');
             c = colorbar;
             c.Label.String = 'Vehicle predicted velocity [m/s]';
+            caxis([5 25])
             drawnow
         end
         
