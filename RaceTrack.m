@@ -1,47 +1,21 @@
 classdef RaceTrack < handle
 %------------------------------------------------------------------
 %   The Race Track constitutes of a left lane, right lane and center line
-%   coordinates, which are parametrized by the traveled distance. 
+%   coordinates, which are parametrized by the traveled distance (center 
+%   line length).
 %   
-%   This also means that the center line position, pos_c = (x_c,y_c), the
+%   This also means that the center line coordinate, pos_c = (x_c,y_c), the
 %   track radius and the track orientation can be obtained as a function of
 %   the traveled distance:
 %
 %   x_c(dist), y_c(dist), psi_c(dist), R_c(dist) -> see method getTrackInfo
-%   
-%   
-%   To create the track, this Class requires a series of instructions. 
-%    Ex:
 %
-%         x0  = [0;0];              % initial track position
-%         th0 = 0;                  % initial track orientation
-%         w = 6;                    % track width
-%         trackdata = {
-%              's',14;              % go straight ahead 14 meters
-%              'c',{15,-90};        % make a turn of 90deg and radius 15 meters
-%              's',5;               % go straight ahead 5 meters
-%              'c',{4,90};          % ...
-%              'c',{4,-90};
-%              's',5;
-%              'c',{3.5,-180};
-%              'c',{3.5,180};
-%              'c',{3.5,-90};
-%              's',2;
-%              'c',{3.5,-120};
-%              's',10;
-%              'c',{10,120};
-%              's',10;
-%              'c',{5,90};
-%              's',5;
-%              'c',{5,150};
-%              's',5;
-%              'c',{3.2,-180};
-%              's',12;
-%              'c',{10,-150};
-%              's',12.3;      
-%              'c',{12,-90}; 
-%         };
-%         track = RaceTrack(trackdata, x0, th0, w);
+%
+%   Example how to create and use this class:
+%
+%       [trackdata, x0, th0, w] = RaceTrack.loadTrack_01();
+%       track = RaceTrack(trackdata, x0, th0, w);
+%       [Xt, Yt, PSIt, Rt] = track.getTrackInfo(1000)
 %------------------------------------------------------------------
     
     properties
@@ -109,6 +83,35 @@ classdef RaceTrack < handle
        
     methods(Static)
         function [trackdata, x0, th0, w] = loadTrack_01()
+            x0  = [0;0];
+            th0 = 0;
+            w = 6;
+            trackdata = {
+                 's',14;
+                 'c',{15,-90};
+                 's',5;
+                 'c',{4,90};
+                 'c',{4,-90};
+                 's',5;
+                 'c',{3.5,-90};
+                 's',16;
+                 'c',{3.5,-120};
+                 's',10;
+                 'c',{10,120};
+                 's',10;
+                 'c',{5,90};
+                 's',5;
+                 'c',{5,150};
+                 's',5;
+                 'c',{3.2,-180};
+                 's',12;
+                 'c',{10,-150};
+                 's',12.3;      
+                 'c',{12,-90}; 
+            };
+        end
+        
+        function [trackdata, x0, th0, w] = loadTrack_02()
             x0  = [0;0];
             th0 = 0;
             w = 6;

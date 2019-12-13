@@ -19,7 +19,7 @@ classdef NMPC < handle
     %
     %   where the motion model evaluates   [E[xk+1],Var[xk+1]] = f(xk,uk)
     %
-    %   for x0, u0,...,uN-1, e1,...,eN
+    %   for [x0; u0;...;uN-1; e1;...;eN]
     %
     %   where xk: state variables
     %         zk: selected state variables zk=Bd'*xk
@@ -50,13 +50,14 @@ classdef NMPC < handle
         dt  % time step size
         nh  % number of additional eq. constraints for every time step
         ng  % number of additional ineq. constraints for every time step
-    end
-    
-    properties(Access=private)
+        
         % save last optimal results computed, in order to use as initial guess
-        vars_opt_old = []
+        uguess  % <m,N>  initial guess for inputs
+        eguess  % <ne,N> initial guess for extra variables
     end
     
+    properties(Access=private) 
+    end
     
     methods
         
@@ -85,6 +86,9 @@ classdef NMPC < handle
            % optimizer parameters
            obj.N = N;
            obj.dt = dt;
+           % set vector of initial guess for optimization
+           obj.uguess = zeros(m,N);
+           obj.eguess = zeros(ne,N);
         end
         
         
@@ -104,18 +108,11 @@ classdef NMPC < handle
         %------------------------------------------------------------------
             
             %-------- Set initial guess for optimization variables  -------
-            % initialize optimization variables initial guesses
-            if isempty(obj.vars_opt_old)  % if this is the first optimization
-                uguess = zeros(obj.m*obj.N, 1);      % [ u0,...,uN-1]
-                eguess = zeros(obj.ne*obj.N, 1);     % [ e1,...,eN]
-            else
-                [~,uguess,eguess] = obj.splitvariables(obj.vars_opt_old);
-                uguess = uguess(:); % <m,N>  to <m*N,1>
-                eguess = eguess(:); % <ne,N> to <ne*N,1>
-            end
-            varsguess = [x0; uguess; eguess];
+            varsguess = [x0; obj.uguess(:); obj.eguess(:)];
             %--------------------------------------------------------------
             
+            
+            %------------------ Optimize  ---------------------------------
             assert( numel(varsguess) == obj.optSize(), ...
                 'There is something wrong with the code. Number of optimization variables does not match!' );
                 
@@ -136,20 +133,21 @@ classdef NMPC < handle
             % define optimizer settings
             options = optimoptions('fmincon',...
                                    'Display','iter',...
-                                   'Algorithm','interior-point',... % 'spq'
-                                   'ConstraintTolerance',obj.tol,...
+                                   'Algorithm','interior-point',... % 'sqp','interior-point'
+                                   'UseParallel',false,... %'ConstraintTolerance',obj.tol,...
                                    'MaxIterations',obj.maxiter);
             
             % solve optimization problem                   
-            vars_opt = fmincon(costfun,varsguess,[],[],[],[],lb,ub,nonlcon,options);
-
-            % store current optimization results to use as initial guess
-            % for future optimizations
-            obj.vars_opt_old = vars_opt;
+            [vars_opt,fval] = fmincon(costfun,varsguess,[],[],[],[],lb,ub,nonlcon,options);
+            %--------------------------------------------------------------
+            
             
             % split variables since vars_opt = [x_opt; u_opt; e_opt]
             [x0_opt, u_opt, e_opt] = splitvariables(obj, vars_opt);
-            % u0_opt = u_opt(:,1);
+            
+            % store current optimization results to use as initial guess for future optimizations
+            obj.uguess = u_opt(:,[2:end,end]);
+            obj.eguess = e_opt(:,[2:end,end]);
         end
         
     
@@ -160,6 +158,7 @@ classdef NMPC < handle
         % out:
         %   x0: <n,1>
         %   uvec: <m,N>
+        %   evec: <ne,N>
         %------------------------------------------------------------------
             % split variables
             x0   = vars(1:obj.n);
@@ -190,10 +189,10 @@ classdef NMPC < handle
                 try
                     [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
                 catch e
-                    error('System dynamics evaluated to error!!!')
+                    error('%s\n%s',e.message,'System dynamics evaluated to error!!!')
                 end
                 if sum(isnan(mu_xk),'all') || sum(isinf(mu_xk),'all')
-                    error('System dynamics evaluated to NaN or Inf')
+                    error('%s','System dynamics evaluated to NaN or Inf')
                 end
             end
         end
@@ -217,7 +216,7 @@ classdef NMPC < handle
                 try
                     cost = cost + obj.fo(t, mu_xvec(:,iN), var_xvec(:,:,iN), uvec(:,iN), evec(:,iN), r);
                 catch e
-                    error('Cost function evaluated to error!!!')
+                    error('%s\n%s',e.message,'Cost function evaluated to error!!!')
                 end
                 if sum(isnan(cost),'all') || sum(isinf(cost),'all')
                     error('Cost function evaluated to NaN or Inf')
@@ -261,7 +260,7 @@ classdef NMPC < handle
                     % provided inequality constraints (g<=0)
                     cineq_g(:,iN) = obj.g(mu_xvec(:,iN),uvec(:,iN),evec(:,iN));
                 catch e
-                    error('Constraints h(h) or g(x) evaluated to error!!!')
+                    error('%s\n%s',e.message,'Constraints h(h) or g(x) evaluated to error!!!')
                 end
 
                 t = t + iN * obj.dt;

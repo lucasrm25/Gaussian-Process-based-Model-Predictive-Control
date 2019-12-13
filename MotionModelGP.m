@@ -83,12 +83,65 @@ classdef (Abstract) MotionModelGP < handle
         %       xkp1: <n,1> state prediction (without disturbance model)
         %       grad_xkp1: <n,n> gradient of xkp1 w.r.t. xk
         %------------------------------------------------------------------
-            % calculate continous time dynamics
-            [xdot, grad_xdot] = obj.f(xk,uk);
             
-            % discretize
-            xkp1      = xk + dt * xdot;
-            grad_xkp1 = eye(obj.n) + dt * grad_xdot;
+            solver = 'ode4';
+            
+            if strcmp(solver,'ode1')
+                %-----------------
+                % Fixed step ODE1
+                %-----------------
+                % calculate continous time dynamics
+                [xdot, grad_xdot] = obj.f(xk,uk);
+                xkp1      = xk + dt * xdot;
+                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
+                
+            elseif strcmp(solver,'ode2')
+                %-----------------
+                % Fixed step ODE2 (developed by myself)
+                %-----------------
+                [~,xkp1] = ODE.ode2(@(t,x) obj.f(x,uk), xk, dt, dt);
+                
+                % for now, gradient is being discretized using a simple ode1
+                [~, grad_xdot] = obj.f(xk,uk);
+                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
+            
+            elseif strcmp(solver,'ode4')
+                %-----------------
+                % Fixed step ODE4 (developed by myself)
+                %-----------------
+                [~,xkp1] = ODE.ode4(@(t,x) obj.f(x,uk), xk, dt, dt);
+                
+                % for now, gradient is being discretized using a simple ode1
+                [~, grad_xdot] = obj.f(xk,uk);
+                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
+                
+            elseif strcmp(solver,'ode23')
+                %-----------------
+                % Variable step ODE23
+                %-----------------
+                opts_1 = odeset('Stats','off','RelTol',1e-1,'AbsTol',1e-1);
+                [~,xkp1_23] = ode23( @(t,x) obj.f(x,uk), [0 dt], xk, opts_1);
+                xkp1 = xkp1_23(end,:)';
+                
+                % for now, gradient is being discretized using a simple ode1
+                [~, grad_xdot] = obj.f(xk,uk);
+                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
+            
+            elseif strcmp(solver,'ode23')
+                %-----------------
+                % Variable step ODE23
+                %-----------------
+                opts_1 = odeset('Stats','off','RelTol',1e-1,'AbsTol',1e-1);
+                [~,xkp1_23] = ode23( @(t,x) obj.f(x,uk), [0 dt], xk, opts_1);
+                xkp1 = xkp1_23(end,:)';
+                
+                % for now, gradient is being discretized using a simple ode1
+                [~, grad_xdot] = obj.f(xk,uk);
+                grad_xkp1 = eye(obj.n) + dt * grad_xdot;
+                
+            else
+                error('Not implemented');
+            end
         end
         
         function [mu_xkp1,var_xkp1] = xkp1 (obj, mu_xk, var_xk, uk, dt)
