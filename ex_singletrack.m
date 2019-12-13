@@ -61,17 +61,15 @@ nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0);
 %                               (TODO)
 % LQR CONTROLLER:
 % -------------------------------------------------------------------------
-% n = estModel.n;
-% m = estModel.m;
 % % % % [A,B] = estModel.linearize();
-% % % % Ak = eye(n)+dt*A;
+% % % % Ak = eye(estModel.n)+dt*A;
 % % % % Bk = B*dt;
 % % % % Ck=[0 1 0 0; 0 0 1 0; 0 0 0 1];
-% % % % Q = 1e3*eye(4);
+% % % % Q = 1e3*eye(estModel.n);
 % % % % R = 1;
 % % % % [~,~,K] = dare(Ak,Bk,Q,R);
 % % % % % Prefilter
-% % % % Kr = pinv(Ck/(eye(n)-Ak+Bk*K)*Bk);
+% % % % Kr = pinv(Ck/(eye(estModel.n)-Ak+Bk*K)*Bk);
 % % % % % check eigenvalues
 % % % % eig(Ak-Bk*K);
 
@@ -128,6 +126,11 @@ mpc.maxiter = 50;
 
 %% Simulate
 
+% ---------------------------------------------------------------------
+% Prepare simulation (initialize vectors, initial conditions and setup
+% animation
+% ---------------------------------------------------------------------
+
 % define variable sizes
 true_n = trueModel.n;
 true_m = trueModel.m;
@@ -147,16 +150,15 @@ out.t = 0:dt:tf;            % time vector
 kmax = length(out.t)-1;     % steps to simulate
 
 % initialize variables to store simulation results
-out.x     = [x0 NaN(true_n,kmax)];
-out.xhat  = [x0  NaN(est_n,kmax)];
-out.xnom  = [x0  NaN(est_n,kmax)];
-out.u     = NaN(est_m,kmax);
-out.x_ref   = NaN(2,mpc.N+1,kmax);
+out.x          = [x0 NaN(true_n,kmax)];
+out.xhat       = [x0  NaN(est_n,kmax)];
+out.xnom       = [x0  NaN(est_n,kmax)];
+out.u          = NaN(est_m,kmax);
+out.x_ref      = NaN(2,mpc.N+1,kmax);
 out.x_pred_opt = NaN(mpc.n,mpc.N+1,kmax);
 out.u_pred_opt = NaN(mpc.m,mpc.N  ,kmax);
 
-% deactivate GP evaluation in the prediction
-d_GP.isActive = false;
+
 
 % start animation
 trackAnim = SingleTrackAnimation(track,mpc.N);
@@ -169,6 +171,10 @@ if plotscope
     plotScope(scopex,scopeu);
 end
     
+
+
+% deactivate GP evaluation in the prediction
+d_GP.isActive = false;
 % ---------------------------------------------------------------------
 % Start simulation
 % ---------------------------------------------------------------------
@@ -278,7 +284,7 @@ for k = 1:kmax
     trackAnim.ref      = out.x_ref(:,:,k);
     trackAnim.updateGraphics();
     drawnow
-    pause(0.05);
+    pause(0.1);
 end
 
 
@@ -365,23 +371,6 @@ end
 
 
 function plotScope(figx, figu)
-%   x = [I_x              (x position in global coordinates), 
-%        I_y              (y position in global coordinates), 
-%        psi              (yaw angle),
-%        V_vx             (longitudinal velocity in vehicle coordinates)             
-%        V_vy             (lateral velocity in vehicle coordinates)
-%        psi_dot          (yaw rate),
-%        delta            (steering angle)
-%        track_dist       (distance traveled in the track centerline)
-%        ]
-%
-%   u = [delta_dot      (steering angle velocity), 
-%        G              (gear), 
-%        F_b            (brake force),
-%        zeta           (brake force distribution), 
-%        phi            (acc pedal position),
-%        track_vel      (velocity in the track centerline)
-%       ] 
     figure(figx);
     names = {'I-x','I-y','psi','V-vx','V-vy','psidot','track_dist'};
     angles = [0 0 1 0 0 1 0];

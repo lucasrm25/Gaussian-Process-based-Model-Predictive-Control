@@ -65,16 +65,18 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
     
     methods
         function x = sclip(obj,x,lb,ub)
-            % Smooth (differentiable) clip function
+            % Smooth (differentiable) clip (saturation) function
             x = x.*obj.gez(x-lb).*obj.lez(x-ub) + ub*obj.gez(x-ub) + lb*obj.lez(x-lb);
         end
     end
     methods(Static)
         function x = clip(x,lb,ub)
+            % standard nonsmooth clip (saturation) function
             x = min(max(x,lb),ub);
         end
-        function x = srec(x)
+        function x = srec(x,lb,ub)
             % Smooth rectangular function
+            alpha = 50; % the larger the sharper the rectangular function
             x = 0.5*(tanh((x-lb)*alpha)-tanh((x-ub)*alpha));
         end
         function x = gez(x)
@@ -97,18 +99,19 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
     methods
         function obj = MotionModelGP_SingleTrackNominal(d,sigmaw)
         %------------------------------------------------------------------
-        %   object constructor
+        %   object constructor. Create model and report model stability
+        %   analysis
         %------------------------------------------------------------------
             % call superclass constructor
             obj = obj@MotionModelGP(d,sigmaw);
-            
+            %------------------------------------------------------------------
+            %   report created single track model dynamics
+            %------------------------------------------------------------------
             fprintf('Single track model created!!! Summary:\n');
-            
             % vehicle size
             l = obj.l_f + obj.l_r;
             % Eigenlenkgradient = Yaw gradient (d_delta/d_ay)
             EG = obj.M/l*(obj.l_r/obj.c_f - obj.l_f/obj.c_r);
-            
             fprintf(2,'\tYaw gradient EG=(d_delta/d_ay) ~ %.1f [deg/g]\n',rad2deg(EG)*obj.g);
             if rad2deg(EG)*obj.g < 10
                 fprintf(2,'\tBE CAREFULL... EG is too low (< 10 [deg/g])... increase l_r,c_r or decrease l_f,c_f\n');
@@ -157,7 +160,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             track_vel = u(3);   % track centerline velocity
             
             %--------------------------------------------------------------
-            % Clip inputs and 
+            % Saturate inputs and 
             %--------------------------------------------------------------
             % saturate steering angle
             % (DEPRECATED - NOT DIFFERENTIABLE) delta = obj.clip(delta, -obj.deltamax, obj.deltamax);
@@ -167,14 +170,9 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % delta_dot = obj.clip( delta_dot, -obj.deltadotmax, obj.deltadotmax);
             % (DEPRECATED - NOT DIFFERENTIABLE) T = obj.clip( T, -1, 1);
             T = obj.sclip( T, -1, 1);
-                        
-            %--------------------------------------------------------------
-            % Traveled distance in the track centerline
-            %--------------------------------------------------------------
-            track_dist_dot = track_vel;
             
             %--------------------------------------------------------------
-            % Slip
+            % Wheel slip angles (slip ration not being used for now)
             %--------------------------------------------------------------
             a_r = atan2(V_vy-obj.l_r*psi_dot,V_vx);
             a_f = atan2(V_vy+obj.l_f*psi_dot,V_vx) - delta;
@@ -182,13 +180,10 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             %--------------------------------------------------------------
             % Tyre forces
             %--------------------------------------------------------------
-            
-            
             % desired total wheel torque to be applied
             % (DEPRECATED - NOT DIFFERENTIABLE) totalWForce = T * ( (T>0)*obj.maxmotorWForce+(T<0)*obj.maxbrakeWForce*sign(V_vx) );
             totalWForce = T*(  (obj.gez(T)).*obj.maxmotorWForce ...
-                              +(obj.lez(T)).*obj.maxbrakeWForce.*obj.ssign(V_vx));
-            
+                              +(obj.lez(T)).*obj.maxbrakeWForce.*obj.ssign(V_vx));        
             % longitudinal wheel torque distribution
             zeta = 0.5;
             
@@ -206,7 +201,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             V_Fy_f = - W_Fy_f;
             
             %--------------------------------------------------------------
-            % Output
+            % Calculate state space time derivatives
             %--------------------------------------------------------------
             % vector field (right-hand side of differential equation)
             I_x_dot = V_vx*cos(psi) - V_vy*sin(psi); % longitudinal velocity
@@ -214,6 +209,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             V_vx_dot = 1/obj.M * (V_Fx_r + V_Fx_f*cos(delta) - V_Fy_f*sin(delta) + V_vy*psi_dot);
             V_vy_dot = 1/obj.M * (V_Fy_r + V_Fx_f*sin(delta) + V_Fy_f*cos(delta) - V_vy*psi_dot);
             psi_dot_dot = 1/obj.I_z * (V_Fy_f*obj.l_f*cos(delta) + V_Fx_f*obj.l_f*sin(delta) - V_Fy_r*obj.l_r);
+            track_dist_dot = track_vel; % Traveled distance in the track centerline
                                 
             %--------------------------------------------------------------
             % write outputs
@@ -251,8 +247,16 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         end
         
         function generate_grad_functions(obj)
-            % nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0);
-            % nomModel.generate_grad_functions()
+        %------------------------------------------------------------------
+        %   Generate external files for the evaluation of the gradient of 
+        %   the continuous time dynamics. (Make use of symbolic toolbox)
+        %   Please ensure that your dynamics only contains smooth
+        %   diferentiable functions.
+        %   
+        %   To generate files, simply call:
+        %       nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0);
+        %       nomModel.generate_grad_functions() 
+        %------------------------------------------------------------------
             syms I_x I_y vpsi V_vx V_vy psi_dot track_dist real
             x = [I_x I_y vpsi V_vx V_vy psi_dot track_dist]';
             syms delta T track_vel real
@@ -261,8 +265,8 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             xdot = obj.f(x,u);
             gradx = jacobian(xdot,x)';
             gradu = jacobian(xdot,u)';
-            % gradx = simplify(expand(gradx));
-            % gradu = simplify(expand(gradu));
+            % gradx = simplify(expand(gradx));  % does not work. eqs are too complex
+            % gradu = simplify(expand(gradu));  % does not work. eqs are too complex
 
             matlabFunction(gradx,'Vars',{x,u},'File','CODEGEN_gradx_f','Optimize',true);
             matlabFunction(gradu,'Vars',{x,u},'File','CODEGEN_gradu_f','Optimize',true);

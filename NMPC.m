@@ -134,11 +134,12 @@ classdef NMPC < handle
             options = optimoptions('fmincon',...
                                    'Display','iter',...
                                    'Algorithm','interior-point',... % 'sqp','interior-point'
+                                   'SpecifyConstraintGradient',false,...
                                    'UseParallel',false,... %'ConstraintTolerance',obj.tol,...
                                    'MaxIterations',obj.maxiter);
             
             % solve optimization problem                   
-            [vars_opt,fval] = fmincon(costfun,varsguess,[],[],[],[],lb,ub,nonlcon,options);
+            [vars_opt,~] = fmincon(costfun,varsguess,[],[],[],[],lb,ub,nonlcon,options);
             %--------------------------------------------------------------
             
             
@@ -230,17 +231,23 @@ classdef NMPC < handle
         
 
         function [cineq,ceq] = nonlcon(obj, vars, t0, x0)
+        % function [cineq,ceq,gradvars_cineq,gradvars_ceq] = nonlcon(obj, vars, t0, x0)
         %------------------------------------------------------------------
         % Evaluate nonlinear equality and inequality constraints
         % args
-        %   cineq = g(x,u)
-        %   ceq   = h(x,u)
+        %   cineq = g(x,u) <= 0 : inequality constraint function
+        %   ceq   = h(x,u) == 0 : equality constraint function
+        %   gradx_cineq(x,u): gradient of g(x,u) w.r.t. x
+        %   gradx_ceq(x,u):   gradient of h(x,u) w.r.t. x
         %------------------------------------------------------------------ 
 
             % init vectors to speedup calculations
             ceq_dyn = zeros(obj.n,  1);
             ceq_h   = zeros(obj.nh, obj.N);
             cineq_g = zeros(obj.ng, obj.N);
+            
+            % vars_size = obj.optSize();
+            % gradvars_cineq = zeros(vars_size,obj.n);
         
             % split variables
             [mu_x0, uvec, evec] = obj.splitvariables(vars);
