@@ -151,26 +151,18 @@ kmax = length(out.t)-1;     % steps to simulate
 
 % initialize variables to store simulation results
 out.x          = [x0 NaN(true_n,kmax)];
-out.xhat       = [x0  NaN(est_n,kmax)];
-out.xnom       = [x0  NaN(est_n,kmax)];
-out.u          = NaN(est_m,kmax);
-out.x_ref      = NaN(2,mpc.N+1,kmax);
-out.x_pred_opt = NaN(mpc.n,mpc.N+1,kmax);
-out.u_pred_opt = NaN(mpc.m,mpc.N  ,kmax);
-
+out.xhat       = [x0 NaN(est_n, kmax)];
+out.xnom       = [x0 NaN(est_n, kmax)];
+out.u          =     NaN(est_m, kmax);
+out.x_ref      = NaN(2,     mpc.N+1, kmax);
+out.x_pred_opt = NaN(mpc.n, mpc.N+1, kmax);
+out.u_pred_opt = NaN(mpc.m, mpc.N,   kmax);
 
 
 % start animation
-trackAnim = SingleTrackAnimation(track,mpc.N);
-trackAnim.initGraphics()
-
-plotscope = true;
-if plotscope
-    scopex = figure('Position',[-1006 86 957 808]);
-    scopeu = figure('Position',[-1879 93 867 795]);
-    plotScope(scopex,scopeu);
-end
-    
+trackAnim = SingleTrackAnimation(track,out.x_pred_opt,out.u_pred_opt,out.x_ref);
+trackAnim.initTrackAnimation();
+trackAnim.initScope();
 
 
 % deactivate GP evaluation in the prediction
@@ -201,16 +193,13 @@ for k = 1:kmax
     out.u_pred_opt(:,:,k) = u_opt;
     out.x_pred_opt(:,:,k) = mpc.predictStateSequence(out.xhat(:,k), zeros(estModel.n), u_opt);
     % get track distances from optimal state predictions
-    out.x_ref(:,:,k)    = track.getTrackInfo(out.x_pred_opt(end,:,k));
+    out.x_ref(:,:,k) = track.getTrackInfo(out.x_pred_opt(end,:,k));
     % update track animation
-    trackAnim.estPred   = out.x_pred_opt(:,:,k);
-    trackAnim.ref       = out.x_ref(:,:,k);
-    trackAnim.updateGraphics();
-    if plotscope
-        refreshdata(scopex);
-        refreshdata(scopeu);
-        drawnow;
-    end
+    trackAnim.x_pred_opt = out.x_pred_opt;
+    trackAnim.u_pred_opt = out.u_pred_opt;
+    trackAnim.x_ref      = out.x_ref;
+    trackAnim.updateTrackAnimation(k);
+    trackAnim.updateScope(k);
     
     % ---------------------------------------------------------------------
     % simulate real model
@@ -273,19 +262,18 @@ end
 close all;
 
 % start animation
-trackAnim = SingleTrackAnimation(track,mpc.N);
-trackAnim.initGraphics()
-% start scope
-scopex = figure('Position',[-1006 86 957 808]);
-scopeu = figure('Position',[-1879 93 867 795]);
-plotScope(scopex,scopeu);
+trackAnim = SingleTrackAnimation(track,out.x_pred_opt,out.u_pred_opt,out.x_ref);
+trackAnim.initTrackAnimation();
+% trackAnim.initScope();
 for k = 1:kmax
-    trackAnim.estPred  = out.x_pred_opt(:,:,k);
-    trackAnim.ref      = out.x_ref(:,:,k);
-    trackAnim.updateGraphics();
-    drawnow
+    trackAnim.updateTrackAnimation(k);
+    % trackAnim.updateScope(k);
     pause(0.1);
 end
+
+%% Record video
+
+trackAnim.recordvideo(fullfile('simresults','trackAnimVideo'),'Motion JPEG AVI');
 
 
 %% Help functions
