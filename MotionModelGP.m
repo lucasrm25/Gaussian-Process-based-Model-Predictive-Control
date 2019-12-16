@@ -97,7 +97,7 @@ classdef (Abstract) MotionModelGP < handle
         %       grad_xkp1: <n,n> gradient of xkp1 w.r.t. xk
         %------------------------------------------------------------------
             
-            solver = 'ode4';
+            solver = 'ode2';
             
             if strcmp(solver,'ode1')
                 %-----------------
@@ -163,11 +163,11 @@ classdef (Abstract) MotionModelGP < handle
             [mu_w, var_w] = obj.w(z);
             
             % a) Mean Equivalent Approximation:
-            % var_x_d_w = blkdiag(var_xk, var_d, var_w);
+            var_x_d_w = blkdiag(var_xk, var_d, var_w);
             
             % predict mean and variance (Extended Kalman Filter)
             mu_xkp1  = fd  + obj.Bd * ( mu_d + mu_w );
-            var_xkp1 = zeros(obj.n); %grad_xkp1' * var_x_d_w * grad_xkp1;
+            var_xkp1 = grad_xkp1' * var_x_d_w * grad_xkp1; % zeros(obj.n);
         end
         
     end

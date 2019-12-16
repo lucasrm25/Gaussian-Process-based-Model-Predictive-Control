@@ -233,7 +233,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         %       gradx: <n,n> gradient of xdot w.r.t. x
         %------------------------------------------------------------------
             % gradx = zeros(obj.n);
-            gradx = CODEGEN_gradx_f(x,u);
+            gradx = CODEGEN_singletrack_gradx_f(x,u);
         end
         
         function gradu = gradu_f(~, x, u)
@@ -243,7 +243,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         %       gradu: <m,n> gradient of xdot w.r.t. u
         %------------------------------------------------------------------
             % gradu = zeros(obj.m,obj.n);
-            gradu = CODEGEN_gradu_f(x,u);
+            gradu = CODEGEN_singletrack_gradu_f(x,u);
         end
         
         function generate_grad_functions(obj)
@@ -268,9 +268,9 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % gradx = simplify(expand(gradx));  % does not work. eqs are too complex
             % gradu = simplify(expand(gradu));  % does not work. eqs are too complex
 
-            matlabFunction(gradx,'Vars',{x,u},'File','CODEGEN_gradx_f','Optimize',true);
-            matlabFunction(gradu,'Vars',{x,u},'File','CODEGEN_gradu_f','Optimize',true);
-            disp('FINISHED! functions CODEGEN_gradx_f and CODEGEN_gradu_f generated!!')
+            matlabFunction(gradx,'Vars',{x,u},'File','CODEGEN_singletrack_gradx_f','Optimize',true);
+            matlabFunction(gradu,'Vars',{x,u},'File','CODEGEN_singletrack_gradu_fssss','Optimize',true);
+            disp('FINISHED! functions CODEGEN_singletrack_gradx_f and CODEGEN_singletrack_gradu_fssss generated!!')
         end
     end
 end

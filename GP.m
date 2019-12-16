@@ -195,9 +195,6 @@ classdef GP < handle
         %   vary: <N,N>    Var[Y] is the same for all output dimensions
         %   (DEPRECATED) covary: <N,N>
         %------------------------------------------------------------------
-            assert(size(x,1)==obj.n, sprintf('Input vector has %d columns but should have %d !!!',size(x,1),obj.n));
-            assert(~isempty(obj.alpha), 'Please call updateModel() at least once before evaluating!!!')
-            
             Nx = size(x,2);  % size of dataset to be evaluated
         
             % if there is no data in the dictionary, return GP prior
@@ -207,6 +204,9 @@ classdef GP < handle
                 var_y = zeros(Nx,Nx);
                 return;
             end
+            
+            assert(size(x,1)==obj.n, sprintf('Input vector has %d columns but should have %d !!!',size(x,1),obj.n));
+            assert(~isempty(obj.alpha), 'Please call updateModel() at least once before evaluating!!!')
         
             % Calculate posterior mean mu_y
             KxX = obj.K(x,obj.X);

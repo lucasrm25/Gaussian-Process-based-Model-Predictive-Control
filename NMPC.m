@@ -144,7 +144,7 @@ classdef NMPC < handle
                                    'UseParallel',false,... %'ConstraintTolerance',obj.tol,...
                                    'MaxIterations',obj.maxiter);
             
-            % solve optimization problem                   
+            % solve optimization problem
             [vars_opt,~] = fmincon(costfun,varsguess,[],[],[],[],obj.lb,obj.ub,nonlcon,options);
             
             
@@ -233,6 +233,9 @@ classdef NMPC < handle
             end
             % final cost: fend=@(t,mu_x,var_x,e,r)
             cost = cost + obj.fend(t, mu_xvec(:,end), var_xvec(:,:,end), evec(:,iN), r);
+            
+            % normalize cost by horizon size
+            cost = cost / (obj.N+1);
         end
         
 

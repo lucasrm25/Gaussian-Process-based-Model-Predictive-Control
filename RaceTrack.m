@@ -21,7 +21,7 @@ classdef RaceTrack < handle
 %   % Example how to create and use this class:
 %
 %   % load a predefined track called track01:
-%       [trackdata, x0, th0, w] = RaceTrack.loadTrack_01();
+%       [trackdata, x0, th0, w] = RaceTrack.loadTrack_02();
 %
 %   % init object:
 %       track = RaceTrack(trackdata, x0, th0, w);
@@ -117,18 +117,22 @@ classdef RaceTrack < handle
             dist = obj.dist(I);
         end
         
-        function [lag_error, countour_error, offroad_error] = getVehicleDeviation(obj, pos_vehicle, track_dist)   
+        function [lag_error, countour_error, offroad_error, orientation_error] = ...
+                getVehicleDeviation(obj, pos_vehicle, psi_vehicle, track_dist)
         %------------------------------------------------------------------
         %   outs: 
         %     - lag_error, countour_error: lag and countour errors from a 
         %       track position that is given by the traveled distance along 
         %       the centerline. 
         %     - offroad_error: how far the vehicle is from the track borders
+        %     - orientation_error \in [0 1], where 0 means that vehicle and
+        %       track have the same orientation and 1 mean they are orthogonal
         %
         %   NOTE:
         %   - positive lag_error means that the vehicle is lagging behind
         %   - positive countour_error means the vehicle is to the right size
         %     of the track
+        %   - 
         %------------------------------------------------------------------    
             
             % get information (x,y,track radius and track orientation) of the point 
@@ -149,16 +153,37 @@ classdef RaceTrack < handle
             % error in the T frame [lag_error; contouring_error]
             T_error = A_TI * I_error;
             
-            % get lag and countour error
-            lag_error      = T_error(1);
-            countour_error = T_error(2);
+            % get lag and countour error (normalized by the road radius).
+            % contour_error=+-1, when we are at the border
+            % contour_error=0,   when we are at the middle at the track
+            % lag_error>0,       when we are lagging behind
+            lag_error      = T_error(1) / R_c;
+            countour_error = T_error(2) / R_c;
             
-            % offroad_error is zero if vehicle is inside the track.
-            % Otherwise, we calculate the distance to the track border
-            offroad_error = (abs(countour_error) > R_c) * (abs(countour_error) - R_c);
+            % offroad_error ~ 0  if countour_error < 90%
+            % offroad_error > 0  if countour_error > 90%.
+            offroad_error = abs(countour_error) - 1;
+            % apply smooth lower bound saturation (min=0). 
+            alpha = 40; % smoothing factor... the smaller the smoother
+            offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
+            
+            % CHECK SMOOTH TRANSITION
+            % x = -0.5:0.01:0.1
+            % % Smooth >=0 boolean function
+            % alpha = 60; % the larger the sharper the clip function
+            % y = (1+exp(-alpha*(x+0.05))).^-1;
+            % figure; hold on; grid on;
+            % plot(x,y)
+            
+            % calculate orientation error (\in [0 1])
+            orientation_error = 1 - abs([cos(psi_c); sin(psi_c)]' * [cos(psi_vehicle); sin(psi_vehicle)]);  
         end
         
+        
         function h_fig = plotTrack(obj)
+        % -------------------------------------------------------------
+        %   plot track asphalt and boarders. Returns the figure handle
+        % -------------------------------------------------------------
             h_fig = figure('Color','w','Position',[468 128 872 633]);
             title('Racing Track')
             hold on;
@@ -183,6 +208,13 @@ classdef RaceTrack < handle
     
        
     methods(Static)
+        
+        %------------------------------------------------------------------
+        %  Racetrack examples, to be used with class constructor. Ex:
+        %       [trackdata, x0, th0, w] = RaceTrack.loadTrack_01()
+        %       trackobject = RaceTrack(trackdata, x0, th0, w)
+        %------------------------------------------------------------------
+        
         function [trackdata, x0, th0, w] = loadTrack_01()
             x0  = [0;0];
             th0 = 0;
@@ -223,22 +255,19 @@ classdef RaceTrack < handle
                  'c',{4,90};
                  'c',{4,-90};
                  's',5;
-                 'c',{3.5,-180};
-                 'c',{3.5,180};
                  'c',{3.5,-90};
-                 's',2;
+                 's',16;
                  'c',{3.5,-120};
                  's',10;
                  'c',{10,120};
                  's',10;
                  'c',{5,90};
                  's',5;
-                 'c',{5,150};
-                 's',5;
-                 'c',{3.2,-180};
-                 's',12;
-                 'c',{10,-150};
-                 's',12.3;      
+                 'c',{5,90};
+                 'c',{7,-180};
+                 's',2.3;
+                 'c',{10,-90};
+                 's',14.6;      
                  'c',{12,-90}; 
             };
         end
