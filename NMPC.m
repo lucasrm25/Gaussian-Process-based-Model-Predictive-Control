@@ -69,7 +69,7 @@ classdef NMPC < handle
            obj.g = g;
            % get size of additional constraints
            obj.nh = length(h(zeros(n,1),zeros(m,1)));
-           obj.ng = length(h(zeros(n,1),zeros(m,1)));
+           obj.ng = length(g(zeros(n,1),zeros(m,1)));
            
            % variable dimensions
            obj.n = n;

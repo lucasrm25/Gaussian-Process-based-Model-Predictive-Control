@@ -77,7 +77,7 @@ fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-Cr*r(t))'*Q *(Ck*mu_x-Cr*r(t))+ u'*R*u - [0 
 fend = @(t,mu_x,var_x,r)   (Ck*mu_x-Cr*r(t))'*Qf*(Ck*mu_x-Cr*r(t))- [0 0 100 0 0 0 0 0 0 0]*mu_x;          % end cost function
 f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
 h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
-g    = @(x,u) [1 1 0 0]*r(t)-Ck*mu_x; % @(x,u) 0;  % g(x)<=0
+g    = @(x,u) []; %[1 1 0 0]*r(t)-Ck*mu_x; % @(x,u) 0;  % g(x)<=0
 
 % mpc = NMPC(fo, fend, f, d_GP, Bd, Bz, N, sigmaw, h, g, n, m, ne, dt);
 mpc = NMPC(f, h, g, n, m, fo, fend, N, dt);
@@ -89,8 +89,10 @@ mpc.maxiter = 30;
 
 % calculate trajectory center line
 t_c = (t_r + t_l)/2;
+
 % find closest trajectory point w.r.t. the vehicle
 [~,idx] = min( pdist2(X(1:2)',t_c,'seuclidean',[1 1].^0.5).^2 );
+
 % set target as 3 poins ahead
 idx_target10 = idx + 10;
 idx_target = idx;

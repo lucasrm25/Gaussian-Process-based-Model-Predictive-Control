@@ -65,4 +65,23 @@ t_12_l=[(linspace(55,-5,150))' -sqrt(30^2-((linspace(55,-5,150))'-25).^2)+0]; % 
 %% 
 t_r=[t_1_r ; t_2_r ; t_3_r ; t_4_r ; t_5_r ; t_6_r ;t_11_r ; t_8_r ;t_91_r ; t_9_r ; t_10_r  ; t_12_r ];%; t_13_r ; t_14_r]; % stack of right racetrack boundaries
 t_l=[t_1_l ; t_2_l ; t_3_l ; t_4_l ; t_5_l ; t_6_l ;t_11_l ; t_8_l ; t_91_l; t_9_l ; t_10_l  ; t_12_l ];% ; t_13_l ; t_14_l]; % stack of left racetrack boundaries
+
+t_c = 0.5 * (t_r + t_l);
+
+
+distmax = 0.4;
+new_t_c = t_c;
+
+for k=1:length(t_c)-1
+    n = norm( t_c(k,:) - t_c(k+1,:) ) / distmax;
+    i = 1;
+    for alpha = (1:n-1e-3)/n
+        newpoints(i,:) = alpha * t_c(k+1,:) + (1-alpha) * t_c(k,:);
+        i = i+1;
+    end
+    new_t_c = [new_t_c(1:k,:); newpoints; new_t_c(k+1:end,:) ];
+end
+
+
+
 save('racetrack.mat', 't_r', 't_l'); % save racetrack as racetrack.mat
