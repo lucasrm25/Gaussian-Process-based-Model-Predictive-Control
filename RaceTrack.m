@@ -1,3 +1,10 @@
+%------------------------------------------------------------------
+% Programed by: 
+%   - Lucas Rath (lucasrm25@gmail.com)
+%   - 
+%   -
+%------------------------------------------------------------------
+
 classdef RaceTrack < handle
 %------------------------------------------------------------------
 %   The Race Track constitutes of a left lane, right lane and center line
@@ -11,11 +18,42 @@ classdef RaceTrack < handle
 %   x_c(dist), y_c(dist), psi_c(dist), R_c(dist) -> see method getTrackInfo
 %
 %
-%   Example how to create and use this class:
+%   % Example how to create and use this class:
 %
+%   % load a predefined track called track01:
 %       [trackdata, x0, th0, w] = RaceTrack.loadTrack_01();
+%
+%   % init object:
 %       track = RaceTrack(trackdata, x0, th0, w);
-%       [Xt, Yt, PSIt, Rt] = track.getTrackInfo(1000)
+%
+%   % plot track:
+%       track.plotTrack()
+%
+%   % what is the coordinate of the track centerline, track radius and 
+%   % tangent angle for a centerline distance of 1000 meters ?
+%       [pos_c, psi_c, R_c] = track.getTrackInfo(1000)
+%
+%   % lets say the vehicle is at position [10 1]' (in inertial coordinates)
+%       vehicle_pos = [10 5]';
+%
+%   % How far has the vehicle traveled along the centerline if the vehicle
+%   % position is [10 1]' ? (the reference used is the closest point in the track to the vehicle)
+%       vehicle_dist = track.getTrackDistance(vehicle_pos)
+%
+%   % what is the lag and contour error for 2 meters ahead (along the track centerline)?
+%       targetTrackDist = vehicle_dist + 2;
+%       [lag_error, countour_error, offroad_error] = track.getVehicleDeviation(vehicle_pos, targetTrackDist)
+%
+%   % lets verify visually if the calculation is correct!!
+%       track.plotTrack();
+%       hold on;
+%       sc1 = scatter(vehicle_pos(1), vehicle_pos(2), 50, 'filled', 'DisplayName','vehicle pos')
+%       [pos_c, psi_c, R_c] = track.getTrackInfo(vehicle_dist);
+%       sc2 = scatter(pos_c(1),pos_c(2), 50, 'filled', 'DisplayName','closest track point')
+%       [pos_cT, psi_cT, R_cT] = track.getTrackInfo(targetTrackDist);
+%       sc3 = scatter(pos_cT(1),pos_cT(2), 50, 'filled', 'DisplayName','target track point')
+%       legend([sc1,sc2,sc3])
+%
 %------------------------------------------------------------------
     
     properties
@@ -57,8 +95,8 @@ classdef RaceTrack < handle
         function [pos_c, psi_c, R_c] = getTrackInfo(obj,dist)
         %------------------------------------------------------------------
         %   Given a distance 'dist' returns the track centerline carthesian 
-        %   position (Xt,Yt), the track orientation PSIt, and the track
-        %   radius Rt
+        %   position pos_c=(x_c,y_c), the track orientation psi_c, and the 
+        %   track radius R_c
         %------------------------------------------------------------------
             dist = mod(dist,max(obj.dist));
             idx_dist = interp1(obj.dist,1:numel(obj.dist),dist,'nearest','extrap');
@@ -72,11 +110,74 @@ classdef RaceTrack < handle
         
         function dist = getTrackDistance(obj,pos_vehicle)
         %------------------------------------------------------------------
-        %   Given a distance the vehicle position, calculate the vehicle 
-        %   progress 'dist' on the centerline of the track
+        %   Given the vehicle position, calculates the traveled distance 
+        %   of the vehicle 'dist' along the centerline of the track
         %------------------------------------------------------------------
             [~,I] = pdist2(obj.track_c',pos_vehicle','euclidean','Smallest',1);
             dist = obj.dist(I);
+        end
+        
+        function [lag_error, countour_error, offroad_error] = getVehicleDeviation(obj, pos_vehicle, track_dist)   
+        %------------------------------------------------------------------
+        %   outs: 
+        %     - lag_error, countour_error: lag and countour errors from a 
+        %       track position that is given by the traveled distance along 
+        %       the centerline. 
+        %     - offroad_error: how far the vehicle is from the track borders
+        %
+        %   NOTE:
+        %   - positive lag_error means that the vehicle is lagging behind
+        %   - positive countour_error means the vehicle is to the right size
+        %     of the track
+        %------------------------------------------------------------------    
+            
+            % get information (x,y,track radius and track orientation) of the point 
+            % in the track that corresponds to a traveled distance of 'dist' meters.
+            [pos_c, psi_c, R_c] = obj.getTrackInfo(track_dist);
+
+            % ---------------------------------------------------------------------
+            % contour and lag error
+            % ---------------------------------------------------------------------
+            % vehicle position in inertial coordinates
+            I_x = pos_vehicle(1);
+            I_y = pos_vehicle(2);
+            % rotation to a frame with x-axis tangencial to the track (T frame)
+            A_TI = [ cos(psi_c)  -sin(psi_c);    
+                     sin(psi_c)   cos(psi_c)];
+            % error in the inertial coordinates
+            I_error = pos_c - [I_x;I_y];       
+            % error in the T frame [lag_error; contouring_error]
+            T_error = A_TI * I_error;
+            
+            % get lag and countour error
+            lag_error      = T_error(1);
+            countour_error = T_error(2);
+            
+            % offroad_error is zero if vehicle is inside the track.
+            % Otherwise, we calculate the distance to the track border
+            offroad_error = (abs(countour_error) > R_c) * (abs(countour_error) - R_c);
+        end
+        
+        function h_fig = plotTrack(obj)
+            h_fig = figure('Color','w','Position',[468 128 872 633]);
+            title('Racing Track')
+            hold on;
+            grid on;
+            axis equal;
+            
+            % -------------------------------------------------------------
+            %   plot track asphalt
+            % -------------------------------------------------------------
+            n = length(obj.track_l);
+            v = [obj.track_l(:,1:n)'; obj.track_r(:,1:n)'];   % <n,2>
+            f = [1:n-1 ; 2:n; n+2:2*n; n+1:2*n-1]';
+            patch('Faces',f,'Vertices',v,'FaceColor',[0.95 0.95 0.95],'LineStyle', 'none')
+            
+            % -------------------------------------------------------------
+            %   plot track borders
+            % -------------------------------------------------------------
+            h_ltrack = plot(obj.track_l(1,:),obj.track_l(2,:),'k');
+            h_rtrack = plot(obj.track_r(1,:),obj.track_r(2,:),'k');
         end
     end
     
@@ -144,7 +245,9 @@ classdef RaceTrack < handle
         
         function [track_l,track_r,psi_c] = generateTrackPoints(trackdata, x0, th0, w)
         %------------------------------------------------------------------
-        %   
+        %  Help function to generate Track datapoints, given track
+        %  instructions (turn left 30deg with radius=10m, go straight for 20m, 
+        %  turn right 45deg with radius 10m,...)
         %------------------------------------------------------------------
             track_l = [];
             track_r = [];
