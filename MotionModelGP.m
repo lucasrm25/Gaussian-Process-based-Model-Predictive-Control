@@ -37,7 +37,7 @@ classdef (Abstract) MotionModelGP < handle
     end
     
     methods (Abstract)
-        [xdot, grad_xdot] = f (obj, x, u)
+        xdot = f (obj, x, u)
         %------------------------------------------------------------------
         %   Continuous time dynamics.
         %   out:

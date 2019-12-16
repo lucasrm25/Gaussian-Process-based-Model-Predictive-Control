@@ -183,7 +183,7 @@ for k = 1:kmax
     % ---------------------------------------------------------------------
     % calculate optimal input
     [x0_opt, u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), 0);
-    out.u(:,k) = u_opt(:,1); % get first input and discard last virtual input (track velocity)
+    out.u(:,k) = u_opt(:,1);
     sprintf('\nSteering angle: %d\nTorque gain: %.1f\nTrack vel: %.1f\n',rad2deg(out.u(1,k)),out.u(2,k),out.u(3,k))
 
     % ---------------------------------------------------------------------

@@ -37,8 +37,6 @@ classdef NMPC < handle
         f       % @fun nonlinear dynamics:  [E[xk+1],Var[xk+1]] = f(xk,uk)
         h       % nonlinear equality constraint function 
         g       % nonlinear inequality constraint function        
-        u_lb    % inputs lower bound constraint  u_lb <= u
-        u_ub    % inputs upper bound constraint          u <= u_ub
         
         fo      % @fun nonlinear cost function
         fend    % @fend nonlinear cost function for the final state
@@ -56,7 +54,9 @@ classdef NMPC < handle
         eguess  % <ne,N> initial guess for extra variables
     end
     
-    properties(Access=private) 
+    properties(Access=private)
+        lb    % lower bound constraints  lb <= vars
+        ub    % upper bound constraints        vars <= ub
     end
     
     methods
@@ -71,8 +71,6 @@ classdef NMPC < handle
            obj.f  = f;
            obj.h = h;
            obj.g = g;
-           obj.u_lb = u_lb;
-           obj.u_ub = u_ub;
            % variable dimensions
            obj.n = n;
            obj.m = m;
@@ -86,9 +84,26 @@ classdef NMPC < handle
            % optimizer parameters
            obj.N = N;
            obj.dt = dt;
+           
            % set vector of initial guess for optimization
            obj.uguess = zeros(m,N);
            obj.eguess = zeros(ne,N);
+           
+           % define lower and upper bound constraints
+            if ~isempty(u_lb)
+                obj.lb = [-Inf(obj.n,1);
+                          repmat(u_lb,obj.N,1);    % repeat lower bound for all u0,...,uN-1
+                          -Inf(obj.ne*obj.N,1)];             
+            else
+                obj.lb = [];
+            end
+            if ~isempty(u_ub)
+                obj.ub = [Inf(obj.n,1);
+                          repmat(u_ub,obj.N,1);     % repeat upper bound for all u0,...,uN-1
+                          Inf(obj.ne*obj.N,1)];
+            else
+                obj.ub = [];
+            end
         end
         
         
@@ -109,26 +124,17 @@ classdef NMPC < handle
             
             %-------- Set initial guess for optimization variables  -------
             varsguess = [x0; obj.uguess(:); obj.eguess(:)];
-            %--------------------------------------------------------------
             
             
             %------------------ Optimize  ---------------------------------
-            assert( numel(varsguess) == obj.optSize(), ...
+            assert(all(size(x0)==[obj.n,1]), 'x0 has wrong dimension!!')
+            assert(numel(varsguess) == obj.optSize(), ...
                 'There is something wrong with the code. Number of optimization variables does not match!' );
                 
             % define cost and constr. functions, as a function only of the
             % optimazation variables. This is a prerequisite for the function fmincon
             costfun = @(vars) obj.costfun(vars, t0, r);
             nonlcon = @(vars) obj.nonlcon(vars, t0, x0);
-            
-            % define lower and upper bound constraints
-            lb = [-Inf(obj.n,1);
-                   repmat(obj.u_lb,obj.N,1);    % repeat lower bound for all u0,...,uN-1
-                   -Inf(obj.ne*obj.N,1)];             
-               
-            ub = [Inf(obj.n,1);
-                  repmat(obj.u_ub,obj.N,1);     % repeat upper bound for all u0,...,uN-1
-                  Inf(obj.ne*obj.N,1)];
             
             % define optimizer settings
             options = optimoptions('fmincon',...
@@ -139,10 +145,10 @@ classdef NMPC < handle
                                    'MaxIterations',obj.maxiter);
             
             % solve optimization problem                   
-            [vars_opt,~] = fmincon(costfun,varsguess,[],[],[],[],lb,ub,nonlcon,options);
-            %--------------------------------------------------------------
+            [vars_opt,~] = fmincon(costfun,varsguess,[],[],[],[],obj.lb,obj.ub,nonlcon,options);
             
             
+            %------------------ Output results  ---------------------------
             % split variables since vars_opt = [x_opt; u_opt; e_opt]
             [x0_opt, u_opt, e_opt] = splitvariables(obj, vars_opt);
             

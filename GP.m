@@ -195,6 +195,9 @@ classdef GP < handle
         %   vary: <N,N>    Var[Y] is the same for all output dimensions
         %   (DEPRECATED) covary: <N,N>
         %------------------------------------------------------------------
+            assert(size(x,1)==obj.n, sprintf('Input vector has %d columns but should have %d !!!',size(x,1),obj.n));
+            assert(~isempty(obj.alpha), 'Please call updateModel() at least once before evaluating!!!')
+            
             Nx = size(x,2);  % size of dataset to be evaluated
         
             % if there is no data in the dictionary, return GP prior

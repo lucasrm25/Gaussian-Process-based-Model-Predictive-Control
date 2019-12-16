@@ -70,6 +70,7 @@ nomModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @(z)deal(0,0), 0);
 
 n = estModel.n;
 m = estModel.m;
+ne = 0;
 
 % -------------------------------------------------------------------------
 % LQR CONTROLLER
@@ -94,23 +95,25 @@ Q = diag([1e-1 1e5 1]);
 Qf= diag([1e-1 1e5 1]);
 R = 1;
 Ck = [0 1 0 0; 0 0 1 0; 0 0 0 1];
-fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + R*u^2;  % cost function
-fend = @(t,mu_x,var_x,r)   (Ck*mu_x-r(t))'*Qf*(Ck*mu_x-r(t));          % end cost function
+fo   = @(t,mu_x,var_x,u,e,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + R*u^2;  % cost function
+fend = @(t,mu_x,var_x,e,r)   (Ck*mu_x-r(t))'*Qf*(Ck*mu_x-r(t));          % end cost function
 f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
-h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
-g    = @(x,u) []; % @(x,u) 0;  % g(x)<=0
+h    = @(x,u,e) []; % @(x,u) 0;  % h(x)==0
+g    = @(x,u,e) []; % @(x,u) 0;  % g(x)<=0
 
-% mpc = NMPC(fo, fend, f, d_GP, Bd, Bz, N, sigmaw, h, g, n, m, ne, dt);
-mpc = NMPC(f, h, g, n, m, fo, fend, N, dt);
+u_lb = [];
+u_ub = [];
+
+mpc = NMPC (f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt); % (f, h, g, n, m, fo, fend, N, dt);
 mpc.tol     = 1e-3;
 mpc.maxiter = 30;
 % -------------------------------------------------------------------------
 
 % TEST NMPC
-% x0 = 10;
-% t0 = 0;
-% r  = @(t)2;    % desired trajectory
-% u0 = mpc.optimize(x0, t0, r );
+x0 = [0 0 0.1 0]';
+t0 = 0;
+r  = @(t) [0 0 0]';    % desired trajectory
+[x0_opt, u_opt, e_opt] = mpc.optimize(x0, t0, r );
 
 
 
@@ -137,44 +140,65 @@ out.r = zeros(nr,length(out.t)-1);
 
 d_GP.isActive = false;
 
-for i = 1:numel(out.t)-1
-    disp(out.t(i))
+for k = 1:numel(out.t)-1
+    disp(out.t(k))
     
-    % read new reference
-    out.r(:,i) = r(out.t(i));
+    % ---------------------------------------------------------------------
+    % Read new reference
+    % ---------------------------------------------------------------------
+    out.r(:,k) = r(out.t(k));
     
-    % calculate control input
+    % ---------------------------------------------------------------------
     % LQR controller
+    % ---------------------------------------------------------------------
     % % out.u(:,i) = Kr*out.r(:,i) - K*out.xhat(:,i);
-    % NMPC controller
-    out.u(:,i) = mpc.optimize(out.xhat(:,i), out.t(i), r);
     
+    % ---------------------------------------------------------------------
+    % NPMC controller
+    % ---------------------------------------------------------------------
+    [x0_opt, u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r);
+    out.u(:,k) = u_opt(:,1);
+    
+    
+    % ---------------------------------------------------------------------
     % simulate real model
-    [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,i),zeros(trueModel.n),out.u(:,i),dt);
-    out.x(:,i+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
+    % ---------------------------------------------------------------------
+    [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,k),zeros(trueModel.n),out.u(:,k),dt);
+    out.x(:,k+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
+    
+    % ---------------------------------------------------------------------
     % measure data
-    out.xhat(:,i+1) = out.x(:,i+1); % perfect observer
+    % ---------------------------------------------------------------------
+    out.xhat(:,k+1) = out.x(:,k+1); % perfect observer
     
+    
+    % ---------------------------------------------------------------------
     % calculate nominal model
-    out.xnom(:,i+1) = nomModel.xkp1(out.xhat(:,i),zeros(nomModel.n),out.u(:,i),dt);
+    % ---------------------------------------------------------------------
+    out.xnom(:,k+1) = nomModel.xkp1(out.xhat(:,k),zeros(nomModel.n),out.u(:,k),dt);
     
+    
+    % ---------------------------------------------------------------------
     % add data to GP model
-    if mod(i-1,1)==0
+    % ---------------------------------------------------------------------
+    if mod(k-1,1)==0
         % calculate disturbance (error between measured and nominal)
-        d_est = estModel.Bd \ (out.xhat(:,i+1) - out.xnom(:,i+1));
+        d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
         % select subset of coordinates that will be used in GP prediction
-        zhat = estModel.Bz * out.xhat(:,i);
+        zhat = estModel.Bz * out.xhat(:,k);
         % add data point to the GP dictionary
         d_GP.add(zhat,d_est);
     end
     
-    if d_GP.N > 20 && out.t(i) > 3
+    if d_GP.N > 20 && out.t(k) > 3
+        d_GP.updateModel();
         d_GP.isActive = true;
     end
     
     % check if these values are the same:
     % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
+    
 end
 
 
