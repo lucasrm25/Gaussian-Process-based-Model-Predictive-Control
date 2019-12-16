@@ -107,6 +107,7 @@ classdef RaceTrack2 < handle
         %   of the vehicle 'dist' along the centerline of the track
         %------------------------------------------------------------------
             [~,I] = pdist2(obj.track_c',pos_vehicle','euclidean','Smallest',1);
+            I = mod(I-1, length(obj.dist)) +1;
             dist = obj.dist(I);
         end
         

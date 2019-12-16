@@ -83,7 +83,7 @@ Cr = [eye(2), zeros(2,2)];
 Cr2 = [zeros(2,2), eye(2,2)];
 % fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-Cr*r(t))'*Q *(Ck*mu_x-Cr*r(t))+ u'*R*u + q*log(1/2.4*(vecnorm(Cr2*r(t)-Ck*mu_x)+0.01))- [0 0 50 0 0 0 0 0 0 0]*mu_x;  % cost function
 % fend = @(t,mu_x,var_x,r)   (Ck*mu_x-Cr*r(t))'*Qf*(Ck*mu_x-Cr*r(t)) + q*log(1/2.4*vecnorm(Cr2*r(t)-Ck*mu_x)+0.01)- [0 0 50 0 0 0 0 0 0 0]*mu_x;          % end cost function
-fo = @costfunction;
+fo = @(t,mu_x,var_x,u,r) costfunction(t,mu_x,var_x,u,0);
 fend = fo;
 f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
 h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
@@ -115,7 +115,7 @@ mpc.maxiter = 30;
 U = mpc.optimize(X, 0, 0);
 
 X(1:3)
-r(3234)
+% r(3234)
 
 
 %% stop condition
@@ -130,12 +130,13 @@ end
 
 % U=[delta G F_b zeta phi]; % input vector
 
-
+scatter(X(1),X(2))
+drawnow()
 
 
 end
 
-function cost = costfunction(t,mu_x,var_x,u,r)
+function cost_1 = costfunction(t,mu_x,var_x,u, r)
       global trackr
       vehicle_pos = mu_x(1:2);
 % How far has the vehicle traveled along the centerline if the vehicle
@@ -143,9 +144,9 @@ function cost = costfunction(t,mu_x,var_x,u,r)
       vehicle_dist = trackr.getTrackDistance(vehicle_pos);
 
   % what is the lag and contour error for 2 meters ahead (along the track centerline)?
-      targetTrackDist = vehicle_dist + 2;
+      targetTrackDist = vehicle_dist + 5;
       [lag_error, countour_error, offroad_error] = trackr.getVehicleDeviation(vehicle_pos, targetTrackDist);
       
-      cost = 10^0 * lag_error^2 + 10^0 * offroad_error^2;
+      cost_1 = 10^2 * lag_error^2 + 10^4 * countour_error^2 + 10^6 * offroad_error^2 - 10*mu_x(3);
       
 end

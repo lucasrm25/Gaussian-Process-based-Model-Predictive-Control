@@ -76,6 +76,9 @@ classdef MotionModelGP_TrueSingleTrack < MotionModelGP
             psi_dot = x(9);
             varphi_dot = x(10);
             
+            if v<0
+                v = 0;
+            end
             delta = u(1);  % steering angle
             G     = 1; %u(2);  % gear
             F_b    = u(3);  % brake force
@@ -140,6 +143,7 @@ classdef MotionModelGP_TrueSingleTrack < MotionModelGP
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %% traction, friction, braking
+            
             n=v*obj.i_g(G)*obj.i_0*(1/(1-S))/obj.R; % motor rotary frequency
             if isnan(n) % rotary frequency well defined?
                 n=0; %recover rotary frequency
@@ -183,13 +187,17 @@ classdef MotionModelGP_TrueSingleTrack < MotionModelGP
             psi_dot_dot=(F_y_f*obj.l_f*cos(delta)-F_y_r*obj.l_r ...
                       +F_x_f*obj.l_f*sin(delta))/obj.I_z; % yaw angular acceleration
             varphi_dot_dot=(F_x_r*obj.R)/obj.I_R; % wheel rotary acceleration
-            if isnan(beta_dot) % side slip angle well defined?
+            if isnan(beta_dot) || isinf(beta_dot) % side slip angle well defined?
                 beta_dot=0; % recover side slip angle
             end
             
             % calculate xdot and gradient
             xdot  = [x_dot; y_dot; v_dot; beta_dot; psi_dot; omega_dot; x_dot_dot; y_dot_dot; psi_dot_dot; varphi_dot_dot];
             grad_xdot = zeros(obj.n);
+            
+            if any(isnan(xdot)) || any(isinf(xdot)) || any(~isreal(xdot))
+                l
+            end
         end
         
 

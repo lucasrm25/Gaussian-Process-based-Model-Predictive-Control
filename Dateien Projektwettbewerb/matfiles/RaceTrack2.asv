@@ -14,10 +14,10 @@ classdef RaceTrack2 < handle
 %   Example how to create and use this class:
 %
 %   % load a predefined track called track01:
-%       [trackdata, x0, th0, w] = RaceTrack.loadTrack_01();
+%       [trackdata, x0, th0, w] = RaceTrack2.loadTrack_01();
 %
 %   % init object:
-%       track = RaceTrack(trackdata, x0, th0, w);
+%       track = RaceTrack2(trackdata, x0, th0, w);
 %
 %   % plot track:
 %       track.plotTrack()
@@ -65,7 +65,7 @@ classdef RaceTrack2 < handle
     end
     
     methods
-        function obj = RaceTrack(trackdata, x0, th0, w)
+        function obj = RaceTrack2(trackdata, x0, th0, w)
         %------------------------------------------------------------------
         %   object constructor
         %   args:
@@ -107,7 +107,8 @@ classdef RaceTrack2 < handle
         %   of the vehicle 'dist' along the centerline of the track
         %------------------------------------------------------------------
             [~,I] = pdist2(obj.track_c',pos_vehicle','euclidean','Smallest',1);
-            dist = obj.dist(I);
+            I = mod( I , length(obj.dist)) +1;
+            dist = obj.dist(I)
         end
         
         function [lag_error, countour_error, offroad_error] = getVehicleDeviation(obj, pos_vehicle, track_dist)   
@@ -179,7 +180,7 @@ classdef RaceTrack2 < handle
         function [trackdata, x0, th0, w] = loadTrack_01()
             x0  = [0;0];
             th0 = 0;
-            w = 6;
+            w = 5;
             trackdata = {
                  's',14;
                  'c',{15,-90};
@@ -208,7 +209,7 @@ classdef RaceTrack2 < handle
         function [trackdata, x0, th0, w] = loadTrack_02()
             x0  = [0;0];
             th0 = 0;
-            w = 6;
+            w = 5;
             trackdata = {
                  's',14;
                  'c',{15,-90};
