@@ -50,11 +50,15 @@ varphi_dot=X(10); % wheel rotary frequency (strictly positive)
 %% racetrack
 load('racetrack.mat','t_r'); % load right  boundary from *.mat file
 load('racetrack.mat','t_l'); % load left boundary from *.mat file
+load('racetrack.mat','new_t_c');
 t_r_x=t_r(:,1); % x coordinate of right racetrack boundary
 t_r_y=t_r(:,2); % y coordinate of right racetrack boundary
 t_l_x=t_l(:,1); % x coordinate of left racetrack boundary
 t_l_y=t_l(:,2); % y coordinate of left racetrack boundary
 dt = 0.1;
+
+%%
+
 %% 
 d = @(z)deal(0,0);
 sigmaw = 0;
@@ -69,15 +73,17 @@ m = estModel.m;
 % define cost function
 N = 10;     % prediction horizon
 Q = [100,0;0,100];
+q = 90;
 Qf= [100,0;0,100];
 R = eye(5);
 Ck = [eye(2), zeros(2,8)];
-Cr = [1 1 0 0];
-fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-Cr*r(t))'*Q *(Ck*mu_x-Cr*r(t))+ u'*R*u - [0 0 100 0 0 0 0 0 0 0]*mu_x;  % cost function
-fend = @(t,mu_x,var_x,r)   (Ck*mu_x-Cr*r(t))'*Qf*(Ck*mu_x-Cr*r(t))- [0 0 100 0 0 0 0 0 0 0]*mu_x;          % end cost function
+Cr = [eye(2), zeros(2,2)];
+Cr2 = [zeros(2,2), eye(2,2)];
+fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-Cr*r(t))'*Q *(Ck*mu_x-Cr*r(t))+ u'*R*u + q*log(1/2.4*(vecnorm(Cr2*r(t)-Ck*mu_x)+0.01))- [0 0 50 0 0 0 0 0 0 0]*mu_x;  % cost function
+fend = @(t,mu_x,var_x,r)   (Ck*mu_x-Cr*r(t))'*Qf*(Ck*mu_x-Cr*r(t)) + q*log(1/2.4*vecnorm(Cr2*r(t)-Ck*mu_x)+0.01)- [0 0 50 0 0 0 0 0 0 0]*mu_x;          % end cost function
 f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
 h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
-g    = @(x,u) []; %[1 1 0 0]*r(t)-Ck*mu_x; % @(x,u) 0;  % g(x)<=0
+g    = @(x,u) []; % @(x,u) 0;  % g(x)<=0
 
 % mpc = NMPC(fo, fend, f, d_GP, Bd, Bz, N, sigmaw, h, g, n, m, ne, dt);
 mpc = NMPC(f, h, g, n, m, fo, fend, N, dt);
@@ -88,19 +94,19 @@ mpc.maxiter = 30;
 % 
 
 % calculate trajectory center line
-t_c = (t_r + t_l)/2;
+% t_c = (t_r + t_l)/2;
 
 % find closest trajectory point w.r.t. the vehicle
-[~,idx] = min( pdist2(X(1:2)',t_c,'seuclidean',[1 1].^0.5).^2 );
+[~,idx] = min( pdist2(X(1:2)',new_t_c,'seuclidean',[1 1].^0.5).^2 );
 
 % set target as 3 poins ahead
-idx_target10 = idx + 10;
+idx_target10 = idx + 20;
 idx_target = idx;
 % loop around when track is over
-idx_target10 = mod(idx_target10, size(t_c,1));
-idx_target = mod(idx_target, size(t_c,1));
+idx_target10 = mod(idx_target10, size(new_t_c,1));
+idx_target = mod(idx_target, size(new_t_c,1));
 
-r = @(t) [t_c(idx_target10,:),t_c(idx_target,:)]';
+r = @(t) [new_t_c(idx_target10,:), new_t_c(idx_target,:)]';
 
 U = mpc.optimize(X, 0, r);
 

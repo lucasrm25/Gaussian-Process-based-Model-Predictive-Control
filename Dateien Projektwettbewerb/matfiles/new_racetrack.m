@@ -70,7 +70,7 @@ t_c = 0.5 * (t_r + t_l);
 
 
 distmax = 0.4;
-new_t_c = t_c;
+new_t_c = [];
 
 for k=1:length(t_c)-1
     n = norm( t_c(k,:) - t_c(k+1,:) ) / distmax;
@@ -79,9 +79,15 @@ for k=1:length(t_c)-1
         newpoints(i,:) = alpha * t_c(k+1,:) + (1-alpha) * t_c(k,:);
         i = i+1;
     end
-    new_t_c = [new_t_c(1:k,:); newpoints; new_t_c(k+1:end,:) ];
+%     new_t_c = [new_t_c(1:k,:); newpoints; new_t_c(k+1:end,:) ];
+    new_t_c = [new_t_c; t_c(k,:); newpoints];
+    newpoints = [];
 end
 
+% figure
+% plot(new_t_c(1:end,1),new_t_c(1:end,2),'.')
+% 
+% figure
+% plot(t_c(1:450,1),t_c(1:450,2),'.')
 
-
-save('racetrack.mat', 't_r', 't_l'); % save racetrack as racetrack.mat
+save('racetrack.mat', 't_r', 't_l', 'new_t_c'); % save racetrack as racetrack.mat
