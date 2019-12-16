@@ -58,6 +58,8 @@ t_l_y=t_l(:,2); % y coordinate of left racetrack boundary
 dt = 0.1;
 
 %%
+global trackr
+new_t_c = trackr.track_c';
 
 %% 
 d = @(z)deal(0,0);
@@ -79,8 +81,10 @@ R = eye(5);
 Ck = [eye(2), zeros(2,8)];
 Cr = [eye(2), zeros(2,2)];
 Cr2 = [zeros(2,2), eye(2,2)];
-fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-Cr*r(t))'*Q *(Ck*mu_x-Cr*r(t))+ u'*R*u + q*log(1/2.4*(vecnorm(Cr2*r(t)-Ck*mu_x)+0.01))- [0 0 50 0 0 0 0 0 0 0]*mu_x;  % cost function
-fend = @(t,mu_x,var_x,r)   (Ck*mu_x-Cr*r(t))'*Qf*(Ck*mu_x-Cr*r(t)) + q*log(1/2.4*vecnorm(Cr2*r(t)-Ck*mu_x)+0.01)- [0 0 50 0 0 0 0 0 0 0]*mu_x;          % end cost function
+% fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-Cr*r(t))'*Q *(Ck*mu_x-Cr*r(t))+ u'*R*u + q*log(1/2.4*(vecnorm(Cr2*r(t)-Ck*mu_x)+0.01))- [0 0 50 0 0 0 0 0 0 0]*mu_x;  % cost function
+% fend = @(t,mu_x,var_x,r)   (Ck*mu_x-Cr*r(t))'*Qf*(Ck*mu_x-Cr*r(t)) + q*log(1/2.4*vecnorm(Cr2*r(t)-Ck*mu_x)+0.01)- [0 0 50 0 0 0 0 0 0 0]*mu_x;          % end cost function
+fo = @costfunction;
+fend = fo;
 f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
 h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
 g    = @(x,u) []; % @(x,u) 0;  % g(x)<=0
@@ -97,18 +101,18 @@ mpc.maxiter = 30;
 % t_c = (t_r + t_l)/2;
 
 % find closest trajectory point w.r.t. the vehicle
-[~,idx] = min( pdist2(X(1:2)',new_t_c,'seuclidean',[1 1].^0.5).^2 );
+% [~,idx] = min( pdist2(X(1:2)',new_t_c,'seuclidean',[1 1].^0.5).^2 );
 
 % set target as 3 poins ahead
-idx_target10 = idx + 20;
-idx_target = idx;
-% loop around when track is over
-idx_target10 = mod(idx_target10, size(new_t_c,1));
-idx_target = mod(idx_target, size(new_t_c,1));
+% idx_target10 = idx + 20;
+% idx_target = idx;
+% % loop around when track is over
+% idx_target10 = mod(idx_target10, size(new_t_c,1));
+% idx_target = mod(idx_target, size(new_t_c,1));
+% 
+% r = @(t) [new_t_c(idx_target10,:), new_t_c(idx_target,:)]';
 
-r = @(t) [new_t_c(idx_target10,:), new_t_c(idx_target,:)]';
-
-U = mpc.optimize(X, 0, r);
+U = mpc.optimize(X, 0, 0);
 
 X(1:3)
 r(3234)
@@ -131,3 +135,17 @@ end
 
 end
 
+function cost = costfunction(t,mu_x,var_x,u,r)
+      global trackr
+      vehicle_pos = mu_x(1:2);
+% How far has the vehicle traveled along the centerline if the vehicle
+  % position is [10 1]' ? (the reference used is the closest point in the track to the vehicle)
+      vehicle_dist = trackr.getTrackDistance(vehicle_pos);
+
+  % what is the lag and contour error for 2 meters ahead (along the track centerline)?
+      targetTrackDist = vehicle_dist + 2;
+      [lag_error, countour_error, offroad_error] = trackr.getVehicleDeviation(vehicle_pos, targetTrackDist);
+      
+      cost = 10^0 * lag_error^2 + 10^0 * offroad_error^2;
+      
+end

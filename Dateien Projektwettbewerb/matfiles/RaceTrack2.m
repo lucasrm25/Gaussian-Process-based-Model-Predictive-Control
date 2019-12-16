@@ -179,7 +179,7 @@ classdef RaceTrack2 < handle
         function [trackdata, x0, th0, w] = loadTrack_01()
             x0  = [0;0];
             th0 = 0;
-            w = 6;
+            w = 5;
             trackdata = {
                  's',14;
                  'c',{15,-90};
@@ -208,7 +208,7 @@ classdef RaceTrack2 < handle
         function [trackdata, x0, th0, w] = loadTrack_02()
             x0  = [0;0];
             th0 = 0;
-            w = 6;
+            w = 5;
             trackdata = {
                  's',14;
                  'c',{15,-90};
