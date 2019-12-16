@@ -14,13 +14,21 @@ classdef GP < handle
     % 
     % The Kernel parameters, when optimized, are optimized for each output
     % dimension separately.
+    %
+    %
+    %       ### TODO: ### 
+    %               Implement GP when we output with dimension p>1. To do  
+    %               this we should consider each output dimension as a
+    %               separate GP (each one with its own optimized kernel
+    %               parameters).
+    %
     %------------------------------------------------------------------
     
     properties
         % kernel parameters (one for each output dimension)
         sigmaf2 % <p> signal/output covariance
-        sigman2 % <p> evaluation noise stddev
-        M       % <n,n,p> length scale covariance matrix
+        sigman2 % <p> evaluation noise covariance
+        M       % <n,n,p> length scale covariance
         
         isActive = true
     end
@@ -120,10 +128,10 @@ classdef GP < handle
         
         function updateModel(obj)
         % ----------------------------------------------------------------- 
-        % Update precomputed matrices L and alpha
+        % Update precomputed matrices L and alpha, that will be used when
+        % evaluating new points. See [Rasmussen, pg19].
         % -----------------------------------------------------------------
             if obj.isOutdated
-                obj.isOutdated = false;
                 % store cholesky L and alpha matrices
                 I = eye(obj.N);
                 obj.L = chol( obj.K(obj.X,obj.X) + obj.sigman2 * I ,'lower');
@@ -136,21 +144,10 @@ classdef GP < handle
                 % I = eye(obj.N);
                 % obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.sigman2 * I );
                 %-------------------- (DEPRECATED) ------------------------
+                
+                % set flag
+                obj.isOutdated = false;
             end
-        end
-        
-        function L = get.L(obj)
-            if obj.isOutdated
-                obj.updateModel();
-            end
-            L = obj.L;
-        end
-        
-        function alpha = get.alpha(obj)
-            if obj.isOutdated
-                obj.updateModel();
-            end
-            alpha = obj.alpha;
         end
         
         function set.X(obj,X)
@@ -167,11 +164,7 @@ classdef GP < handle
         
         function add(obj,X,Y)
         %------------------------------------------------------------------
-        % - add new data points [X,Y] to the dictionary
-        % - precompute cholesky L and alpha matrices that will be used when
-        %   evaluating new points. See [Rasmussen, pg19].
-        %
-        % - (DEPRECATED) precompute inv(K(X,X) + sigman^2*I), every time X changes
+        % Add new data points [X,Y] to the dictionary
         %
         % args:
         %   X: <n,N>
@@ -190,7 +183,7 @@ classdef GP < handle
         end
         
         
-        function [muy, vary] = eval(obj,x)
+        function [mu_y, var_y] = eval(obj,x)
         %------------------------------------------------------------------
         % Evaluate GP at the points x
         % This is a fast implementation of [Rasmussen, pg19]
@@ -204,21 +197,24 @@ classdef GP < handle
         %------------------------------------------------------------------
             Nx = size(x,2);  % size of dataset to be evaluated
         
+            % if there is no data in the dictionary, return GP prior
             if obj.N == 0 || ~obj.isActive
                 % warning('GP dataset is empty.');
-                muy  = obj.mu(x); 
-                vary = zeros(Nx,Nx);
+                mu_y  = obj.mu(x); 
+                var_y = zeros(Nx,Nx);
                 return;
             end
         
+            % Calculate posterior mean mu_y
             KxX = obj.K(x,obj.X);
-            muy = obj.mu(x) + KxX * obj.alpha;
+            mu_y = obj.mu(x) + KxX * obj.alpha;
             
-            vary = zeros(Nx,Nx);
+            % Calculate posterior covariance var_y
+            var_y = zeros(Nx,Nx);
             for i=1:Nx
-                % v = obj.L\obj.K(x(:,i),obj.X)';
+                % (less efficient) v = obj.L\obj.K(x(:,i),obj.X)';
                 v = obj.L\KxX(i,:)';
-                vary(i,i) = obj.K(x(:,i),x(:,i)) - v'*v;
+                var_y(i,i) = obj.K(x(:,i),x(:,i)) - v'*v;
             end
             
             % --------------------- (DEPRECATED) ------------------------- 
@@ -231,18 +227,23 @@ classdef GP < handle
         
         
         function optimizeHyperParams(obj)
+        %------------------------------------------------------------------
+        % Optimize kernel hyper-parameters based on the current dictionary
+        %------------------------------------------------------------------
             error('not yet implemented!!!');
-            for ip = 1:obj.p
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % TODO:
-                %       - Implement ML/MAP optimization of hyper parameters
-                %       - See Rasmussen's book Sec. 5.4.1
-                %
-                %       - Each output dimension is a separate GP and must 
-                %       be optimized separately.
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if ~obj.isOptimized
+                for ip = 1:obj.p
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    % TODO:
+                    %       - Implement ML/MAP optimization of hyper parameters
+                    %       - See Rasmussen's book Sec. 5.4.1
+                    %
+                    %       - Each output dimension is a separate GP and must 
+                    %       be optimized separately.
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                end
+                obj.isOptimized = true;
             end
-            obj.isOptimized = true;
         end
         
         
@@ -257,7 +258,6 @@ classdef GP < handle
         %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
         %                           will be evaluated and ploted
         %------------------------------------------------------------------
-            
             % output dimension to be analyzed
             pi = 1;
         
@@ -344,6 +344,25 @@ classdef GP < handle
             colorbar;
             scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
             colormap(gcf,parula);
+        end
+        
+        function plot1d(obj, truthfun, varargin)
+        %------------------------------------------------------------------
+        % Make analysis of the GP quality (only for the first output dimension.
+        % This function can only be called when the GP input is 1D
+        %
+        % args:
+        %   truthfun: anonymous function @(x) which returns the true function
+        %   varargin{1} = rangeX1: 
+        %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
+        %                           will be evaluated and ploted
+        %------------------------------------------------------------------
+        
+            assert(obj.N>0, 'Dataset is empty. Aborting...')
+            % we can not plot more than in 3D
+            assert(obj.n==1, 'This function can only be used when dim(X)=1. Aborting...');
+            
+            error('Not implemented error')
         end
     end
 end
