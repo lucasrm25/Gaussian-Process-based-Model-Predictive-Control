@@ -26,8 +26,9 @@ axis([-50 100 -50 100]) % plot height and width
 plot(t_r(:,1),t_r(:,2)) % plot right racetrack boundary
 plot(t_l(:,1),t_l(:,2)) % plot left racetrack boundary
 text(1,0,'\leftarrow finish/start','HorizontalAlignment','left') % finish/start annotation
+view(0, 90)
 % plot the x and y coordinates resulting fromy your controller
-plot(Y(:,1),Y(:,2),'r') % plot the x and y coordinates resulting fromy your controller
+plot3(Y(:,1),Y(:,2),Y(:,3),'r') % plot the x and y coordinates resulting fromy your controller
 xlabel('x') % label x axis
 ylabel('y') % label y axies
 box % make a box around the plot

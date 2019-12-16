@@ -32,8 +32,8 @@ t_6_r=[(linspace(70,77.5,5))' -sqrt(7.5^2-((linspace(70,77.5,5))'-77.5).^2)+25];
 t_6_l=[(linspace(75,77.5,5))' -sqrt(2.5^2-((linspace(75,77.5,5))'-77.5).^2)+25]; % left racetrack boundary, segment 6
 
 % segment 11: straight, length 5
-t_11_r=[(linspace(77.5,82.5,15))' 17.5*ones(15,1) ]; % right racetrack boundary, segment 11
-t_11_l=[(linspace(77.5,82.5,15))' 22.5*ones(15,1) ]; % left racetrack boundary, segment 11
+t_11_r=[(linspace(77.5,82.5,5))' 17.5*ones(5,1) ]; % right racetrack boundary, segment 11
+t_11_l=[(linspace(77.5,82.5,5))' 22.5*ones(5,1) ]; % left racetrack boundary, segment 11
 
 % segment 7: quarter curve, inner radius 2.5
 % t_7_r=[sqrt(2.5^2-((linspace(17.5,15,5))'-15).^2)+82.5 (linspace(17.5,15,5))']; % right racetrack boundary, segment 7
@@ -43,15 +43,15 @@ t_11_l=[(linspace(77.5,82.5,15))' 22.5*ones(15,1) ]; % left racetrack boundary, 
 % t_8_r=[85*ones(15,1) (linspace(15,0,15))']; % right racetrack boundary, segment 8
 % t_8_l=[90*ones(15,1) (linspace(15,0,15))']; % left racetrack boundary, segment 8
 
-t_8_r=[sqrt(12.5^2-((linspace(17.5,-7.5,40))'-5).^2)+82.5 (linspace(17.5,-7.5,40))' ]; % right racetrack boundary, segment 10
-t_8_l=[sqrt(17.5^2-((linspace(22.5,-12.5,40))'-5).^2)+82.5 (linspace(22.5,-12.5,40))' ]; % left racetrack boundary, first segment 10
+t_8_r=[sqrt(12.5^2-((linspace(17.5,-7.5,20))'-5).^2)+82.5 (linspace(17.5,-7.5,20))' ]; % right racetrack boundary, segment 10
+t_8_l=[sqrt(17.5^2-((linspace(22.5,-12.5,20))'-5).^2)+82.5 (linspace(22.5,-12.5,20))' ]; % left racetrack boundary, first segment 10
 
-t_91_r=[(linspace(82.5,77.5,5))' -7.5*ones(5,1)]; % right racetrack boundary, segment 9
-t_91_l=[(linspace(82.5,77.5,5))' -12.5*ones(5,1)]; % left racetrack boundary, segment 9
+t_91_r=[(linspace(77.5,70,20))' -7.5*ones(5,1)]; % right racetrack boundary, segment 9
+t_91_l=[(linspace(77.5,65,20))' -12.5*ones(5,1)]; % left racetrack boundary, segment 9
 
 % segment 9: halv curve, inner radius 5
-t_9_r=[(linspace(77.5,70,30))' -sqrt(7.5^2-((linspace(77.5,70,30))'-77.5).^2)+0]; % right racetrack boundary, segment 9
-t_9_l=[(linspace(77.5,65,30))' -sqrt(12.5^2-((linspace(77.5,65,30))'-77.5).^2)+0]; % left racetrack boundary, segment 9
+t_9_r=[(linspace(77.5,70,20))' -sqrt(7.5^2-((linspace(77.5,70,20))'-77.5).^2)+0]; % right racetrack boundary, segment 9
+t_9_l=[(linspace(77.5,65,20))' -sqrt(12.5^2-((linspace(77.5,65,20))'-77.5).^2)+0]; % left racetrack boundary, segment 9
 
 % segment 10: halv curve, inner radius 5
 t_10_r=[(linspace(70,50,20))' sqrt(10^2-((linspace(70,50,20))'-60).^2)+0]; % right racetrack boundary, segment 10
@@ -63,6 +63,6 @@ t_10_l=[(linspace(65,55,20))' sqrt(5^2-((linspace(65,55,20))'-60).^2)+0]; % left
 t_12_r=[(linspace(50,0,150))' -sqrt(25^2-((linspace(50,0,150))'-25).^2)+0]; % right racetrack boundary, segment 12
 t_12_l=[(linspace(55,-5,150))' -sqrt(30^2-((linspace(55,-5,150))'-25).^2)+0]; % left racetrack boundary, segment 12
 %% 
-t_r=[t_1_r ; t_2_r ; t_3_r ; t_4_r ; t_5_r ; t_6_r ;t_11_r ; t_8_r ;t_91_r ; t_9_r ; t_10_r  ; t_12_r ];%; t_13_r ; t_14_r]; % stack of right racetrack boundaries
-t_l=[t_1_l ; t_2_l ; t_3_l ; t_4_l ; t_5_l ; t_6_l ;t_11_l ; t_8_l ; t_91_l; t_9_l ; t_10_l  ; t_12_l ];% ; t_13_l ; t_14_l]; % stack of left racetrack boundaries
+t_r=[t_1_r ; t_2_r ; t_3_r ; t_4_r ; t_5_r ; t_6_r ;t_11_r ; t_8_r ; t_9_r ; t_10_r  ; t_12_r ];%; t_13_r ; t_14_r]; % stack of right racetrack boundaries
+t_l=[t_1_l ; t_2_l ; t_3_l ; t_4_l ; t_5_l ; t_6_l ;t_11_l ; t_8_l ; t_9_l ; t_10_l  ; t_12_l ];% ; t_13_l ; t_14_l]; % stack of left racetrack boundaries
 save('racetrack.mat', 't_r', 't_l'); % save racetrack as racetrack.mat

@@ -34,7 +34,7 @@ dt = 0.1;
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% INTEGRATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 X_0=[-2.5;0;0;0;pi/2;0;0;0;0;0]; % initial value for integration
-X_0=[-2.5;0;0.01;0;pi/2;0;0;0;0;0]; 
+X_0=[-2.5;0;0.001;0;pi/2;0;0;0;0;0]; 
 Y=ode1(@singletrack,0:dt:t_f,X_0); % integrate with step zise 0.001
 
 %%
