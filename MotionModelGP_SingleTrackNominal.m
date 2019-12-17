@@ -163,13 +163,18 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % Saturate inputs and 
             %--------------------------------------------------------------
             % saturate steering angle
-            % (DEPRECATED - NOT DIFFERENTIABLE) delta = obj.clip(delta, -obj.deltamax, obj.deltamax);
-            delta = obj.sclip(delta, -obj.deltamax, obj.deltamax);
+            if isa(x,'sym') % switch to differentiable function
+                delta = obj.sclip(delta, -obj.deltamax, obj.deltamax);
+            else
+                delta = obj.clip(delta, -obj.deltamax, obj.deltamax); % (NOT DIFFERENTIABLE)
+            end
             
             % saturate pedal input
-            % delta_dot = obj.clip( delta_dot, -obj.deltadotmax, obj.deltadotmax);
-            % (DEPRECATED - NOT DIFFERENTIABLE) T = obj.clip( T, -1, 1);
-            T = obj.sclip( T, -1, 1);
+            if isa(x,'sym') % switch to differentiable function
+                T = obj.sclip( T, -1, 1);
+            else
+                T = obj.clip( T, -1, 1);    % % (NOT DIFFERENTIABLE) 
+            end
             
             %--------------------------------------------------------------
             % Wheel slip angles (slip ration not being used for now)
@@ -181,9 +186,12 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % Tyre forces
             %--------------------------------------------------------------
             % desired total wheel torque to be applied
-            % (DEPRECATED - NOT DIFFERENTIABLE) totalWForce = T * ( (T>0)*obj.maxmotorWForce+(T<0)*obj.maxbrakeWForce*sign(V_vx) );
-            totalWForce = T*(  (obj.gez(T)).*obj.maxmotorWForce ...
-                              +(obj.lez(T)).*obj.maxbrakeWForce.*obj.ssign(V_vx));        
+            if isa(x,'sym') % switch to differentiable function
+                totalWForce = T*(  (obj.gez(T)).*obj.maxmotorWForce ...
+                              +(obj.lez(T)).*obj.maxbrakeWForce.*obj.ssign(V_vx)); 
+            else
+                totalWForce = T * ( (T>0)*obj.maxmotorWForce+(T<0)*obj.maxbrakeWForce*sign(V_vx) ); % % (NOT DIFFERENTIABLE) 
+            end   
             % longitudinal wheel torque distribution
             zeta = 0.5;
             

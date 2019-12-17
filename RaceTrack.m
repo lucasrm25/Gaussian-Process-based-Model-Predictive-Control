@@ -114,6 +114,7 @@ classdef RaceTrack < handle
         %   of the vehicle 'dist' along the centerline of the track
         %------------------------------------------------------------------
             [~,I] = pdist2(obj.track_c',pos_vehicle','euclidean','Smallest',1);
+            I = mod(I-1, length(obj.dist))+1;
             dist = obj.dist(I);
         end
         
@@ -151,7 +152,7 @@ classdef RaceTrack < handle
             % error in the inertial coordinates
             I_error = pos_c - [I_x;I_y];       
             % error in the T frame [lag_error; contouring_error]
-            T_error = A_TI * I_error;
+            T_error = A_TI' * I_error;
             
             % get lag and countour error (normalized by the road radius).
             % contour_error=+-1, when we are at the border
@@ -160,18 +161,25 @@ classdef RaceTrack < handle
             lag_error      = T_error(1) / R_c;
             countour_error = T_error(2) / R_c;
             
-            % offroad_error ~ 0  if countour_error < 90%
-            % offroad_error > 0  if countour_error > 90%.
-            offroad_error = abs(countour_error) - 1;
-            % apply smooth lower bound saturation (min=0). 
+            % calculate normalized offroad_error (desired is to be < 0)
+            offroad_error = norm(T_error)/R_c - 1;
+            
+            % apply smooth barrier function (offroad_error<0). 
             alpha = 40; % smoothing factor... the smaller the smoother
             offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
+%             gamma = 1000;
+%             lambda = -0.1;
+%             offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
+            
             
             % CHECK SMOOTH TRANSITION
-            % x = -0.5:0.01:0.1
+            % x = -0.5:0.01:0.5
             % % Smooth >=0 boolean function
-            % alpha = 60; % the larger the sharper the clip function
-            % y = (1+exp(-alpha*(x+0.05))).^-1;
+            % alpha = 40; % the larger the sharper the clip function
+            % y = (1+exp(-alpha*(x+0.05))).^-1 + exp(x);
+            % gamma = 10000;
+            % lambda = -0.2;
+            % y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x));
             % figure; hold on; grid on;
             % plot(x,y)
             

@@ -93,11 +93,13 @@ n  = estModel.n;
 m  = estModel.m;
 ne = 0;
 
-N = 10; % prediction horizon
+N = 15; % prediction horizon
+
+lookahead = dt*N
 
 % define cost functions
 fo   = @(t,mu_x,var_x,u,e,r) costFunction(mu_x, var_x, u, track);            % e = track distance
-fend = @(t,mu_x,var_x,e,r)   costFunction(mu_x, var_x, zeros(m,1), track);   % end cost function
+fend = @(t,mu_x,var_x,e,r)   10 * costFunction(mu_x, var_x, zeros(m,1), track);   % end cost function
 
 % define dynamics
 f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
@@ -106,14 +108,14 @@ h  = @(x,u,e) [];
 g  = @(x,u,e) [];
 u_lb = [-deg2rad(30);  % delta >= -10deg
          -1;           % wheel torque gain >= -1
-         5];           % track velocity >= 0
+         1];           % track velocity >= 0
 u_ub = [deg2rad(30);   % delta <=  10 deg
         1;             % wheel torque gain <= 1
-        15];           % track velocity <= 1
+        20];           % track velocity <= 1
 
 % Initialize NMPC object;
 mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
-mpc.tol     = 1e-2;
+mpc.tol     = 1e-6;
 mpc.maxiter = 50;
 
 % TEST NMPC
@@ -172,8 +174,8 @@ d_GP.isActive = false;
 % ---------------------------------------------------------------------
 % Start simulation
 % ---------------------------------------------------------------------
-ki = 230;
-mpc.uguess = out.u_pred_opt(:,:,ki);
+ki = 1;
+% mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
     disp(out.t(k))
@@ -290,8 +292,8 @@ function cost = costFunction(mu_x, var_x, u, track)
     q_l   = 1e3; % penalization of lag error
     q_c   = 1e3; % penalization of contouring error
     q_o   = 1e2; % penalization for orientation error
-    q_d   = 1e0; % reward high track centerline velocites
-    q_r   = 1e8; % penalization when vehicle is outside track
+    q_d   = 1e-1; % reward high track centerline velocites
+    q_r   = 1e6; % penalization when vehicle is outside track
     
     % state and input penalization
     q_st  = 1*1e2; % penalization of steering
