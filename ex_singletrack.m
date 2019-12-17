@@ -115,8 +115,8 @@ u_ub = [deg2rad(30);   % delta <=  10 deg
 
 % Initialize NMPC object;
 mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
-mpc.tol     = 1e-6;
-mpc.maxiter = 50;
+mpc.tol     = 1e-2;
+mpc.maxiter = 30;
 
 % TEST NMPC
 % x0 = 10;
@@ -174,8 +174,8 @@ d_GP.isActive = false;
 % ---------------------------------------------------------------------
 % Start simulation
 % ---------------------------------------------------------------------
-ki = 1;
-% mpc.uguess = out.u_pred_opt(:,:,ki);
+ki = 302;
+mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
     disp(out.t(k))

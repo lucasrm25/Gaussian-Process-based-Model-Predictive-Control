@@ -59,7 +59,7 @@ classdef RaceTrack < handle
     properties
     end
     
-    properties(SetAccess=private)
+    properties(SetAccess=public)
         w
         track_l         % <2,L>: left track coordinates
         track_r         % <2,L>: right track coordinates
@@ -85,9 +85,25 @@ classdef RaceTrack < handle
             obj.track_c = (obj.track_r + obj.track_l)/2;
             
             % parametrize track by traveled distance
-            distFromCenter = sqrt(obj.track_c(1,:).^2 + obj.track_c(2,:).^2);
-            obj.dist = cumsum( abs(conv(distFromCenter,[1+1e-6,-1],'valid')) );
+            trackdisplacements = vecnorm( conv2(obj.track_c,[1,-1],'same') );
+            obj.dist = cumsum( trackdisplacements );
             
+            % remove repeated track points
+            idx_repeated = (trackdisplacements == 0);
+            
+            obj.dist    = obj.dist(:,~idx_repeated);
+            obj.track_l = obj.track_l(:,~idx_repeated);
+            obj.track_r = obj.track_r(:,~idx_repeated);
+            obj.track_c = obj.track_c(:,~idx_repeated);
+            obj.psi_c   = obj.psi_c(:,~idx_repeated);
+            
+%             figure
+%             plot(obj.dist)
+            
+%             distFromCenter = sqrt(obj.track_c(1,:).^2 + obj.track_c(2,:).^2);
+%             obj.dist = cumsum( abs(conv(distFromCenter,[1+1e-10,-1],'same')) );
+            
+            % track width
             obj.w = w;
         end
         
@@ -99,12 +115,15 @@ classdef RaceTrack < handle
         %   track radius R_c
         %------------------------------------------------------------------
             dist = mod(dist,max(obj.dist));
-            idx_dist = interp1(obj.dist,1:numel(obj.dist),dist,'nearest','extrap');
+            % idx_dist = interp1(obj.dist,1:numel(obj.dist),dist,'PCHIP','extrap');
             
-            x_c   = obj.track_c(1,idx_dist);
-            y_c   = obj.track_c(2,idx_dist);
-            pos_c = [x_c;y_c];
-            psi_c = obj.psi_c(1,idx_dist);
+            pos_c = interp1(obj.dist',obj.track_c',dist,'PCHIP','extrap')';
+            psi_c = interp1(obj.dist',obj.psi_c',dist,'PCHIP','extrap');
+            
+%             x_c   = obj.track_c(1,idx_dist);
+%             y_c   = obj.track_c(2,idx_dist);
+%             pos_c = [x_c;y_c];
+%             psi_c = obj.psi_c(1,idx_dist);
             R_c   = obj.w/2;
         end
         
@@ -164,12 +183,12 @@ classdef RaceTrack < handle
             % calculate normalized offroad_error (desired is to be < 0)
             offroad_error = norm(T_error)/R_c - 1;
             
-            % apply smooth barrier function (offroad_error<0). 
-            alpha = 40; % smoothing factor... the smaller the smoother
-            offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
-%             gamma = 1000;
-%             lambda = -0.1;
-%             offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
+            % apply smooth barrier function (we want: offroad_error < 0). 
+%             alpha = 40; % smoothing factor... the smaller the smoother
+%             offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
+            gamma = 1000;
+            lambda = -0.1;
+            offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
             
             
             % CHECK SMOOTH TRANSITION
@@ -290,7 +309,7 @@ classdef RaceTrack < handle
             track_r = [];
             psi_c = [];
             
-            ds = 0.5;
+            ds = 0.2;
             dth = deg2rad(2);
 
             A_z = @(th) [cos(th) -sin(th);
