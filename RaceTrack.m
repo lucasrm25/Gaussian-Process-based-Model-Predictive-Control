@@ -89,7 +89,7 @@ classdef RaceTrack < handle
             obj.dist = cumsum( trackdisplacements );
             
             % remove repeated track points
-            idx_repeated = (trackdisplacements == 0);
+            idx_repeated = (trackdisplacements < eps);
             
             obj.dist    = obj.dist(:,~idx_repeated);
             obj.track_l = obj.track_l(:,~idx_repeated);
@@ -117,8 +117,8 @@ classdef RaceTrack < handle
             dist = mod(dist,max(obj.dist));
             % idx_dist = interp1(obj.dist,1:numel(obj.dist),dist,'PCHIP','extrap');
             
-            pos_c = interp1(obj.dist',obj.track_c',dist,'PCHIP','extrap')';
-            psi_c = interp1(obj.dist',obj.psi_c',dist,'PCHIP','extrap');
+            pos_c = interp1(obj.dist',obj.track_c',dist,'linear','extrap')';
+            psi_c = interp1(obj.dist',obj.psi_c',dist,'linear','extrap');
             
 %             x_c   = obj.track_c(1,idx_dist);
 %             y_c   = obj.track_c(2,idx_dist);
@@ -309,8 +309,8 @@ classdef RaceTrack < handle
             track_r = [];
             psi_c = [];
             
-            ds = 0.2;
-            dth = deg2rad(2);
+            ds = 0.5;
+            dth = deg2rad(5);
 
             A_z = @(th) [cos(th) -sin(th);
                          sin(th)  cos(th)];
@@ -335,9 +335,11 @@ classdef RaceTrack < handle
                     % curvature
                     ang = deg2rad( trackdata{idx,2}{2} );
 
-                    th = 0:dth:abs(ang);
-                    arc   = [cos(th); sin(th)];
+                    % th = 0:dth:abs(ang);
+                    % arc   = [cos(th); sin(th)];
                     if ang > 0
+                        th = dth:dth:ang;
+                        arc   = [cos(th); sin(th)];
                         newtrack_l = arc*(rad-w/2);
                         newtrack_r = arc*(rad+w/2);
                         A = [ 0 1 
@@ -345,9 +347,11 @@ classdef RaceTrack < handle
                         newtrack_l = A*newtrack_l + [0;1]*rad;
                         newtrack_r = A*newtrack_r + [0;1]*rad; 
                     else
+                        th = -dth:-dth:ang;
+                        arc   = [cos(th); sin(th)];
                         newtrack_l = arc*(rad+w/2);
                         newtrack_r = arc*(rad-w/2);
-                        A = [0 1 
+                        A = [0 -1 
                              1 0];
                         newtrack_l = A*newtrack_l + [0;-1]*rad;
                         newtrack_r = A*newtrack_r + [0;-1]*rad; 
@@ -356,6 +360,7 @@ classdef RaceTrack < handle
                     newtrack_l = A_IV * newtrack_l + r_IV;
                     newtrack_r = A_IV * newtrack_r + r_IV;
                     newpsi_c   = th0 + th;
+                    th0 = newpsi_c(end);
 
                     A_IV = A_z(ang) * A_IV;
                     r_IV = 0.5* (newtrack_l(:,end) + newtrack_r(:,end));

@@ -78,7 +78,7 @@ nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0);
 % -------------------------------------------------------------------------
 % Create perception model (in this case is the saved track points)
 % -------------------------------------------------------------------------
-[trackdata, x0, th0, w] = RaceTrack.loadTrack_02();
+[trackdata, x0, th0, w] = RaceTrack.loadTrack_01();
 track = RaceTrack(trackdata, x0, th0, w);
 % TEST: [Xt, Yt, PSIt, Rt] = track.getTrackInfo(1000)
 %       trackAnim = SingleTrackAnimation(track,mpc.N);
@@ -93,7 +93,7 @@ n  = estModel.n;
 m  = estModel.m;
 ne = 0;
 
-N = 15; % prediction horizon
+N = 10; % prediction horizon
 
 lookahead = dt*N
 
@@ -108,10 +108,10 @@ h  = @(x,u,e) [];
 g  = @(x,u,e) [];
 u_lb = [-deg2rad(30);  % delta >= -10deg
          -1;           % wheel torque gain >= -1
-         1];           % track velocity >= 0
+         5];           % track velocity >= 0
 u_ub = [deg2rad(30);   % delta <=  10 deg
         1;             % wheel torque gain <= 1
-        20];           % track velocity <= 1
+        30];           % track velocity <= 1
 
 % Initialize NMPC object;
 mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
@@ -140,7 +140,7 @@ est_n = estModel.n;
 est_m = estModel.m;
 
 % initial state
-x0 = [10;0;0; 15;0;0; 0;];   % true initial state
+x0 = [10;0;0; 10;0;0; 0;];   % true initial state
 x0(end) = track.getTrackDistance(x0(1:2)); % get initial track traveled distance
 
 % change initial guess for mpc solver. Set initial track velocity as
@@ -174,7 +174,7 @@ d_GP.isActive = false;
 % ---------------------------------------------------------------------
 % Start simulation
 % ---------------------------------------------------------------------
-ki = 302;
+ki = 171;
 mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
@@ -289,17 +289,17 @@ trackAnim.recordvideo(fullfile('simresults','trackAnimVideo'),'Motion JPEG AVI')
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 1e3; % penalization of lag error
-    q_c   = 1e3; % penalization of contouring error
-    q_o   = 1e2; % penalization for orientation error
-    q_d   = 1e-1; % reward high track centerline velocites
-    q_r   = 1e6; % penalization when vehicle is outside track
+    q_l   = 1e2; % penalization of lag error
+    q_c   = 1e2; % penalization of contouring error
+    q_o   = 1e1; % penalization for orientation error
+    q_d   = 1e0; % reward high track centerline velocites
+    q_r   = 0*1e3; % penalization when vehicle is outside track
     
     % state and input penalization
-    q_st  = 1*1e2; % penalization of steering
+    q_st  = 1*1e1; % penalization of steering
     q_br  = 0*1e0; % penalization of breaking
     q_acc = 0*1e0; % reward for acceleration
-    q_v   = 0*1e-2; % reward high absolute velocities
+    q_v   = 1*1e0; % reward high absolute velocities
 
     % label inputs and outputs
     I_x        = mu_x(1);  % x position in global coordinates

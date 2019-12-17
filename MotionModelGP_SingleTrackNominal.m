@@ -47,8 +47,8 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         maxbrakeWForce = 6000 % = 2*g*M;  % allow ~ 2g brake
         maxmotorWForce = 6000 % = 1*g*M;  % allow ~ 1g acc
         
-        c_f = 15000 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
-        c_r = 20000 % = 2*g*M/deltamax  % rear coornering stiffness
+        c_f = 10000 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
+        c_r = 14000 % = 2*g*M/deltamax  % rear coornering stiffness
         %******************************************************************
         % PLEASE REMEMBER TO REGENERATE THE GRADIENT FUNCTIONS EVERY TIME A
         % PARAMETER IS CHANGED !!!! SEE FUNCTION generate_grad_functions()

@@ -97,7 +97,7 @@ classdef (Abstract) MotionModelGP < handle
         %       grad_xkp1: <n,n> gradient of xkp1 w.r.t. xk
         %------------------------------------------------------------------
             
-            solver = 'ode1';
+            solver = 'ode4';
             
             if strcmp(solver,'ode1')
                 %-----------------
