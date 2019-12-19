@@ -174,8 +174,8 @@ d_GP.isActive = false;
 % ---------------------------------------------------------------------
 % Start simulation
 % ---------------------------------------------------------------------
-ki = 171;
-mpc.uguess = out.u_pred_opt(:,:,ki);
+ki = 1;
+% mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
     disp(out.t(k))
@@ -293,7 +293,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     q_c   = 1e2; % penalization of contouring error
     q_o   = 1e1; % penalization for orientation error
     q_d   = 1e0; % reward high track centerline velocites
-    q_r   = 0*1e3; % penalization when vehicle is outside track
+    q_r   = 1e3; % penalization when vehicle is outside track
     
     % state and input penalization
     q_st  = 1*1e1; % penalization of steering

@@ -33,7 +33,7 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
         Bd = [0;            % xk+1 = fd(xk,uk) + Bd*d(zk)
               0;
               1;
-              0]
+              1]
         Bz = [0 0 1 0       % z = Bz*x
               0 0 0 1]     
         n = 4               % number of outputs x(t)

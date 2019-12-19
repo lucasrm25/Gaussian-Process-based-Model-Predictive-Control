@@ -69,10 +69,11 @@ classdef (Abstract) MotionModelGP < handle
         %       sigmaw: <1> measurement noise covariance
         %------------------------------------------------------------------
             obj.d = d;
-            obj.w = @(z) deal(zeros(obj.nd,1),eye(obj.nd)*sigmaw);
+            obj.w = @(z) deal(zeros(obj.nd,1),sigmaw);
 
-            assert(size(obj.Bd,1) == obj.n, 'obj.Bd matrix has wrong number of rows')
-            assert(size(obj.Bz,2) == obj.n, 'obj.Bz matrix has wrong number of rows')
+            assert( all(size(sigmaw)==[obj.nd,obj.nd]), sprintf('Variable sigmaw should have dimension %d, but has %d',obj.nd,size(sigmaw,1)))
+            assert(size(obj.Bd,1) == obj.n, sprintf('obj.Bd matrix should have %d rows, but has %d',obj.n,size(obj.Bd,1)))
+            assert(size(obj.Bz,2) == obj.n, sprintf('obj.Bz matrix should have %d columns, but has %d',obj.n,size(obj.Bz,1)))
         end        
         
         function nd = get.nd(obj)
