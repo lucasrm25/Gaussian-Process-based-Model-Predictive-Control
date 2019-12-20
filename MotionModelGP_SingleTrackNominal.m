@@ -1,9 +1,9 @@
-%------------------------------------------------------------------
+%--------------------------------------------------------------------------
 % Programed by: 
 %   - Lucas Rath (lucasrm25@gmail.com)
 %   - 
 %   -
-%------------------------------------------------------------------
+%--------------------------------------------------------------------------
 
 classdef MotionModelGP_SingleTrackNominal < MotionModelGP
 %--------------------------------------------------------------------------
@@ -48,7 +48,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
     end
     
     properties(SetAccess=private)
-        Bd = zeros(7,1);   % xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
+        Bd = [0 0 0 0 1 0 0]';  %[zeros(3); eye(3); 0 0 0];      % xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
         Bz = eye(7)        % z = Bz*x     
         n = 7              % number of outputs x(t)
         m = 3              % number of inputs u(t)

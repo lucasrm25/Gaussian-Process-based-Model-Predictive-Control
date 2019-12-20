@@ -33,7 +33,7 @@ l = 3;
 %
 %       where: zk = Bz*xk,
 %              d ~ N(mean_d(zk),var_d(zk))
-%              w ~ N(0,sigmaw)
+%              w ~ N(0,var_w)
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
@@ -42,25 +42,25 @@ mu_d  = @(z) 0.1 * z(1) - 0.01*z(2) + deg2rad(3);
 var_d = @(z) 0;
 d_true  = @(z) deal(mu_d(z),var_d(z));
 % true measurement noise
-sigmaw = 1e-8;
+var_w = 1e-8;
 % create true dynamics model
-trueModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, d_true, sigmaw);
+trueModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, d_true, var_w);
 
 
 %% Create Estimation Model and Nominal Model
 
 % define model (mean and variance) for estimated disturbance
 % GP hyperparameters
-sigmaf2 = 0.01;         % output variance (std)
-M       = diag([1e-1,1e-1].^2);   % length scale
-sigman2 = 1e-5;         % measurement noise variance
-maxsize = 100;          % maximum number of points in the dictionary
+var_f   = 0.01;                     % output variance (std)
+M       = diag([1e-1,1e-1].^2);     % length scale
+var_n   = var_w;                    % measurement noise variance
+maxsize = 100;                      % maximum number of points in the dictionary
 % create GP object
-d_GP = GP(sigmaf2, sigman2, M, maxsize);
+d_GP = GP(var_f, var_n, M, maxsize);
 
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
-estModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @d_GP.eval, sigmaw);
+estModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @d_GP.eval, var_w);
 
 % create nominal dynamics model (no disturbance)
 nomModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @(z)deal(0,0), 0); 

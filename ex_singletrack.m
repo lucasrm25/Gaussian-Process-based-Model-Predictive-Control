@@ -25,34 +25,34 @@ tf = 50;     % simulation time
 %
 %       where: zk = Bz*xk,
 %              d ~ N(mean_d(zk),var_d(zk))
-%              w ~ N(0,sigmaw)
+%              w ~ N(0,var_w)
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
 % mu_d  = @(z) 0;
 % var_d = @(z) 0;
 d = @(z)deal(0,0);
-sigmaw = 0;
-trueModel = MotionModelGP_SingleTrackNominal(d,sigmaw);
+var_w = (1/3)^2;    %diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
+trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
 
 
 %% Create Estimation Model and Nominal Model
 
 % define model (mean and variance) for estimated disturbance
 % GP hyperparameters
-sigmaf2 = 0.01;         % output variance (std)
-M       = diag([1e-1,1e-1].^2);   % length scale
-sigman2 = 1e-5;         % measurement noise variance
-maxsize = 100;          % maximum number of points in the dictionary
+var_f   = 0.01;                     % output variance (std)
+M       = diag([1e-1,1e-1].^2);     % length scale
+var_n   = var_w;                    % measurement noise variance
+maxsize = 100;                      % maximum number of points in the dictionary
 % create GP object
-d_GP = GP(sigmaf2, sigman2, M, maxsize);
+d_GP = GP(var_f, var_n, M, maxsize);
 
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
-estModel = MotionModelGP_SingleTrackNominal(@d_GP.eval, sigmaw);
+estModel = MotionModelGP_SingleTrackNominal(@d_GP.eval, var_w);
 
 % create nominal dynamics model (no disturbance)
-nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0); 
+nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0*var_w); 
 
 
 %% Controller
@@ -152,20 +152,20 @@ out.t = 0:dt:tf;            % time vector
 kmax = length(out.t)-1;     % steps to simulate
 
 % initialize variables to store simulation results
-out.x          = [x0 NaN(true_n,kmax)];
-out.xhat       = [x0 NaN(est_n, kmax)];
-out.xnom       = [x0 NaN(est_n, kmax)];
-out.u          =     NaN(est_m, kmax);
-out.x_ref      = NaN(2,     mpc.N+1, kmax);
-out.x_pred_opt = NaN(mpc.n, mpc.N+1, kmax);
-out.u_pred_opt = NaN(mpc.m, mpc.N,   kmax);
+out.x              = [x0 NaN(true_n,kmax)];
+out.xhat           = [x0 NaN(est_n, kmax)];
+out.xnom           = [x0 NaN(est_n, kmax)];
+out.u              =     NaN(est_m, kmax);
+out.x_ref          = NaN(2,     mpc.N+1, kmax);
+out.mu_x_pred_opt  = NaN(mpc.n, mpc.N+1, kmax);
+out.var_x_pred_opt = NaN(mpc.n, mpc.n, mpc.N+1, kmax);
+out.u_pred_opt     = NaN(mpc.m, mpc.N,   kmax);
 
 
 % start animation
-trackAnim = SingleTrackAnimation(track,out.x_pred_opt,out.u_pred_opt,out.x_ref);
+trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.u_pred_opt,out.x_ref);
 trackAnim.initTrackAnimation();
 trackAnim.initScope();
-
 
 % deactivate GP evaluation in the prediction
 d_GP.isActive = false;
@@ -196,13 +196,14 @@ for k = ki:kmax
     % ---------------------------------------------------------------------
     % store data and plot
     % ---------------------------------------------------------------------
-    % get optimal state predictions from optimal input and initial state
+    % get optimal state predictions from optimal input and current state
     out.u_pred_opt(:,:,k) = u_opt;
-    out.x_pred_opt(:,:,k) = mpc.predictStateSequence(out.xhat(:,k), zeros(estModel.n), u_opt);
-    % get track distances from optimal state predictions
-    out.x_ref(:,:,k) = track.getTrackInfo(out.x_pred_opt(end,:,k));
+    [out.mu_x_pred_opt(:,:,k),out.var_x_pred_opt(:,:,:,k)] = mpc.predictStateSequence(out.xhat(:,k), zeros(estModel.n), u_opt);
+    % get target track distances from predictions (last state)
+    out.x_ref(:,:,k) = track.getTrackInfo(out.mu_x_pred_opt(end,:,k));
+    
     % update track animation
-    trackAnim.x_pred_opt = out.x_pred_opt;
+    trackAnim.mu_x_pred_opt = out.mu_x_pred_opt;
     trackAnim.u_pred_opt = out.u_pred_opt;
     trackAnim.x_ref      = out.x_ref;
     trackAnim.updateTrackAnimation(k);
@@ -270,7 +271,7 @@ end
 close all;
 
 % start animation
-trackAnim = SingleTrackAnimation(track,out.x_pred_opt,out.u_pred_opt,out.x_ref);
+trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.u_pred_opt,out.x_ref);
 trackAnim.initTrackAnimation();
 % trackAnim.initScope();
 for k = 1:kmax

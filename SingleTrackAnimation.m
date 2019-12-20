@@ -3,7 +3,7 @@ classdef SingleTrackAnimation < handle
     properties
         racetrack @RaceTrack
         
-        x_pred_opt
+        mu_x_pred_opt
         u_pred_opt
         x_ref
 
@@ -11,7 +11,7 @@ classdef SingleTrackAnimation < handle
         h_fig
         h_ltrack
         h_rtrack
-        h_x_pred_opt
+        h_mu_x_pred_opt
         h_x_ref
         h_x_trace
         
@@ -24,9 +24,9 @@ classdef SingleTrackAnimation < handle
     end
     
     methods
-        function obj = SingleTrackAnimation(racetrack, x_pred_opt, u_pred_opt, x_ref)
+        function obj = SingleTrackAnimation(racetrack, mu_x_pred_opt, u_pred_opt, x_ref)
             obj.racetrack  = racetrack;
-            obj.x_pred_opt = x_pred_opt;
+            obj.mu_x_pred_opt = mu_x_pred_opt;
             obj.u_pred_opt = u_pred_opt;
             obj.x_ref      = x_ref;
         end
@@ -69,16 +69,16 @@ classdef SingleTrackAnimation < handle
                         'XDataSource', 'obj.x_ref(1,:,obj.k)',...
                         'YDataSource', 'obj.x_ref(2,:,obj.k)');
                     
-            obj.h_x_pred_opt = patch(obj.x_pred_opt(1,:,k),obj.x_pred_opt(2,:,k),obj.x_pred_opt(3,:,k),...
+            obj.h_mu_x_pred_opt = patch(obj.mu_x_pred_opt(1,:,k),obj.mu_x_pred_opt(2,:,k),obj.mu_x_pred_opt(3,:,k),...
                         'EdgeColor','interp','Marker','o',...
                         'MarkerSize',5,...
                         'MarkerFaceColor','flat',...
                         'DisplayName','Optimal trajectory' );
                     
-            obj.h_x_trace = patch(obj.x_pred_opt(1,1,k),obj.x_pred_opt(2,1,k),obj.x_pred_opt(3,1,k),...
+            obj.h_x_trace = patch(obj.mu_x_pred_opt(1,1,k),obj.mu_x_pred_opt(2,1,k),obj.mu_x_pred_opt(3,1,k),...
                                   'EdgeColor','interp','Marker','none');
   
-            leg = legend([obj.h_x_pred_opt,obj.h_x_ref],'Location','northeast');
+            leg = legend([obj.h_mu_x_pred_opt,obj.h_x_ref],'Location','northeast');
             c = colorbar;
             c.Label.String = 'Vehicle predicted velocity [m/s]';
             caxis([5 25])
@@ -96,9 +96,9 @@ classdef SingleTrackAnimation < handle
                 subplot(4,2,i);
                 p = plot(NaN);
                 if angles(i)
-                    p.YDataSource = sprintf('rad2deg(obj.x_pred_opt(%d,:,obj.k))',i);
+                    p.YDataSource = sprintf('rad2deg(obj.mu_x_pred_opt(%d,:,obj.k))',i);
                 else
-                    p.YDataSource = sprintf('obj.x_pred_opt(%d,:,obj.k)',i);
+                    p.YDataSource = sprintf('obj.mu_x_pred_opt(%d,:,obj.k)',i);
                 end
                 xlabel('Prediction horizon')
                 grid on;
@@ -125,21 +125,21 @@ classdef SingleTrackAnimation < handle
         function updateTrackAnimation(obj,k)
         % -----------------------------------------------------------------
         %   Update track animation with the current time step k. Beware
-        %   that the vectors obj.x_pred_opt and obj.x_ref must have the
+        %   that the vectors obj.mu_x_pred_opt and obj.x_ref must have the
         %   correct values at position (:,:,k)
         % -----------------------------------------------------------------
-            vel = vecnorm(obj.x_pred_opt(3:4,:,k));
+            vel = vecnorm(obj.mu_x_pred_opt(3:4,:,k));
             % update predicted trajectory
-            obj.h_x_pred_opt.XData = [obj.x_pred_opt(1,:,k) 0];
-            obj.h_x_pred_opt.YData = [obj.x_pred_opt(2,:,k) NaN];
-            obj.h_x_pred_opt.CData = [vel min(vel)];
+            obj.h_mu_x_pred_opt.XData = [obj.mu_x_pred_opt(1,:,k) 0];
+            obj.h_mu_x_pred_opt.YData = [obj.mu_x_pred_opt(2,:,k) NaN];
+            obj.h_mu_x_pred_opt.CData = [vel min(vel)];
             % update projected reference
             obj.h_x_ref.XData = obj.x_ref(1,:,k);
             obj.h_x_ref.YData = obj.x_ref(2,:,k);
             % update trace
-            veltrace = vecnorm(squeeze(obj.x_pred_opt(3:4,1,1:k)));
-            obj.h_x_trace.XData    = [squeeze(obj.x_pred_opt(1,1,1:k))' NaN];
-            obj.h_x_trace.YData = [squeeze(obj.x_pred_opt(2,1,1:k))' NaN];
+            veltrace = vecnorm(squeeze(obj.mu_x_pred_opt(3:4,1,1:k)));
+            obj.h_x_trace.XData    = [squeeze(obj.mu_x_pred_opt(1,1,1:k))' NaN];
+            obj.h_x_trace.YData = [squeeze(obj.mu_x_pred_opt(2,1,1:k))' NaN];
             obj.h_x_trace.CData = [veltrace NaN];
             drawnow
         end
@@ -147,7 +147,7 @@ classdef SingleTrackAnimation < handle
         function updateScope(obj,k)
         % -----------------------------------------------------------------
         %   Update scope with signals from the current time step k. Beware
-        %   that the vectors obj.x_pred_opt and obj.u_pred_opt must have 
+        %   that the vectors obj.mu_x_pred_opt and obj.u_pred_opt must have 
         %   the correct values at position (:,:,k)
         % -----------------------------------------------------------------
             obj.k = k;
@@ -163,7 +163,7 @@ classdef SingleTrackAnimation < handle
             % video rec
             videoframes = struct('cdata',[],'colormap',[]);
             obj.initTrackAnimation();
-            for k=1: 200 %size(obj.x_pred_opt,3)
+            for k=1: 200 %size(obj.mu_x_pred_opt,3)
                 obj.updateTrackAnimation(k);
                 % ax = gca(obj.h_fig);
                 % ax.Units = 'pixels';

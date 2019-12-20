@@ -26,8 +26,8 @@ classdef GP < handle
     
     properties
         % kernel parameters (one for each output dimension)
-        sigmaf2 % <p> signal/output covariance
-        sigman2 % <p> evaluation noise covariance
+        var_f % <p> signal/output covariance
+        var_n % <p> evaluation noise covariance
         M       % <n,n,p> length scale covariance
         
         isActive = true
@@ -54,21 +54,23 @@ classdef GP < handle
     end
     
     methods
-        function obj = GP(sigmaf2, sigman2, M, maxsize)
+        function obj = GP(var_f, var_n, M, maxsize)
         %------------------------------------------------------------------
         % GP constructor
         % args:
-        %   sigmaf:  <p> signal/output covariance
-        %   sigman2: <p> evaluation noise covariance
+        %   var_f:   <p>     signal/output covariance
+        %   var_n:   <p>     evaluation noise covariance
         %   lambda:  <n,n,p> length scale covariance matrix
-        %   maxsize: <1> maximum dictionary size
+        %   maxsize: <1>     maximum dictionary size
         %------------------------------------------------------------------
             obj.X       = [];
             obj.Y       = [];
-            obj.sigmaf2 = sigmaf2;
-            obj.sigman2 = sigman2;
+            obj.var_f   = var_f;
+            obj.var_n   = var_n;
             obj.M       = M;
             obj.Nmax    = maxsize;
+            
+            assert(size(var_n,1)==1, 'Not implemented error!! For now GP output dimension must be equal 1.');
         end
         
         function bool = isfull(obj)
@@ -112,7 +114,7 @@ classdef GP < handle
         function kernel = K(obj,x1,x2)
         %------------------------------------------------------------------
         % SEQ kernel function: cov[f(x1),f(x2)]
-        %     k(x1,x2) = sigmaf2 * exp( 0.5 * ||x1-x2||^2_M )
+        %     k(x1,x2) = var_f * exp( 0.5 * ||x1-x2||^2_M )
         %
         % args:
         %   x1: <n,N1>
@@ -122,7 +124,7 @@ classdef GP < handle
         %------------------------------------------------------------------
             D = pdist2(x1',x2','mahalanobis',obj.M).^2;
             %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
-            kernel = obj.sigmaf2 * exp( -0.5 * D );
+            kernel = obj.var_f * exp( -0.5 * D );
         end
         
         
@@ -134,15 +136,15 @@ classdef GP < handle
             if obj.isOutdated
                 % store cholesky L and alpha matrices
                 I = eye(obj.N);
-                obj.L = chol( obj.K(obj.X,obj.X) + obj.sigman2 * I ,'lower');
-                % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.sigman2*I) ) < 1e-12
+                obj.L = chol( obj.K(obj.X,obj.X) + obj.var_n * I ,'lower');
+                % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
                 obj.alpha = obj.L'\(obj.L\(obj.Y-obj.mu(obj.X)));
                 
                 %-------------------- (DEPRECATED) ------------------------ 
                 % % SLOW BUT RETURNS THE FULL COVARIANCE MATRIX INSTEAD OF ONLY THE DIAGONAL (VAR)
                 % % precompute inv(K(X,X) + sigman^2*I)
                 % I = eye(obj.N);
-                % obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.sigman2 * I );
+                % obj.inv_KXX_sn = inv( obj.K(obj.X,obj.X) + obj.var_n * I );
                 %-------------------- (DEPRECATED) ------------------------
                 
                 % set flag

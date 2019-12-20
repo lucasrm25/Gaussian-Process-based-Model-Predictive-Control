@@ -17,7 +17,7 @@ classdef (Abstract) MotionModelGP < handle
 %
 %       where: zk = Bz*xk,
 %              d ~ N(mean_d(zk),var_d(zk))
-%              w ~ N(0,sigmaw)
+%              w ~ N(0,var_w)
 %   
 %--------------------------------------------------------------------------
 
@@ -29,9 +29,10 @@ classdef (Abstract) MotionModelGP < handle
     end
     
     properties (SetAccess=private)
-        d  % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
-        w  % [E[w] , Var[w]] = w: measurement noise
-        % this properties are obtained from Set methods
+        d        % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
+        var_w  % measurement noise covariance matrix. w ~ N(0,var_w)
+        
+        % this properties are obtained from Get methods
         nd  % output dimension of du(z)
         nz  % dimension of z(t)
     end
@@ -60,21 +61,21 @@ classdef (Abstract) MotionModelGP < handle
     end
     
     methods
-        function obj = MotionModelGP (d, sigmaw)
+        function obj = MotionModelGP (d, var_w)
         %------------------------------------------------------------------
         %   object constructor
         %   args:
         %       d: evaluates nonlinear motion model mean and covariance 
         %          function [mean_d, var_d] = d(z),   with z = Bz*x
-        %       sigmaw: <1> measurement noise covariance
+        %       var_w: <1> measurement noise covariance
         %------------------------------------------------------------------
             obj.d = d;
-            obj.w = @(z) deal(zeros(obj.nd,1),sigmaw);
+            obj.var_w = var_w;
 
-            assert( all(size(sigmaw)==[obj.nd,obj.nd]), sprintf('Variable sigmaw should have dimension %d, but has %d',obj.nd,size(sigmaw,1)))
+            assert( all(size(var_w)==[obj.nd,obj.nd]), sprintf('Variable var_w should have dimension %d, but has %d',obj.nd,size(var_w,1)))
             assert(size(obj.Bd,1) == obj.n, sprintf('obj.Bd matrix should have %d rows, but has %d',obj.n,size(obj.Bd,1)))
-            assert(size(obj.Bz,2) == obj.n, sprintf('obj.Bz matrix should have %d columns, but has %d',obj.n,size(obj.Bz,1)))
-        end        
+            assert(size(obj.Bz,2) == obj.n, sprintf('obj.Bz matrix should have %d columns, but has %d',obj.n,size(obj.Bz,1)))        
+        end
         
         function nd = get.nd(obj)
         %------------------------------------------------------------------
@@ -161,13 +162,17 @@ classdef (Abstract) MotionModelGP < handle
             % evaluate disturbance
             z = obj.Bz * mu_xk;
             [mu_d, var_d] = obj.d(z);
-            [mu_w, var_w] = obj.w(z);
             
-            % a) Mean Equivalent Approximation:
-            var_x_d_w = blkdiag(var_xk, var_d, var_w);
+            % A) Mean Equivalent Approximation:
+            var_x_d_w = blkdiag(var_xk, var_d, obj.var_w);
+            
+            % B) Taylor Approximation
+            %--------------------------------------------------------------
+            %  TODO
+            %--------------------------------------------------------------
             
             % predict mean and variance (Extended Kalman Filter)
-            mu_xkp1  = fd  + obj.Bd * ( mu_d + mu_w );
+            mu_xkp1  = fd  + obj.Bd * ( mu_d );
             var_xkp1 = grad_xkp1' * var_x_d_w * grad_xkp1; % zeros(obj.n);
         end
         
