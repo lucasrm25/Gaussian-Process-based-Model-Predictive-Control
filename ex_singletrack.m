@@ -31,8 +31,11 @@ tf = 50;     % simulation time
 % define model (mean and variance) for true disturbance
 % mu_d  = @(z) 0;
 % var_d = @(z) 0;
-d = @(z)deal(0,0);
-var_w = (1/3)^2;    %diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
+d       = @(z)deal(0,0);
+var_w   = (1/3)^2;    %diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
+
+% create true dynamics model
+%   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
 trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
 
 
@@ -48,10 +51,12 @@ maxsize = 100;                      % maximum number of points in the dictionary
 d_GP = GP(var_f, var_n, M, maxsize);
 
 
-% create estimation dynamics model (disturbance is the Gaussian Process GP)
+% create adaptive dynamics model (disturbance is the Gaussian Process GP)
+%   xk+1 = fd_nominal(xk,uk) + Bd * ( d_GP(zk) + w )
 estModel = MotionModelGP_SingleTrackNominal(@d_GP.eval, var_w);
 
 % create nominal dynamics model (no disturbance)
+%   xk+1 = fd_nominal(xk,uk)
 nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0*var_w); 
 
 
@@ -95,7 +100,8 @@ ne = 0;
 
 N = 10; % prediction horizon
 
-lookahead = dt*N
+lookahead = dt*N;
+fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
 
 % define cost functions
 fo   = @(t,mu_x,var_x,u,e,r) costFunction(mu_x, var_x, u, track);            % e = track distance
@@ -152,18 +158,18 @@ out.t = 0:dt:tf;            % time vector
 kmax = length(out.t)-1;     % steps to simulate
 
 % initialize variables to store simulation results
-out.x              = [x0 NaN(true_n,kmax)];
-out.xhat           = [x0 NaN(est_n, kmax)];
-out.xnom           = [x0 NaN(est_n, kmax)];
-out.u              =     NaN(est_m, kmax);
-out.x_ref          = NaN(2,     mpc.N+1, kmax);
-out.mu_x_pred_opt  = NaN(mpc.n, mpc.N+1, kmax);
-out.var_x_pred_opt = NaN(mpc.n, mpc.n, mpc.N+1, kmax);
-out.u_pred_opt     = NaN(mpc.m, mpc.N,   kmax);
+out.x              = [x0 NaN(true_n,kmax)];             % true states
+out.xhat           = [x0 NaN(est_n, kmax)];             % state estimation
+out.xnom           = [x0 NaN(est_n, kmax)];             % predicted nominal state
+out.u              =     NaN(est_m, kmax);              % applied input
+out.x_ref          = NaN(2,     mpc.N+1, kmax);         % optimized reference trajectory
+out.mu_x_pred_opt  = NaN(mpc.n, mpc.N+1, kmax);         % mean of optimal state prediction sequence
+out.var_x_pred_opt = NaN(mpc.n, mpc.n, mpc.N+1, kmax);  % variance of optimal state prediction sequence
+out.u_pred_opt     = NaN(mpc.m, mpc.N,   kmax);         % open-loop optimal input prediction
 
 
 % start animation
-trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.u_pred_opt,out.x_ref);
+trackAnim = SingleTrackAnimation(track, out.mu_x_pred_opt, out.var_x_pred_opt, out.u_pred_opt, out.x_ref);
 trackAnim.initTrackAnimation();
 trackAnim.initScope();
 
@@ -194,7 +200,8 @@ for k = ki:kmax
     sprintf('\nSteering angle: %d\nTorque gain: %.1f\nTrack vel: %.1f\n',rad2deg(out.u(1,k)),out.u(2,k),out.u(3,k))
 
     % ---------------------------------------------------------------------
-    % store data and plot
+    % Calculate predicted trajectory from optimal open-loop input sequence 
+    % and calculate optimized reference trajectory for each prediction
     % ---------------------------------------------------------------------
     % get optimal state predictions from optimal input and current state
     out.u_pred_opt(:,:,k) = u_opt;
@@ -202,22 +209,25 @@ for k = ki:kmax
     % get target track distances from predictions (last state)
     out.x_ref(:,:,k) = track.getTrackInfo(out.mu_x_pred_opt(end,:,k));
     
-    % update track animation
-    trackAnim.mu_x_pred_opt = out.mu_x_pred_opt;
+    % ---------------------------------------------------------------------
+    % update race animation and scopes
+    % ---------------------------------------------------------------------
+    trackAnim.mu_x_pred_opt  = out.mu_x_pred_opt;
+    trackAnim.var_x_pred_opt = out.var_x_pred_opt;
     trackAnim.u_pred_opt = out.u_pred_opt;
     trackAnim.x_ref      = out.x_ref;
     trackAnim.updateTrackAnimation(k);
     trackAnim.updateScope(k);
     
     % ---------------------------------------------------------------------
-    % simulate real model
+    % Simulate real model
     % ---------------------------------------------------------------------
     [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,k),zeros(trueModel.n),out.u(:,k),dt);
     out.x(:,k+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
     
     % ---------------------------------------------------------------------
-    % measure data
+    % Measure data
     % ---------------------------------------------------------------------
     out.xhat(:,k+1) = out.x(:,k+1); % perfect observer
     % get traveled distance, given vehicle coordinates (this is the 11th
@@ -226,7 +236,7 @@ for k = ki:kmax
     
     
     % ---------------------------------------------------------------------
-    % Safety
+    % Safety - Stop simulation in case vehicle is completely unstable
     % ---------------------------------------------------------------------
     V_vx = out.xhat(4,k+1);
     V_vy = out.xhat(5,k+1);
@@ -245,7 +255,7 @@ for k = ki:kmax
     
     
     % ---------------------------------------------------------------------
-    % add data to GP model
+    % Add data to GP model
     % ---------------------------------------------------------------------
     % if mod(k-1,1)==0
     %     % calculate disturbance (error between measured and nominal)
@@ -271,7 +281,7 @@ end
 close all;
 
 % start animation
-trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.u_pred_opt,out.x_ref);
+trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.var_x_pred_opt, out.u_pred_opt,out.x_ref);
 trackAnim.initTrackAnimation();
 % trackAnim.initScope();
 for k = 1:kmax
@@ -331,7 +341,23 @@ function cost = costFunction(mu_x, var_x, u, track)
     % ---------------------------------------------------------------------
     % cost for being outside track
     % ---------------------------------------------------------------------
-    % is the vehicle outside the track?
+    % % apply smooth barrier function (we want: offroad_error < 0). 
+    % alpha = 40; % smoothing factor... the smaller the smoother
+    % offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
+    gamma = 1000;
+    lambda = -0.1;
+    offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
+
+    % CHECK SMOOTH TRANSITION
+    % x = -0.5:0.01:0.5
+    % % Smooth >=0 boolean function
+    % alpha = 40; % the larger the sharper the clip function
+    % y = (1+exp(-alpha*(x+0.05))).^-1 + exp(x);
+    % gamma = 10000;
+    % lambda = -0.2;
+    % y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x));
+    % figure; hold on; grid on;
+    % plot(x,y)
     cost_outside = q_r * offroad_error^2;
     
     % ---------------------------------------------------------------------
@@ -354,12 +380,12 @@ function cost = costFunction(mu_x, var_x, u, track)
     % ---------------------------------------------------------------------
     cost = cost_contour + cost_lag + cost_orientation + cost_dist + cost_outside + cost_inputs + cost_vel;
     
-% fprintf('Contribution to cost:\n')
-% fprintf('   cost_contour:%.1f\n',cost_contour/cost*100);
-% fprintf('   cost_lag:%.1f\n',cost_lag/cost*100);
-% fprintf('   cost_orientation:%.1f\n',cost_orientation/cost*100);
-% fprintf('   cost_dist:%.1f\n',cost_dist/cost*100);
-% fprintf('   cost_outside:%.1f\n',cost_outside/cost*100);
-% fprintf('   cost_inputs:%.1f\n',cost_inputs/cost*100);
-% fprintf('   cost_vel:%.1f\n',cost_vel/cost*100);
+    % fprintf('Contribution to cost:\n')
+    % fprintf('   cost_contour:%.1f\n',cost_contour/cost*100);
+    % fprintf('   cost_lag:%.1f\n',cost_lag/cost*100);
+    % fprintf('   cost_orientation:%.1f\n',cost_orientation/cost*100);
+    % fprintf('   cost_dist:%.1f\n',cost_dist/cost*100);
+    % fprintf('   cost_outside:%.1f\n',cost_outside/cost*100);
+    % fprintf('   cost_inputs:%.1f\n',cost_inputs/cost*100);
+    % fprintf('   cost_vel:%.1f\n',cost_vel/cost*100);
 end

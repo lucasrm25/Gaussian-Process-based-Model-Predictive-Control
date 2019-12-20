@@ -1,9 +1,12 @@
 classdef SingleTrackAnimation < handle
     
     properties
+        % object that contains track coordinates
         racetrack @RaceTrack
         
+        % variables that contain history of vehicle states and inputs to be ploted
         mu_x_pred_opt
+        var_x_pred_opt
         u_pred_opt
         x_ref
 
@@ -12,6 +15,7 @@ classdef SingleTrackAnimation < handle
         h_ltrack
         h_rtrack
         h_mu_x_pred_opt
+        h_var_x_pred_opt
         h_x_ref
         h_x_trace
         
@@ -19,16 +23,24 @@ classdef SingleTrackAnimation < handle
         h_scopex
         h_scopeu
         
-        % current time step
-        k
+        % covariance ellipse properties
+        ell_npoints = 30     % number of points to make an ellipse
+        ell_level = 2        % plot ell_level*sigma ellipse curves
+        
+        k   % current time step
+        N   % horizon length
     end
     
     methods
-        function obj = SingleTrackAnimation(racetrack, mu_x_pred_opt, u_pred_opt, x_ref)
-            obj.racetrack  = racetrack;
-            obj.mu_x_pred_opt = mu_x_pred_opt;
-            obj.u_pred_opt = u_pred_opt;
-            obj.x_ref      = x_ref;
+        function obj = SingleTrackAnimation(racetrack, mu_x_pred_opt, var_x_pred_opt, u_pred_opt, x_ref)
+            obj.racetrack       = racetrack;
+            obj.mu_x_pred_opt   = mu_x_pred_opt;
+            obj.var_x_pred_opt  = var_x_pred_opt;
+            obj.u_pred_opt      = u_pred_opt;
+            obj.x_ref           = x_ref;
+            
+            % get horizon length from inputs  
+            obj.N = size(obj.mu_x_pred_opt,2);  
         end
         
         function initTrackAnimation(obj)
@@ -61,6 +73,7 @@ classdef SingleTrackAnimation < handle
             % -------------------------------------------------------------
             k = 1;
             
+            % reference trajectory
             obj.h_x_ref = plot(NaN,NaN,...
                         '-','LineWidth',1.0, 'Marker','o',...
                         'MarkerFaceColor',[0.5 0.5 0.5],'MarkerEdgeColor','k', 'Color','k',...
@@ -68,16 +81,24 @@ classdef SingleTrackAnimation < handle
                         'DisplayName','Projected optimal trajectory',...
                         'XDataSource', 'obj.x_ref(1,:,obj.k)',...
                         'YDataSource', 'obj.x_ref(2,:,obj.k)');
-                    
+
+            % optimal prediction means
             obj.h_mu_x_pred_opt = patch(obj.mu_x_pred_opt(1,:,k),obj.mu_x_pred_opt(2,:,k),obj.mu_x_pred_opt(3,:,k),...
                         'EdgeColor','interp','Marker','o',...
                         'MarkerSize',5,...
                         'MarkerFaceColor','flat',...
                         'DisplayName','Optimal trajectory' );
                     
+            % obj.h_var_x_pred_opt = 
+            ell = sigmaEllipse2D([0;0], eye(2), obj.ell_level, obj.ell_npoints);
+            for i=1:obj.N
+                obj.h_var_x_pred_opt{i} = patch('Faces',1:obj.ell_npoints,'Vertices',ell','FaceColor',[1 0 0],'FaceAlpha',0.3,'LineStyle', 'none');
+            end 
+                    
+            % trace vehicle path
             obj.h_x_trace = patch(obj.mu_x_pred_opt(1,1,k),obj.mu_x_pred_opt(2,1,k),obj.mu_x_pred_opt(3,1,k),...
-                                  'EdgeColor','interp','Marker','none');
-  
+                                  'EdgeColor','interp','Marker','none');      
+                              
             leg = legend([obj.h_mu_x_pred_opt,obj.h_x_ref],'Location','northeast');
             c = colorbar;
             c.Label.String = 'Vehicle predicted velocity [m/s]';
@@ -133,12 +154,26 @@ classdef SingleTrackAnimation < handle
             obj.h_mu_x_pred_opt.XData = [obj.mu_x_pred_opt(1,:,k) 0];
             obj.h_mu_x_pred_opt.YData = [obj.mu_x_pred_opt(2,:,k) NaN];
             obj.h_mu_x_pred_opt.CData = [vel min(vel)];
+            
+            % update state covariances
+            for i=1:obj.N
+                mean = obj.mu_x_pred_opt(1:2,i,k);
+                var  = obj.var_x_pred_opt(1:2,1:2,i,k);
+                if all(svd(var)>1e-6)
+                    ell = sigmaEllipse2D(mean, var, obj.ell_level, obj.ell_npoints);
+                else
+                    ell = repmat(mean,1,obj.ell_npoints);
+                end
+                obj.h_var_x_pred_opt{i}.Vertices = ell';
+            end
+            
             % update projected reference
             obj.h_x_ref.XData = obj.x_ref(1,:,k);
             obj.h_x_ref.YData = obj.x_ref(2,:,k);
+            
             % update trace
             veltrace = vecnorm(squeeze(obj.mu_x_pred_opt(3:4,1,1:k)));
-            obj.h_x_trace.XData    = [squeeze(obj.mu_x_pred_opt(1,1,1:k))' NaN];
+            obj.h_x_trace.XData = [squeeze(obj.mu_x_pred_opt(1,1,1:k))' NaN];
             obj.h_x_trace.YData = [squeeze(obj.mu_x_pred_opt(2,1,1:k))' NaN];
             obj.h_x_trace.CData = [veltrace NaN];
             drawnow

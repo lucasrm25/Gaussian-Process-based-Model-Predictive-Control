@@ -143,8 +143,9 @@ classdef RaceTrack < handle
         %   outs: 
         %     - lag_error, countour_error: lag and countour errors from a 
         %       track position that is given by the traveled distance along 
-        %       the centerline. 
-        %     - offroad_error: how far the vehicle is from the track borders
+        %       the centerline. Normalized by track radius at that point
+        %     - offroad_error: \in [0 Inf] how far the vehicle is from the
+        %       track borders. Normalized by track radius at that point
         %     - orientation_error \in [0 1], where 0 means that vehicle and
         %       track have the same orientation and 1 mean they are orthogonal
         %
@@ -152,7 +153,6 @@ classdef RaceTrack < handle
         %   - positive lag_error means that the vehicle is lagging behind
         %   - positive countour_error means the vehicle is to the right size
         %     of the track
-        %   - 
         %------------------------------------------------------------------    
             
             % get information (x,y,track radius and track orientation) of the point 
@@ -182,25 +182,6 @@ classdef RaceTrack < handle
             
             % calculate normalized offroad_error (desired is to be < 0)
             offroad_error = norm(T_error)/R_c - 1;
-            
-            % apply smooth barrier function (we want: offroad_error < 0). 
-%             alpha = 40; % smoothing factor... the smaller the smoother
-%             offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
-            gamma = 1000;
-            lambda = -0.1;
-            offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
-            
-            
-            % CHECK SMOOTH TRANSITION
-            % x = -0.5:0.01:0.5
-            % % Smooth >=0 boolean function
-            % alpha = 40; % the larger the sharper the clip function
-            % y = (1+exp(-alpha*(x+0.05))).^-1 + exp(x);
-            % gamma = 10000;
-            % lambda = -0.2;
-            % y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x));
-            % figure; hold on; grid on;
-            % plot(x,y)
             
             % calculate orientation error (\in [0 1])
             orientation_error = 1 - abs([cos(psi_c); sin(psi_c)]' * [cos(psi_vehicle); sin(psi_vehicle)]);  
