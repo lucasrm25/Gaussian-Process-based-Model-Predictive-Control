@@ -75,12 +75,23 @@ classdef RaceTrack2 < handle
         %       trackdata: sequence of track instructions
         %------------------------------------------------------------------
             [obj.track_l, obj.track_r, obj.psi_c] = obj.generateTrackPoints(trackdata, x0, th0, w);
+           
             obj.track_c = (obj.track_r + obj.track_l)/2;
+            [~, ia, ic]=unique(obj.track_c','setOrder','stable','row');
+            obj.track_c=obj.track_c(ia)';
+            obj.track_r=obj.track_r(:,ia);
+            obj.track_l=obj.track_l(:,ia);
+            obj.psi_c = obj.psi_c(ia);
             
             % parametrize track by traveled distance
             distFromCenter = sqrt(obj.track_c(1,:).^2 + obj.track_c(2,:).^2);
-            obj.dist = cumsum( abs(conv(distFromCenter,[1+1e-6,-1],'valid')) );
+            obj.dist = cumsum(abs(conv(distFromCenter,[1+1e-15,-1],'valid')) );
             
+            dist=zeros(length(distFromCenter),1);
+            for i=2:length(distFromCenter)
+                dist(i)=dist(i-1)+sqrt((obj.track_c(1,i)-obj.track_c(1,i-1)).^2 + (obj.track_c(2,i)-obj.track_c(2,i-1)).^2 );
+            end
+            obj.dist=dist';
             obj.w = w;
         end
         
@@ -107,8 +118,8 @@ classdef RaceTrack2 < handle
         %   of the vehicle 'dist' along the centerline of the track
         %------------------------------------------------------------------
             [~,I] = pdist2(obj.track_c',pos_vehicle','euclidean','Smallest',1);
-            I = mod( I , length(obj.dist)) +1;
-            dist = obj.dist(I)
+            I = mod(I-1, length(obj.dist)) +1;
+            dist = obj.dist(I);
         end
         
         function [lag_error, countour_error, offroad_error] = getVehicleDeviation(obj, pos_vehicle, track_dist)   
@@ -150,6 +161,7 @@ classdef RaceTrack2 < handle
             % offroad_error is zero if vehicle is inside the track.
             % Otherwise, we calculate the distance to the track border
             offroad_error = (abs(countour_error) > R_c) * (abs(countour_error) - R_c);
+            offroad_error = (abs(countour_error) > R_c) * (100+100*(abs(countour_error) - R_c));
         end
         
         function h_fig = plotTrack(obj)
@@ -282,6 +294,8 @@ classdef RaceTrack2 < handle
                              -1 0];
                         newtrack_l = A*newtrack_l + [0;1]*rad;
                         newtrack_r = A*newtrack_r + [0;1]*rad; 
+                        newpsi_c   = th0 - th;
+                        th0 = th0 - th(end);
                     else
                         newtrack_l = arc*(rad+w/2);
                         newtrack_r = arc*(rad-w/2);
@@ -289,21 +303,33 @@ classdef RaceTrack2 < handle
                              1 0];
                         newtrack_l = A*newtrack_l + [0;-1]*rad;
                         newtrack_r = A*newtrack_r + [0;-1]*rad; 
+                        newpsi_c   = th0 + th;
+                        th0 = th0 +th(end);
                     end
-
+                    
                     newtrack_l = A_IV * newtrack_l + r_IV;
                     newtrack_r = A_IV * newtrack_r + r_IV;
-                    newpsi_c   = th0 + th;
+%                     newpsi_c   = th0 + th;
 
                     A_IV = A_z(ang) * A_IV;
                     r_IV = 0.5* (newtrack_l(:,end) + newtrack_r(:,end));
+%                     th0 = th0 +th(end);
                 else
                     error('Not implemented');
                 end
+                % bound psi
+%                  for i =1:length(newpsi_c)
+%                      if rem(newpsi_c(i)/(pi/2),2)>0.0001 & mod(newpsi_c(i),pi/2)<0.0001
+%                         newpsi_c(i)=pi/2;
+%                      else
+%                          newpsi_c(i) = mod(newpsi_c(i),pi/2);
+%                      end
+%                  end
 
                 track_l = [track_l newtrack_l];
                 track_r = [track_r newtrack_r];
                 psi_c   = [psi_c newpsi_c];
+                
             end
         end
     end

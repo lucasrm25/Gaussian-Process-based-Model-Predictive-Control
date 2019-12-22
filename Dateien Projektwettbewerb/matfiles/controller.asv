@@ -116,12 +116,17 @@ U = mpc.optimize(X, 0, 0);
 
 X(1:3)
 % r(3234)
-
+vehicle_pos = X(1:2);
+vehicle_dist = trackr.getTrackDistance(vehicle_pos);
+[lag_error, countour_error, offroad_error] = trackr.getVehicleDeviation(vehicle_pos, vehicle_dist)
+targetTrackDist = vehicle_dist +2;
+[lag_error2, countour_error2, offroad_error2] = trackr.getVehicleDeviation(vehicle_pos, targetTrackDist);
+[pos_c, psi_c, R_c] = trackr.getTrackInfo(targetTrackDist);
 
 %% stop condition
-if X(1)<0 & X(1)>-5 & X(2)<0 & X(2)>-1
-    return
-end
+% if X(1)<0 & X(1)>-5 & X(2)<0 & X(2)>-1
+%     return
+% end
 
 
 %%
@@ -129,8 +134,9 @@ end
 
 
 % U=[delta G F_b zeta phi]; % input vector
-
-
+%% Plot
+scatter(X(1),X(2))
+drawnow()
 
 
 end
@@ -143,9 +149,14 @@ function cost_1 = costfunction(t,mu_x,var_x,u, r)
       vehicle_dist = trackr.getTrackDistance(vehicle_pos);
 
   % what is the lag and contour error for 2 meters ahead (along the track centerline)?
-      targetTrackDist = vehicle_dist + 5;
-      [lag_error, countour_error, offroad_error] = trackr.getVehicleDeviation(vehicle_pos, targetTrackDist);
+      targetTrackDist = vehicle_dist + 2;
+      idx_dist = interp1(trackr.dist,1:numel(trackr.dist),targetTrackDist,'nearest','extrap');
+      x_c   = trackr.track_c(1,idx_dist);
+      y_c   = trackr.track_c(2,idx_dist);
       
-      cost_1 = 10^2 * lag_error^2 + 10^2 * offroad_error^2 - mu_x(3);
-      
+      [lag_error, countour_error,~] = trackr.getVehicleDeviation(vehicle_pos, targetTrackDist);
+      [~, ~, offroad_error] = trackr.getVehicleDeviation(vehicle_pos, vehicle_dist);
+       
+      cost_1 =  10^6 * lag_error^2 + 5*10 * countour_error^2  + 10^10 * offroad_error^2-1*mu_x(3);%+(x_c-mu_x(1))^2+(y_c-mu_x(2))^2;%1*10^2 * countour_error^2
+      %cost_1 = 10^6 * lag_error^2  +5*10 * countour_error^2 + 10^5 * offroad_error^2-5*mu_x(3);%+(x_c-mu_x(1))^2+(y_c-mu_x(2))^2;%1*10^2 * countour_error^2
 end
