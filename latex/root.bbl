@@ -5,4 +5,23 @@ R.~Brockett.
 \newblock The early days of geometric nonlinear control.
 \newblock {\em Automatica}, 50:2203--2224, 2014.
 
+\bibitem{kabzan2019learning}
+Juraj Kabzan, Lukas Hewing, Alexander Liniger, and Melanie~N Zeilinger.
+\newblock Learning-based model predictive control for autonomous racing.
+\newblock {\em IEEE Robotics and Automation Letters}, 4(4):3363--3370, 2019.
+
+\bibitem{kocijan2004gaussian}
+Ju{\v{s}} Kocijan, Roderick Murray-Smith, Carl~Edward Rasmussen, and Agathe
+  Girard.
+\newblock Gaussian process model based predictive control.
+\newblock In {\em Proceedings of the 2004 American control conference},
+  volume~3, pages 2214--2219. IEEE, 2004.
+
+\bibitem{ostafew2014learning}
+Chris~J Ostafew, Angela~P Schoellig, and Timothy~D Barfoot.
+\newblock Learning-based nonlinear model predictive control to improve
+  vision-based mobile robot path-tracking in challenging outdoor environments.
+\newblock In {\em 2014 IEEE International Conference on Robotics and Automation
+  (ICRA)}, pages 4029--4036. IEEE, 2014.
+
 \end{thebibliography}

@@ -69,7 +69,10 @@ read the whole paper.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{INTRODUCTION}
-
+Model predictive control (MPC) is a popular control strategy which uses a dynamic plant model to obtain the control input that optimizes future reactions of the plant~\cite{kocijan2004gaussian}. The performance of MPC depends highly on how well the model captures the dynamics of the plant~\cite{kabzan2019learning}. But the identification of an \textit{a priori} model can be challenging and the dynamics of the plant could also change during the application~\cite{kabzan2019learning,ostafew2014learning}. Therefore, a simple and fixed nominal model of the plant can be used in combination with a learned disturbance model. The disturbance model represents the error between the observed behaviour of the plant and the behaviour of the nominal model~\cite{ostafew2014learning}. 
+ \\
+In this report we present the results of our project within the course Statistical Learning and Stochastic Control. First, our literature research on GP-based MPC is summarized. Then a short introduction to the theory of MPC and GPs is given. Later, two examples which's  implementation was part of the project are explained.\\
+  \\
 Introduce topic and describe motivation and relevance of problem/topic.
 
 In this paper we give an introduction to the results presented in paper(s) \cite{Bro-14}.
@@ -83,6 +86,7 @@ Notation. Define notation.
 Necessary background in nonlinear systems and control (material beyond what was
 considered in the course.)
 
+Model predictive control (MPC), receding  horizon  control or moving horizon control are all names for a control strategy which
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MAIN RESULTS}
@@ -127,7 +131,7 @@ Appendixes should appear before the acknowledgment.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \bibliographystyle{plain}
-\bibliography{c:/home/Lehre/VO/SS17/ND/Projects/Latex/mybib}
+\bibliography{mybib}
 
 %\begin{thebibliography}{99}
 %\end{thebibliography}

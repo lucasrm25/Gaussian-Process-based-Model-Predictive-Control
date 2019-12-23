@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.99999 (MiKTeX 2.9.6840 64-bit) (preloaded format=xelatex 2018.11.1)  7 DEC 2019 18:29
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  23 DEC 2019 16:10
 entering extended mode
 **./root.tex
 (root.tex
@@ -10,27 +10,64 @@ Document Class: ieeeconf 2016/4/23 revision V1.6b by Pradeep Misra
 \@IEEEtrantmpcountA=\count80
 \@IEEEtrantmpcountB=\count81
 \@IEEEtrantmptoksA=\toks14
-LaTeX Font Info:    Try loading font information for TU+ptm on input line 794.
-LaTeX Font Info:    No file TUptm.fd. on input line 794.
+LaTeX Font Info:    Try loading font information for OT1+ptm on input line 794.
 
-LaTeX Font Warning: Font shape `TU/ptm/m/n' undefined
-(Font)              using `TU/lmr/m/n' instead on input line 794.
-
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\psnfss\ot1ptm.fd"
+File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
+)
 \@IEEEnormalsizefontbaselineskip=\skip41
 -- This is a 10 point document.
 \normalsizebaselineskip=\skip42
 \normaljot=\skip43
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <5> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
 
-LaTeX Font Warning: Font shape `TU/ptm/bx/n' undefined
-(Font)              using `TU/ptm/m/n' instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <7> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
 
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <8> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
 
-LaTeX Font Warning: Font shape `TU/ptm/m/it' undefined
-(Font)              using `TU/ptm/m/n' instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <9> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
 
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <10> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
 
-LaTeX Font Warning: Font shape `TU/ptm/bx/it' undefined
-(Font)              using `TU/ptm/bx/n' instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <11> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <11> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
+
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <12> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
+
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <16> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <16> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
+
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <20> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <20> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
+
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <24> not available
+(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1113.
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <24> not available
+(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1113.
 
 \IEEEilabelindentA=\dimen104
 \IEEEilabelindentB=\dimen105
@@ -144,11 +181,11 @@ Package: color 2016/07/10 v1.1e Standard LaTeX Color (DPC)
 .cfg"
 File: color.cfg 2016/01/02 v1.6 sample color configuration
 )
-Package color Info: Driver file: xetex.def on input line 147.
+Package color Info: Driver file: pdftex.def on input line 147.
 
-("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\graphics-def\xetex
-.def"
-File: xetex.def 2017/06/24 v5.0h Graphics/color driver for xetex
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\graphics-def\pdfte
+x.def"
+File: pdftex.def 2018/01/08 v1.0l Graphics/color driver for pdftex
 ))
 \c@theorem=\count104
 \c@definition=\count105
@@ -166,41 +203,60 @@ LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 52.
 LaTeX Font Info:    ... okay on input line 52.
 LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 52.
 LaTeX Font Info:    ... okay on input line 52.
-LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 52.
-LaTeX Font Info:    ... okay on input line 52.
 LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 52.
 LaTeX Font Info:    ... okay on input line 52.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 52.
 LaTeX Font Info:    ... okay on input line 52.
+
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\context\base\supp-pdf.mk
+ii"
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count109
+\scratchdimen=\dimen122
+\scratchbox=\box29
+\nofMPsegments=\count110
+\nofMParguments=\count111
+\everyMPshowfont=\toks21
+\MPscratchCnt=\count112
+\MPscratchDim=\dimen123
+\MPnumerator=\count113
+\makeMPintoPDFobject=\count114
+\everyMPtoPDFconversion=\toks22
+)
 LaTeX Font Info:    Calculating math sizes for size <11> on input line 56.
 LaTeX Font Info:    Try loading font information for U+msa on input line 56.
-
-("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\amsfonts\umsa.fd"
+ ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\amsfonts\umsa.fd"
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
 LaTeX Font Info:    Try loading font information for U+msb on input line 56.
-("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\amsfonts\umsb.fd"
+ ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\amsfonts\umsb.fd"
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Try loading font information for TU+pcr on input line 56.
-LaTeX Font Info:    No file TUpcr.fd. on input line 56.
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 56.
 
-LaTeX Font Warning: Font shape `TU/pcr/m/n' undefined
-(Font)              using `TU/lmr/m/n' instead on input line 56.
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\psnfss\ot1pcr.fd"
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+)
+Underfull \hbox (badness 10000) in paragraph at lines 56--56
+[][][]$[]$\OT1/ptm/m/n/8 Dimitrios Gk-out-zos is a stu-dent of the Mas-ter stud
+y
+ []
 
 
 Underfull \hbox (badness 10000) in paragraph at lines 56--56
-[][][]$[]$\TU/pcr/m/n/8 Luzia Knödler is a student of the Master study
+\OT1/ptm/m/n/8 pro-gramm En-gi-neer-ing Cy-ber-net-ics, Uni-ver-sity of Stuttga
+rt,
  []
 
 
-Underfull \hbox (badness 6047) in paragraph at lines 56--56
-\TU/pcr/m/n/8 program Engineering Cybernetics, University of Stuttgart,
+Underfull \hbox (badness 10000) in paragraph at lines 72--77
+
  []
 
 
-LaTeX Font Warning: Font shape `TU/ptm/m/sc' undefined
-(Font)              using `TU/ptm/m/n' instead on input line 71.
+Underfull \hbox (badness 1789) in paragraph at lines 72--77
+\OT1/ptm/m/n/10 Introduce topic and de-scribe mo-ti-va-tion and rel-e-vance
+ []
 
 (root.bbl)
 
@@ -218,22 +274,30 @@ Before submitting the final camera ready copy, remember to:
 Overfull \vbox (336.63313pt too high) has occurred while \output is active []
 
 
-[1
+[1{C:/Users/Luzia/AppData/Local/MiKTeX/2.9/pdftex/config/pdftex.map}
 
 
-
-] (root.aux)
-
-LaTeX Font Warning: Some font shapes were not available, defaults substituted.
-
- ) 
+] (root.aux) ) 
 Here is how much of TeX's memory you used:
- 1926 strings out of 427796
- 25929 string characters out of 3147800
- 97926 words of memory out of 3000000
- 5939 multiletter control sequences out of 15000+200000
- 10308 words of font info for 52 fonts, out of 3000000 for 9000
- 1328 hyphenation exceptions out of 8191
- 27i,10n,27p,254b,299s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 2312 strings out of 492970
+ 33034 string characters out of 3126594
+ 97954 words of memory out of 3000000
+ 6191 multiletter control sequences out of 15000+200000
+ 41990 words of font info for 94 fonts, out of 3000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 27i,10n,27p,813b,299s stack positions out of 5000i,500n,10000p,200000b,50000s
+{C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/enc/dvips
+/base/8r.enc}<C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/publ
+ic/amsfonts/cm/cmr6.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts
+/type1/public/amsfonts/cm/cmr8.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTe
+X 2.9/fonts/type1/urw/courier/ucrr8a.pfb><C:/Users/Luzia/AppData/Local/Programs
+/MiKTeX 2.9/fonts/type1/urw/times/utmb8a.pfb><C:/Users/Luzia/AppData/Local/Prog
+rams/MiKTeX 2.9/fonts/type1/urw/times/utmbi8a.pfb><C:/Users/Luzia/AppData/Local
+/Programs/MiKTeX 2.9/fonts/type1/urw/times/utmr8a.pfb><C:/Users/Luzia/AppData/L
+ocal/Programs/MiKTeX 2.9/fonts/type1/urw/times/utmri8a.pfb>
+Output written on root.pdf (1 page, 78809 bytes).
+PDF statistics:
+ 35 PDF objects out of 1000 (max. 8388607)
+ 0 named destinations out of 1000 (max. 500000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
 
-Output written on root.pdf (1 page).
