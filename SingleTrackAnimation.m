@@ -195,7 +195,6 @@ classdef SingleTrackAnimation < handle
             I_carpoints = [cos(psi) -sin(psi);
                            sin(psi)  cos(psi)] * V_carpoints + carpos;
             obj.h_car.Vertices = I_carpoints';
-
         end
         
         function updateScope(obj,k)

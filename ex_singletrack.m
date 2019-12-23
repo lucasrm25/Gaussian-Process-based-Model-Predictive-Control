@@ -15,8 +15,17 @@
 
 clear all; close all; clc;
 
-dt = 0.1;   % simulation timestep size
-tf = 50;     % simulation time
+
+%--------------------------------------------------------------------------
+%   Simulation and controller parameters
+%------------------------------------------------------------------
+dt = 0.1;       % simulation timestep size
+tf = 50;        % simulation time
+maxiter = 10;   % max NMPC iterations per time step
+N = 10;         % NMPC prediction horizon
+
+lookahead = dt*N;
+fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
 
 
 
@@ -38,6 +47,7 @@ var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
 % create true dynamics model
 %   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
 trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
+% trueModel = MotionModelGP_SingleTrack(d,var_w);
 
 
 %% Create Estimation Model and Nominal Model
@@ -53,10 +63,10 @@ nomModel = MotionModelGP_SingleTrackNominal(d, 0*var_w);
 
 
 % -------------------------------------------------------------------------
-%  Create adaptive dynamics model (disturbance is the Gaussian Process GP)
+%  Create adaptive dynamics model 
+%  (unmodeled dynamics will be estimated by Gaussian Process GP)
 %       xk+1 = fd_nominal(xk,uk) + Bd * ( d_GP(zk) + w )
 % -------------------------------------------------------------------------
-% define model (mean and variance) for estimated disturbance
 
 % GP input dimension
 gp_n = nomModel.nz;
@@ -72,6 +82,7 @@ maxsize = 100; % maximum number of points in the dictionary
 % create GP object
 d_GP = GP(var_f, var_n, M, maxsize);
 
+% create nominal model with GP model as d(zk)
 estModel = MotionModelGP_SingleTrackNominal(@d_GP.eval, var_w);
 
 
@@ -104,6 +115,7 @@ track = RaceTrack(trackdata, x0, th0, w);
 %       trackAnim = SingleTrackAnimation(track,mpc.N);
 %       trackAnim.initGraphics()
 
+
 % -------------------------------------------------------------------------
 % Nonlinear Model Predictive Controller
 % -------------------------------------------------------------------------
@@ -113,31 +125,26 @@ n  = estModel.n;
 m  = estModel.m;
 ne = 0;
 
-N = 10; % prediction horizon
-
-lookahead = dt*N;
-fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
-
 % define cost functions
 fo   = @(t,mu_x,var_x,u,e,r) costFunction(mu_x, var_x, u, track);            % e = track distance
-fend = @(t,mu_x,var_x,e,r)   10 * costFunction(mu_x, var_x, zeros(m,1), track);   % end cost function
+fend = @(t,mu_x,var_x,e,r)   2 * costFunction(mu_x, var_x, zeros(m,1), track);   % end cost function
 
 % define dynamics
 f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
 % define additional constraints
 h  = @(x,u,e) [];
 g  = @(x,u,e) [];
-u_lb = [-deg2rad(30);  % delta >= -10deg
+u_lb = [-deg2rad(25);  % delta >= -10deg
          -1;           % wheel torque gain >= -1
          5];           % track velocity >= 0
-u_ub = [deg2rad(30);   % delta <=  10 deg
+u_ub = [deg2rad(25);   % delta <=  10 deg
         1;             % wheel torque gain <= 1
         30];           % track velocity <= 1
 
 % Initialize NMPC object;
 mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
 mpc.tol     = 1e-2;
-mpc.maxiter = 10;
+mpc.maxiter = maxiter;
 
 % TEST NMPC
 % x0 = 10;
@@ -196,7 +203,7 @@ d_GP.isActive = false;
 %% Start simulation
 
 ki = 1;
-% ki = 45;
+% ki = 30;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
@@ -321,17 +328,17 @@ trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 5e1; % penalization of lag error
-    q_c   = 5e1; % penalization of contouring error
-    q_o   = 5e1; % penalization for orientation error
-    q_d   = 1e0; % reward high track centerline velocites
-    q_r   = 1e3; % penalization when vehicle is outside track
+    q_l   = 50;     % penalization of lag error
+    q_c   = 100;     % penalization of contouring error
+    q_o   = 50;     % penalization for orientation error
+    q_d   = 3;      % reward high track centerline velocites
+    q_r   = 1000;   % penalization when vehicle is outside track
     
     % state and input penalization
-    q_st  = 1*1e1; % penalization of steering
-    q_br  = 0*1e0; % penalization of breaking
-    q_acc = 0*1e0; % reward for acceleration
-    q_v   = 1*1e0; % reward high absolute velocities
+    q_v   = 0; % reward high absolute velocities
+    q_st  = 100; % penalization of steering
+    q_br  = 0; % penalization of breaking
+    q_acc = 0; % reward for accelerating
 
     % label inputs and outputs
     I_x        = mu_x(1);  % x position in global coordinates
@@ -339,10 +346,10 @@ function cost = costFunction(mu_x, var_x, u, track)
     psi        = mu_x(3);  % yaw
     V_vx       = mu_x(4);  % x velocity in vehicle coordinates
     V_vy       = mu_x(5);  % x velocity in vehicle coordinates
-    track_dist = mu_x(7);  % track velocity
+    track_dist = mu_x(7);  % track centerline distance
     delta      = u(1);     % steering angle rad2deg(delta)
     T          = u(2);     % torque gain (1=max.acc, -1=max.braking)
-    track_vel  = u(3);     % track velocity
+    track_vel  = u(3);     % track centerline velocity
     
 
     % ---------------------------------------------------------------------

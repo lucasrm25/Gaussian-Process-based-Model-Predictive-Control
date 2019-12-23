@@ -115,15 +115,8 @@ classdef RaceTrack < handle
         %   track radius R_c
         %------------------------------------------------------------------
             dist = mod(dist,max(obj.dist));
-            % idx_dist = interp1(obj.dist,1:numel(obj.dist),dist,'PCHIP','extrap');
-            
             pos_c = interp1(obj.dist',obj.track_c',dist,'linear','extrap')';
             psi_c = interp1(obj.dist',obj.psi_c',dist,'linear','extrap');
-            
-%             x_c   = obj.track_c(1,idx_dist);
-%             y_c   = obj.track_c(2,idx_dist);
-%             pos_c = [x_c;y_c];
-%             psi_c = obj.psi_c(1,idx_dist);
             R_c   = obj.w/2;
         end
         
