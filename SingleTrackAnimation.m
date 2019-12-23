@@ -223,7 +223,8 @@ classdef SingleTrackAnimation < handle
             % -----------------------------------------------------------------
             %   Save video
             % -----------------------------------------------------------------
-            writerObj = VideoWriter(videoName,format, 'FrameRate',FrameRate);
+            writerObj = VideoWriter(videoName,format);
+            writerObj.FrameRate = FrameRate;
             open(writerObj);
             % Write out all the frames.
             numberOfFrames = length(videoframes);
