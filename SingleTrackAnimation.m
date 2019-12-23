@@ -18,6 +18,7 @@ classdef SingleTrackAnimation < handle
         h_var_x_pred_opt
         h_x_ref
         h_x_trace
+        h_car
         
         % Scope handles
         h_scopex
@@ -73,6 +74,12 @@ classdef SingleTrackAnimation < handle
             % -------------------------------------------------------------
             k = 1;
             
+            % plot car
+            obj.h_car = patch('Faces',1:4,'Vertices',NaN(4,2),...
+                        'EdgeColor','black',...
+                        'FaceColor','none',...
+                        'LineWidth',1);
+            
             % reference trajectory
             obj.h_x_ref = plot(NaN,NaN,...
                         '-','LineWidth',1.0, 'Marker','o',...
@@ -89,8 +96,8 @@ classdef SingleTrackAnimation < handle
                         'MarkerFaceColor','flat',...
                         'DisplayName','Optimal trajectory' );
                     
-            % obj.h_var_x_pred_opt = 
-            ell = sigmaEllipse2D([0;0], eye(2), obj.ell_level, obj.ell_npoints);
+            % plot prediction covariance ellipses
+            ell = NaN(obj.ell_level, obj.ell_npoints);
             for i=1:obj.N
                 obj.h_var_x_pred_opt{i} = patch('Faces',1:obj.ell_npoints,'Vertices',ell','FaceColor',[1 0 0],'FaceAlpha',0.3,'LineStyle', 'none');
             end 
@@ -98,7 +105,9 @@ classdef SingleTrackAnimation < handle
             % trace vehicle path
             obj.h_x_trace = patch(obj.mu_x_pred_opt(1,1,k),obj.mu_x_pred_opt(2,1,k),obj.mu_x_pred_opt(3,1,k),...
                                   'EdgeColor','interp','Marker','none');      
+                             
                               
+            % display legend, colorbar, etc.
             leg = legend([obj.h_mu_x_pred_opt,obj.h_x_ref],'Location','northeast');
             c = colorbar;
             c.Label.String = 'Vehicle predicted velocity [m/s]';
@@ -176,7 +185,17 @@ classdef SingleTrackAnimation < handle
             obj.h_x_trace.XData = [squeeze(obj.mu_x_pred_opt(1,1,1:k))' NaN];
             obj.h_x_trace.YData = [squeeze(obj.mu_x_pred_opt(2,1,1:k))' NaN];
             obj.h_x_trace.CData = [veltrace NaN];
-            drawnow
+            
+            % update car
+            carpos = obj.mu_x_pred_opt(1:2,1,k); %[0;0]
+            psi = obj.mu_x_pred_opt(3,1,k); %deg2rad(30);
+            car_w = 1;
+            car_l = 2;
+            V_carpoints = [[car_l/2;car_w/2],[car_l/2;-car_w/2],[-car_l/2;-car_w/2],[-car_l/2;car_w/2]];
+            I_carpoints = [cos(psi) -sin(psi);
+                           sin(psi)  cos(psi)] * V_carpoints + carpos;
+            obj.h_car.Vertices = I_carpoints';
+
         end
         
         function updateScope(obj,k)
@@ -188,7 +207,6 @@ classdef SingleTrackAnimation < handle
             obj.k = k;
             refreshdata(obj.h_scopex,'caller');
             refreshdata(obj.h_scopeu,'caller');
-            drawnow;
         end
         
         function recordvideo(obj, videoName, format)

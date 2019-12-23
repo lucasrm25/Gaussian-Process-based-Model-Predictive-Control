@@ -47,45 +47,16 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         c_r = 14000 % = 2*g*M/deltamax  % rear coornering stiffness
     end
     
-    properties(SetAccess=private)
-        Bd = [0 0 0 0 1 0 0]';  %[zeros(3); eye(3); 0 0 0];      % xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
-        Bz = eye(7)        % z = Bz*x     
-        n = 7              % number of outputs x(t)
-        m = 3              % number of inputs u(t)
-    end
-    
-    
-    methods
-        function x = sclip(obj,x,lb,ub)
-            % Smooth (differentiable) clip (saturation) function
-            x = x.*obj.gez(x-lb).*obj.lez(x-ub) + ub*obj.gez(x-ub) + lb*obj.lez(x-lb);
-        end
-    end
-    methods(Static)
-        function x = clip(x,lb,ub)
-            % standard nonsmooth clip (saturation) function
-            x = min(max(x,lb),ub);
-        end
-        function x = srec(x,lb,ub)
-            % Smooth rectangular function
-            alpha = 50; % the larger the sharper the rectangular function
-            x = 0.5*(tanh((x-lb)*alpha)-tanh((x-ub)*alpha));
-        end
-        function x = gez(x)
-            % Smooth >=0 boolean function
-            alpha = 50; % the larger the sharper the clip function
-            x = (1+exp(-alpha*x)).^-1;
-        end
-        function x = lez(x)
-            % Smooth <=0 boolean function
-            alpha = 50; % the larger the sharper the clip function
-            x = 1-(1+exp(-alpha*x)).^-1;
-        end
-        function x = ssign(x)
-            % Smooth sign(x) boolean function
-            alpha = 100; % the larger the sharper the clip function
-            x = tanh(alpha*x);
-        end
+    properties(Constant)
+        % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
+        Bz = [0 0 0  1 0 0  0;
+              0 0 0  0 1 0  0;
+              0 0 0  0 0 1  0] 
+        Bd = [zeros(3);
+              eye(3); 
+              0 0 0];               
+        n = 7                   % number of outputs x(t)
+        m = 3                   % number of inputs u(t)
     end
     
     methods
@@ -302,6 +273,43 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             end
             fprintf('\tax_{max} ~ %.1f [g]\n',obj.maxmotorWForce/obj.M/obj.g);
             fprintf('\tax_{min} ~ -%.1f [g]\n',obj.maxbrakeWForce/obj.M/obj.g);
+        end
+    end
+    
+    
+    %----------------------------------------------------------------------
+    % Alternative smooth methods
+    %----------------------------------------------------------------------
+    methods
+        function x = sclip(obj,x,lb,ub)
+            % Smooth (differentiable) clip (saturation) function
+            x = x.*obj.gez(x-lb).*obj.lez(x-ub) + ub*obj.gez(x-ub) + lb*obj.lez(x-lb);
+        end
+    end
+    methods(Static)
+        function x = clip(x,lb,ub)
+            % standard nonsmooth clip (saturation) function
+            x = min(max(x,lb),ub);
+        end
+        function x = srec(x,lb,ub)
+            % Smooth rectangular function
+            alpha = 50; % the larger the sharper the rectangular function
+            x = 0.5*(tanh((x-lb)*alpha)-tanh((x-ub)*alpha));
+        end
+        function x = gez(x)
+            % Smooth >=0 boolean function
+            alpha = 50; % the larger the sharper the clip function
+            x = (1+exp(-alpha*x)).^-1;
+        end
+        function x = lez(x)
+            % Smooth <=0 boolean function
+            alpha = 50; % the larger the sharper the clip function
+            x = 1-(1+exp(-alpha*x)).^-1;
+        end
+        function x = ssign(x)
+            % Smooth sign(x) boolean function
+            alpha = 100; % the larger the sharper the clip function
+            x = tanh(alpha*x);
         end
     end
 end

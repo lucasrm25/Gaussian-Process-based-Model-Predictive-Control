@@ -29,7 +29,7 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
         g = 9.8
     end
     
-    properties(SetAccess=private)
+    properties(Constant)
         Bd = [0;            % xk+1 = fd(xk,uk) + Bd*d(zk)
               0;
               1;

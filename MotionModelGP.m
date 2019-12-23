@@ -21,7 +21,7 @@ classdef (Abstract) MotionModelGP < handle
 %   
 %--------------------------------------------------------------------------
 
-    properties (Abstract, SetAccess=private)
+    properties (Abstract, Constant)
         Bd  % <n,xx> xk+1 = fd(xk,uk) + Bd*d(zk)
         Bz  % <yy,n> z = Bz*x   
         n   % <1>    number of outputs x(t)
@@ -29,9 +29,9 @@ classdef (Abstract) MotionModelGP < handle
     end
     
     properties (SetAccess=private)
-        d        % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
+        d      % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
         var_w  % measurement noise covariance matrix. w ~ N(0,var_w)
-        
+
         % this properties are obtained from Get methods
         nd  % output dimension of du(z)
         nz  % dimension of z(t)
@@ -71,24 +71,28 @@ classdef (Abstract) MotionModelGP < handle
         %------------------------------------------------------------------
             obj.d = d;
             obj.var_w = var_w;
+            
+            % store input dimension z=Bz*x
+            obj.nz = size(obj.Bz,1);
+            % store output dimension of d(z)
+            obj.nd = size(obj.Bd,2);
 
-            assert( all(size(var_w)==[obj.nd,obj.nd]), sprintf('Variable var_w should have dimension %d, but has %d',obj.nd,size(var_w,1)))
-            assert(size(obj.Bd,1) == obj.n, sprintf('obj.Bd matrix should have %d rows, but has %d',obj.n,size(obj.Bd,1)))
-            assert(size(obj.Bz,2) == obj.n, sprintf('obj.Bz matrix should have %d columns, but has %d',obj.n,size(obj.Bz,1)))        
-        end
-        
-        function nd = get.nd(obj)
-        %------------------------------------------------------------------
-        %   output dimension of d(z)
-        %------------------------------------------------------------------
-            nd = size(obj.Bd,2);
-        end
-        
-        function nz = get.nz(obj)
-        %------------------------------------------------------------------
-        %   dimension of zk=Bz*xk
-        %------------------------------------------------------------------
-            nz = size(obj.Bz,1);
+            %--------------------------------------------------------------
+            % assert model
+            %--------------------------------------------------------------
+            assert( all(size(var_w)==[obj.nd,obj.nd]), ...
+                sprintf('Variable var_w should have dimension %d, but has %d',obj.nd,size(var_w,1)))
+            assert(size(obj.Bd,1) == obj.n, ...
+                sprintf('obj.Bd matrix should have %d rows, but has %d',obj.n,size(obj.Bd,1)))
+            assert(size(obj.Bz,2) == obj.n, ...
+                sprintf('obj.Bz matrix should have %d columns, but has %d',obj.n,size(obj.Bz,1)))
+            
+            % validate given disturbance model
+            [muy,vary] = d(obj.Bz*zeros(obj.n,1));
+            assert( size(muy,1)==obj.nd, ...
+                sprintf('Disturbance model d evaluates to a mean value with wrong dimension. Got %d, expected %d',size(muy,1),obj.nd))
+            assert( all(size(vary)==[obj.nd,obj.nd]), ...
+                sprintf('Disturbance model d evaluates to a variance value with wrong dimension. Got %d, expected %d',size(vary,1),obj.nd))
         end
         
         function [xkp1, gradx_xkp1] = fd (obj, xk, uk, dt)

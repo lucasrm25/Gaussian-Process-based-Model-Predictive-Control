@@ -19,7 +19,8 @@ dt = 0.1;   % simulation timestep size
 tf = 50;     % simulation time
 
 
-%% True Dynamics Model
+
+%% Create True Dynamics Simulation Model
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
@@ -29,10 +30,10 @@ tf = 50;     % simulation time
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
-% mu_d  = @(z) 0;
-% var_d = @(z) 0;
-d       = @(z)deal(0,0);
-var_w   = (1/3)^2;    %diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
+mu_d  = @(z) zeros(size(z,1),1);
+var_d = @(z) zeros(size(z,1));
+d     = @(z) deal( mu_d(z), var_d(z) );
+var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
 
 % create true dynamics model
 %   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
@@ -41,26 +42,40 @@ trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
 
 %% Create Estimation Model and Nominal Model
 
+% -------------------------------------------------------------------------
+%  Create nominal model (no disturbance):  
+%       xk+1 = fd_nominal(xk,uk)
+% -------------------------------------------------------------------------
+mu_d  = @(z) zeros(size(z,1),1);
+var_d = @(z) zeros(size(z,1));
+d     = @(z) deal( mu_d(z), var_d(z) );
+nomModel = MotionModelGP_SingleTrackNominal(d, 0*var_w); 
+
+
+% -------------------------------------------------------------------------
+%  Create adaptive dynamics model (disturbance is the Gaussian Process GP)
+%       xk+1 = fd_nominal(xk,uk) + Bd * ( d_GP(zk) + w )
+% -------------------------------------------------------------------------
 % define model (mean and variance) for estimated disturbance
+
+% GP input dimension
+gp_n = nomModel.nz;
+% GP output dimension
+gp_p = nomModel.nd;
+
 % GP hyperparameters
-var_f   = 0.01;                     % output variance (std)
-M       = diag([1e-1,1e-1].^2);     % length scale
-var_n   = var_w;                    % measurement noise variance
-maxsize = 100;                      % maximum number of points in the dictionary
+var_f   = repmat(0.01,[gp_p,1]);   % output variance (std)
+var_n   = diag(var_w);          % measurement noise variance
+M       = repmat(diag([1e-1,1e-1,1e-1].^2),[1,1,gp_p]);     % length scale
+maxsize = 100; % maximum number of points in the dictionary
+
 % create GP object
 d_GP = GP(var_f, var_n, M, maxsize);
 
-
-% create adaptive dynamics model (disturbance is the Gaussian Process GP)
-%   xk+1 = fd_nominal(xk,uk) + Bd * ( d_GP(zk) + w )
 estModel = MotionModelGP_SingleTrackNominal(@d_GP.eval, var_w);
 
-% create nominal dynamics model (no disturbance)
-%   xk+1 = fd_nominal(xk,uk)
-nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0*var_w); 
 
-
-%% Controller
+%% Initialize Controller
 
 % -------------------------------------------------------------------------
 %                               (TODO)
@@ -83,7 +98,7 @@ nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0*var_w);
 % -------------------------------------------------------------------------
 % Create perception model (in this case is the saved track points)
 % -------------------------------------------------------------------------
-[trackdata, x0, th0, w] = RaceTrack.loadTrack_01();
+[trackdata, x0, th0, w] = RaceTrack.loadTrack_02();
 track = RaceTrack(trackdata, x0, th0, w);
 % TEST: [Xt, Yt, PSIt, Rt] = track.getTrackInfo(1000)
 %       trackAnim = SingleTrackAnimation(track,mpc.N);
@@ -122,7 +137,7 @@ u_ub = [deg2rad(30);   % delta <=  10 deg
 % Initialize NMPC object;
 mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
 mpc.tol     = 1e-2;
-mpc.maxiter = 30;
+mpc.maxiter = 10;
 
 % TEST NMPC
 % x0 = 10;
@@ -176,11 +191,12 @@ trackAnim.initScope();
 % deactivate GP evaluation in the prediction
 d_GP.isActive = false;
 
+
+
 %% Start simulation
-% ---------------------------------------------------------------------
-% Start simulation
-% ---------------------------------------------------------------------
+
 ki = 1;
+% ki = 45;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
@@ -218,6 +234,7 @@ for k = ki:kmax
     trackAnim.x_ref      = out.x_ref;
     trackAnim.updateTrackAnimation(k);
     trackAnim.updateScope(k);
+    drawnow;
     
     % ---------------------------------------------------------------------
     % Simulate real model
@@ -288,6 +305,7 @@ for k = 1:kmax
     trackAnim.updateTrackAnimation(k);
     % trackAnim.updateScope(k);
     pause(0.1);
+    drawnow;
 end
 
 %% Record video
@@ -300,9 +318,9 @@ trackAnim.recordvideo(fullfile('simresults','trackAnimVideo'),'Motion JPEG AVI')
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 1e2; % penalization of lag error
-    q_c   = 1e2; % penalization of contouring error
-    q_o   = 1e1; % penalization for orientation error
+    q_l   = 5e1; % penalization of lag error
+    q_c   = 5e1; % penalization of contouring error
+    q_o   = 5e1; % penalization for orientation error
     q_d   = 1e0; % reward high track centerline velocites
     q_r   = 1e3; % penalization when vehicle is outside track
     

@@ -196,7 +196,7 @@ classdef NMPC < handle
                 try
                     [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
                 catch e
-                    error('%s\n%s',e.message,'System dynamics evaluated to error!!!')
+                    error('\n%s\n\n%s','System dynamics evaluated to error:',e.message)
                 end
                 if sum(isnan(mu_xk),'all') || sum(isinf(mu_xk),'all')
                     error('%s','System dynamics evaluated to NaN or Inf')
@@ -223,7 +223,7 @@ classdef NMPC < handle
                 try
                     cost = cost + obj.fo(t, mu_xvec(:,iN), var_xvec(:,:,iN), uvec(:,iN), evec(:,iN), r);
                 catch e
-                    error('%s\n%s',e.message,'Cost function evaluated to error!!!')
+                    error('\n%s\n\n%s','Cost function evaluated to error:',e.message)
                 end
                 if sum(isnan(cost),'all') || sum(isinf(cost),'all')
                     error('Cost function evaluated to NaN or Inf')
@@ -276,7 +276,7 @@ classdef NMPC < handle
                     % provided inequality constraints (g<=0)
                     cineq_g(:,iN) = obj.g(mu_xvec(:,iN),uvec(:,iN),evec(:,iN));
                 catch e
-                    error('%s\n%s',e.message,'Constraints h(h) or g(x) evaluated to error!!!')
+                    error('\n%s\n\n%s','Constraints h(h) or g(x) evaluated to error:',e.message)
                 end
 
                 t = t + iN * obj.dt;

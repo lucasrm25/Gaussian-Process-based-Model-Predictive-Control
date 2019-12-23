@@ -26,17 +26,17 @@ classdef GP < handle
     
     properties
         % kernel parameters (one for each output dimension)
-        var_f % <p> signal/output covariance
-        var_n % <p> evaluation noise covariance
-        M       % <n,n,p> length scale covariance
+        var_f % <p>     signal/output covariance
+        var_n % <p>     evaluation noise covariance
+        M     % <n,n,p> length scale covariance
         
         isActive = true
     end
     
     properties(SetAccess=private)
         % dictionary: [X,Y]
-        X        % <n,N> input dataset
-        Y        % <N,p> output dataset
+        X     % <n,N> input dataset
+        Y     % <N,p> output dataset
         
         N     % <1> dictionary size
         Nmax  % <1> max dictionary size
@@ -45,8 +45,8 @@ classdef GP < handle
         p % <1> output dimension
         
         % aux variables
-        L       % <N,N>: chol(obj.KXX + sigman^2 * I,'lower');
-        alpha   % <N,1>: L'\(L\(Y-muX));
+        L       % <N,N,p>: chol(obj.KXX + sigman^2 * I,'lower');
+        alpha   % <N,p>: L'\(L\(Y-muX));
         % (DEPRECATED) inv_KXX_sn  % <N,N>
         
         isOutdated  = false % <bool> model is outdated if data has been added withouth updating L and alpha matrices
@@ -60,7 +60,7 @@ classdef GP < handle
         % args:
         %   var_f:   <p>     signal/output covariance
         %   var_n:   <p>     evaluation noise covariance
-        %   lambda:  <n,n,p> length scale covariance matrix
+        %   M:       <n,n,p> length scale covariance matrix
         %   maxsize: <1>     maximum dictionary size
         %------------------------------------------------------------------
             obj.X       = [];
@@ -70,7 +70,15 @@ classdef GP < handle
             obj.M       = M;
             obj.Nmax    = maxsize;
             
-            assert(size(var_n,1)==1, 'Not implemented error!! For now GP output dimension must be equal 1.');
+            % input dimension
+            obj.n = size(M,1);
+            
+            % output dimension
+            obj.p = numel(var_f);
+            
+            assert( size(var_f,1)==size(var_n,1) && ...
+                    size(var_f,1)==size(M,3),...
+                    'Dimension of kernel parameters do not agree !!!');
         end
         
         function bool = isfull(obj)
@@ -87,25 +95,13 @@ classdef GP < handle
             N = size(obj.X,2);
         end
         
-        function n = get.n(obj)
-        %------------------------------------------------------------------
-        % return input dimension = n
-        %------------------------------------------------------------------
-            n = size(obj.X,1);
-        end
-        
-        function p = get.p(obj)
-        %------------------------------------------------------------------
-        % return output dimension
-        %------------------------------------------------------------------
-            p = size(obj.Y,2);
-        end
-        
         function mean = mu(~,x)
         %------------------------------------------------------------------
         % zero mean function: mean[f(x)] = 0
         % args:
         %   x: <n,N>
+        % out:
+        %   mean: <N,1>
         %------------------------------------------------------------------
             mean = zeros(size(x,2),1);
         end
@@ -136,9 +132,14 @@ classdef GP < handle
             if obj.isOutdated
                 % store cholesky L and alpha matrices
                 I = eye(obj.N);
-                obj.L = chol( obj.K(obj.X,obj.X) + obj.var_n * I ,'lower');
-                % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
-                obj.alpha = obj.L'\(obj.L\(obj.Y-obj.mu(obj.X)));
+                
+                % for each output dimension
+                for pi=1:obj.p
+                    obj.L = chol( obj.K(obj.X,obj.X) + obj.var_n(pi) * I ,'lower');
+                    % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
+                    
+                    obj.alpha(:,pi) = obj.L'\(obj.L\(obj.Y(:,pi)-obj.mu(obj.X)));
+                end
                 
                 %-------------------- (DEPRECATED) ------------------------ 
                 % % SLOW BUT RETURNS THE FULL COVARIANCE MATRIX INSTEAD OF ONLY THE DIAGONAL (VAR)
@@ -172,11 +173,18 @@ classdef GP < handle
         %   X: <n,N>
         %   Y: <N,p>
         %------------------------------------------------------------------
+            assert(size(Y,2) == obj.p, ...
+                sprintf('Y should have %d columns, but has %d. Dimension does not agree with the specified kernel parameters',obj.p,size(obj.Y,2)));
+            assert(size(X,1) == obj.n, ...
+                sprintf('X should have %d rows, but has %d. Dimension does not agree with the specified kernel parameters',obj.n,size(obj.X,1)));
+            
+            
             % dictionary is full
             if obj.N + size(X,2) > obj.Nmax
                 % For now, we just keep the most recent data
                 obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
                 obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
+            
             % append to dictionary
             else
                 obj.X = [obj.X, X];     % concatenation in the 2st dim.
@@ -191,35 +199,38 @@ classdef GP < handle
         % This is a fast implementation of [Rasmussen, pg19]
         %
         % args:
-        %   x: <n,N> point coordinates
+        %   x: <n,Nx> point coordinates
         % out:
-        %   muy:  <N,p>    E[Y]
-        %   vary: <N,N>    Var[Y] is the same for all output dimensions
-        %   (DEPRECATED) covary: <N,N>
+        %   muy:  <p,Nx>      E[Y] = E[gp(x)]
+        %   vary: <p,p,Nx>    Var[Y]  = Var[gp(x)]                              %%%%%% <Nx,Nx,p>
         %------------------------------------------------------------------
             Nx = size(x,2);  % size of dataset to be evaluated
         
             % if there is no data in the dictionary, return GP prior
             if obj.N == 0 || ~obj.isActive
-                % warning('GP dataset is empty.');
-                mu_y  = obj.mu(x); 
-                var_y = zeros(Nx,Nx);
+                mu_y  = repmat(obj.mu(x),[1,obj.p])';
+                var_y = zeros(obj.p,obj.p,Nx);
                 return;
             end
             
             assert(size(x,1)==obj.n, sprintf('Input vector has %d columns but should have %d !!!',size(x,1),obj.n));
             assert(~isempty(obj.alpha), 'Please call updateModel() at least once before evaluating!!!')
         
-            % Calculate posterior mean mu_y
+            % Calculate posterior mean mu_y for each output dimension
             KxX = obj.K(x,obj.X);
-            mu_y = obj.mu(x) + KxX * obj.alpha;
+            mu_y = zeros(obj.p,Nx);
+            for pi=1:obj.p
+                mu_y(pi,:) = obj.mu(x) + KxX * obj.alpha(:,pi);
+            end
             
             % Calculate posterior covariance var_y
-            var_y = zeros(Nx,Nx);
-            for i=1:Nx
-                % (less efficient) v = obj.L\obj.K(x(:,i),obj.X)';
-                v = obj.L\KxX(i,:)';
-                var_y(i,i) = obj.K(x(:,i),x(:,i)) - v'*v;
+            var_y = zeros(obj.p,obj.p,Nx);
+            for pi=1:obj.p
+                for i=1:Nx
+                    % (less efficient) v = obj.L\obj.K(x(:,i),obj.X)';
+                    v = obj.L(:,:,pi)\KxX(i,:)';
+                    var_y(pi,pi,i) = obj.K(x(:,i),x(:,i)) - v'*v;
+                end
             end
             
             % --------------------- (DEPRECATED) ------------------------- 
