@@ -74,6 +74,10 @@ classdef SingleTrackAnimation < handle
             % -------------------------------------------------------------
             k = 1;
             
+            % trace vehicle path
+            obj.h_x_trace = patch(obj.mu_x_pred_opt(1,1,k),obj.mu_x_pred_opt(2,1,k),obj.mu_x_pred_opt(3,1,k),...
+                                  'EdgeColor','interp','Marker','none'); 
+            
             % plot car
             obj.h_car = patch('Faces',1:4,'Vertices',NaN(4,2),...
                         'EdgeColor','black',...
@@ -100,11 +104,7 @@ classdef SingleTrackAnimation < handle
             ell = NaN(obj.ell_level, obj.ell_npoints);
             for i=1:obj.N
                 obj.h_var_x_pred_opt{i} = patch('Faces',1:obj.ell_npoints,'Vertices',ell','FaceColor',[1 0 0],'FaceAlpha',0.3,'LineStyle', 'none');
-            end 
-                    
-            % trace vehicle path
-            obj.h_x_trace = patch(obj.mu_x_pred_opt(1,1,k),obj.mu_x_pred_opt(2,1,k),obj.mu_x_pred_opt(3,1,k),...
-                                  'EdgeColor','interp','Marker','none');      
+            end      
                              
                               
             % display legend, colorbar, etc.
@@ -209,7 +209,7 @@ classdef SingleTrackAnimation < handle
             refreshdata(obj.h_scopeu,'caller');
         end
         
-        function recordvideo(obj, videoName, format)
+        function recordvideo(obj, videoName, format, FrameRate)
         % -----------------------------------------------------------------
         %   Record video of the track animation
         % -----------------------------------------------------------------
@@ -218,17 +218,12 @@ classdef SingleTrackAnimation < handle
             obj.initTrackAnimation();
             for k=1: 200 %size(obj.mu_x_pred_opt,3)
                 obj.updateTrackAnimation(k);
-                % ax = gca(obj.h_fig);
-                % ax.Units = 'pixels';
-                % pos = ax.Position;
-                % ti = ax.TightInset;
-                % rect = [-ti(1), -ti(2), pos(3)+ti(1)+ti(3), pos(4)+ti(2)+ti(4)];
                 videoframes(k) = getframe(obj.h_fig);
             end
             % -----------------------------------------------------------------
             %   Save video
             % -----------------------------------------------------------------
-            writerObj = VideoWriter(videoName,format);
+            writerObj = VideoWriter(videoName,format, 'FrameRate',FrameRate);
             open(writerObj);
             % Write out all the frames.
             numberOfFrames = length(videoframes);

@@ -310,7 +310,10 @@ end
 
 %% Record video
 
-trackAnim.recordvideo(fullfile('simresults','trackAnimVideo'),'Motion JPEG AVI');
+FrameRate = 10;
+videoName = fullfile('simresults',sprintf('trackAnimVideo-%s',date));
+videoFormat = 'Motion JPEG AVI';
+trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 
 
 %% Help functions
