@@ -74,7 +74,7 @@ gp_n = nomModel.nz;
 gp_p = nomModel.nd;
 
 % GP hyperparameters
-var_f   = repmat(0.01,[gp_p,1]);   % output variance (std)
+var_f   = repmat(0.01,[gp_p,1]);   % output variance
 var_n   = diag(var_w);          % measurement noise variance
 M       = repmat(diag([1e-1,1e-1,1e-1].^2),[1,1,gp_p]);     % length scale
 maxsize = 100; % maximum number of points in the dictionary

@@ -15,8 +15,17 @@
 
 clear all; close all; clc;
 
-dt = 0.1;  % simulation timestep size
-tf = 7;     % simulation time
+%--------------------------------------------------------------------------
+%   Simulation and controller parameters
+%------------------------------------------------------------------
+dt = 0.1;       % simulation timestep size
+tf = 7;         % simulation time
+maxiter = 10;   % max NMPC iterations per time step
+N = 10;         % NMPC prediction horizon
+
+lookahead = dt*N;
+fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
+
 
 % inverted pendulum parameters
 Mc = 5;
@@ -38,7 +47,7 @@ l = 3;
 
 % define model (mean and variance) for true disturbance
 % mu_d  = @(z) 1 * mvnpdf(z',[0,0], eye(2)*0.1);
-mu_d  = @(z) 0.1 * z(1) - 0.01*z(2) + deg2rad(3);
+mu_d  = @(z) (0.1 * z(1) - 0.01*z(2) + deg2rad(3))*1;
 var_d = @(z) 0;
 d_true  = @(z) deal(mu_d(z),var_d(z));
 % true measurement noise
@@ -51,7 +60,7 @@ trueModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, d_true, var_w);
 
 % define model (mean and variance) for estimated disturbance
 % GP hyperparameters
-var_f   = 0.01;                     % output variance (std)
+var_f   = 0.01;                   % output variance
 M       = diag([1e-1,1e-1].^2);     % length scale
 var_n   = var_w;                    % measurement noise variance
 maxsize = 100;                      % maximum number of points in the dictionary
@@ -90,10 +99,9 @@ eig(Ak-Bk*K);
 % -------------------------------------------------------------------------
 % NONLINEAR MPC CONTROLLER
 % define cost function
-N = 10;     % prediction horizon
-Q = diag([1e-1 1e5 1]);
-Qf= diag([1e-1 1e5 1]);
-R = 1;
+Q = diag([1e-1 1e5 1e0]);
+Qf= diag([1e-1 1e5 1e0]);
+R = 10;
 Ck = [0 1 0 0; 0 0 1 0; 0 0 0 1];
 fo   = @(t,mu_x,var_x,u,e,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + R*u^2;  % cost function
 fend = @(t,mu_x,var_x,e,r)   (Ck*mu_x-r(t))'*Qf*(Ck*mu_x-r(t));          % end cost function
@@ -104,9 +112,9 @@ g    = @(x,u,e) []; % @(x,u) 0;  % g(x)<=0
 u_lb = [];
 u_ub = [];
 
-mpc = NMPC (f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt); % (f, h, g, n, m, fo, fend, N, dt);
+mpc = NMPC (f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
 mpc.tol     = 1e-3;
-mpc.maxiter = 30;
+mpc.maxiter = maxiter;
 % -------------------------------------------------------------------------
 
 % TEST NMPC
@@ -130,17 +138,22 @@ nr = size(r(0),1); % dimension of r(t)
 x0 = [0,0,deg2rad(5),0]';
 
 % initialize variables to store simulation results
-out.t = 0:dt:tf;
-out.x = [x0 zeros(n,length(out.t)-1)];
-out.xhat = [x0 zeros(n,length(out.t)-1)];
-out.xnom = [x0 zeros(n,length(out.t)-1)];
-out.u = zeros(m,length(out.t)-1);
-out.r = zeros(nr,length(out.t)-1);
+out.t    = 0:dt:tf;
+out.x    = [x0 nan(n,length(out.t)-1)];
+out.xhat = [x0 nan(n,length(out.t)-1)];
+out.xnom = [x0 nan(n,length(out.t)-1)];
+out.u    = nan(m,length(out.t)-1);
+out.r    = nan(nr,length(out.t)-1);
 
 
 d_GP.isActive = false;
 
-for k = 1:numel(out.t)-1
+
+ki = 1;
+% ki = 40;
+% mpc.uguess = out.u(:,ki);
+
+for k = ki:numel(out.t)-1
     disp(out.t(k))
     
     % ---------------------------------------------------------------------
@@ -166,6 +179,12 @@ for k = 1:numel(out.t)-1
     [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,k),zeros(trueModel.n),out.u(:,k),dt);
     out.x(:,k+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
+    % ---------------------------------------------------------------------
+    % Safety
+    % ---------------------------------------------------------------------
+    if abs(out.x(3,k+1)) > deg2rad(60)
+        error('Pole is completely unstable. theta = %.f[deg]... aborting',rad2deg(out.x(3,k+1)));
+    end
     
     % ---------------------------------------------------------------------
     % measure data
@@ -197,7 +216,7 @@ for k = 1:numel(out.t)-1
     end
     
     % check if these values are the same:
-    % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
+    % d_est == mu_d(zhat) == [mud,~]=trueModel.d(zhat)
     
 end
 
