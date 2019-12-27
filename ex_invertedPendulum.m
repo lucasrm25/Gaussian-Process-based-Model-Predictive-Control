@@ -227,7 +227,7 @@ close all;
 d_GP.isActive = true;
 
 % plot reference and state signal
-figure('Position',[-1836 535 560 420]); 
+figure; 
 subplot(2,1,1); hold on; grid on;
 plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
 plot(out.t, out.x(3,:), 'DisplayName', 'x(t) [rad]')
