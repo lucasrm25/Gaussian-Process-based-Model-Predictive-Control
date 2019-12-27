@@ -134,6 +134,7 @@ classdef GP < handle
                 I = eye(obj.N);
                 
                 % for each output dimension
+                obj.alpha = zeros(obj.N,obj.p);
                 for pi=1:obj.p
                     obj.L = chol( obj.K(obj.X,obj.X) + obj.var_n(pi) * I ,'lower');
                     % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
@@ -240,6 +241,12 @@ classdef GP < handle
             % vary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KxX';
             % --------------------- (DEPRECATED) ------------------------- 
         end
+        
+        % function eval_gradx(obj)
+        %     KxX = obj.K(x,obj.X);
+        %     muy  = obj.mu(x) + KxX * obj.inv_KXX_sn * (obj.Y-obj.mu(obj.X));
+        %     vary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KxX';
+        % end
         
         
         function optimizeHyperParams(obj)
