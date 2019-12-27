@@ -69,9 +69,9 @@ read the whole paper.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{INTRODUCTION}
-Model predictive control (MPC) is a popular control strategy which uses a dynamic plant model to obtain the control input that optimizes future reactions of the plant~\cite{kocijan2004gaussian}. The performance of MPC depends highly on how well the model captures the dynamics of the plant~\cite{kabzan2019learning}. But the identification of an \textit{a priori} model can be challenging and the dynamics of the plant could also change during the application~\cite{kabzan2019learning,ostafew2014learning}. Therefore, a simple and fixed nominal model of the plant can be used in combination with a learned disturbance model. The disturbance model represents the error between the observed behaviour of the plant and the behaviour of the nominal model~\cite{ostafew2014learning}. 
+Model predictive control (MPC) is a popular control strategy which uses a dynamic plant model to obtain the control input that optimizes future reactions of the plant~\cite{kocijan2004gaussian}. The performance of MPC depends highly on how well the model captures the dynamics of the plant~\cite{kabzan2019learning}. But the identification of such an \textit{a priori} model can be challenging and the dynamics of the plant could also change during the application~\cite{kabzan2019learning,ostafew2014learning}. Therefore, a simple and fixed nominal model of the plant can be used in combination with a learned disturbance model. The disturbance model represents the error between the observed behaviour of the plant and the behaviour of the nominal model~\cite{ostafew2014learning}. It can be modelled as a Gaussian Process (GP) regression which is a probabilistic, non-parametric model~\cite{kocijan2004gaussian}. GPs have the advantage of characterizing the prediction uncertainities~\cite{kocijan2004gaussian}. The mean estiamte of a GP can also be used to model the full dynamics of the plant and not only the model error. This approach was applied to a cart pole swing-up environment and an autonomous racing task in \cite{van2017online}. To reduce high computational costs they choose sparce spectrum GPs. Kocijan et al.~\cite{kocijan2004gaussian} use an offline-identified GP model instead. Another alternative is the generation of local GPs (LGPs) where for each subspace of the GP input space different GPs are identified. While Nguyen-Tuong et al.~\cite{nguyen2009local} and Meier et al.~\cite{meier2014efficient} identify many LGPs, Ostafew et al.~\cite{ostafew2014learning} compute one single LGP based on data within a sliding window. Other applications of GPs in a MPC framework are .
  \\
-In this report we present the results of our project within the course Statistical Learning and Stochastic Control. First, our literature research on GP-based MPC is summarized. Then a short introduction to the theory of MPC and GPs is given. Later, two examples which's  implementation was part of the project are explained.\\
+In this report we present the results of our project within the course ``Statistical Learning and Stochastic Control''. First, our literature research on GP-based MPC is summarized. Then a short introduction to the theory of MPC and GPs is given. Later, two examples which's  implementation was part of the project are explained.\\
   \\
 Introduce topic and describe motivation and relevance of problem/topic.
 
@@ -83,10 +83,11 @@ Notation. Define notation.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{BACKGROUND}
 
-Necessary background in nonlinear systems and control (material beyond what was
-considered in the course.)
+In this section necessary background information on MPC and a revision of GPs are presented.\\
+ \\
+Model predictive control (MPC), receding  horizon  control or moving horizon control are all names for a control strategy which predicts the future dynamic behaviour within a finite prediction horizion and chooses the control input such that a perfomance functional is minimized (Allgöwer). Since the predicted behaviour is not equal to the system behaviour due to disturbances and model-plant mismatch, only the first input of the computed control input sequence is applied. Using the new measurement one sampling time later, the procedure is repeated to find a new control sequence within the receding horizon.\\
+The mathematical formulation is summarized below.
 
-Model predictive control (MPC), receding  horizon  control or moving horizon control are all names for a control strategy which
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MAIN RESULTS}

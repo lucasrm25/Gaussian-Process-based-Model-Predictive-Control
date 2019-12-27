@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  23 DEC 2019 16:10
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  27 DEC 2019 12:24
 entering extended mode
 **./root.tex
 (root.tex
@@ -258,7 +258,19 @@ Underfull \hbox (badness 1789) in paragraph at lines 72--77
 \OT1/ptm/m/n/10 Introduce topic and de-scribe mo-ti-va-tion and rel-e-vance
  []
 
-(root.bbl)
+
+Underfull \hbox (badness 10000) in paragraph at lines 86--90
+
+ []
+
+(root.bbl
+Overfull \vbox (336.63313pt too high) has occurred while \output is active []
+
+
+[1{C:/Users/Luzia/AppData/Local/MiKTeX/2.9/pdftex/config/pdftex.map}
+
+
+])
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -270,22 +282,17 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the US letter (8.5in X 11in) paper size.
 
-
-Overfull \vbox (336.63313pt too high) has occurred while \output is active []
-
-
-[1{C:/Users/Luzia/AppData/Local/MiKTeX/2.9/pdftex/config/pdftex.map}
-
+[2
 
 ] (root.aux) ) 
 Here is how much of TeX's memory you used:
- 2312 strings out of 492970
- 33034 string characters out of 3126594
- 97954 words of memory out of 3000000
- 6191 multiletter control sequences out of 15000+200000
+ 2315 strings out of 492970
+ 33086 string characters out of 3126594
+ 99963 words of memory out of 3000000
+ 6194 multiletter control sequences out of 15000+200000
  41990 words of font info for 94 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
- 27i,10n,27p,813b,299s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 27i,10n,27p,1834b,299s stack positions out of 5000i,500n,10000p,200000b,50000s
 {C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/enc/dvips
 /base/8r.enc}<C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/publ
 ic/amsfonts/cm/cmr6.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts
@@ -295,9 +302,9 @@ X 2.9/fonts/type1/urw/courier/ucrr8a.pfb><C:/Users/Luzia/AppData/Local/Programs
 rams/MiKTeX 2.9/fonts/type1/urw/times/utmbi8a.pfb><C:/Users/Luzia/AppData/Local
 /Programs/MiKTeX 2.9/fonts/type1/urw/times/utmr8a.pfb><C:/Users/Luzia/AppData/L
 ocal/Programs/MiKTeX 2.9/fonts/type1/urw/times/utmri8a.pfb>
-Output written on root.pdf (1 page, 78809 bytes).
+Output written on root.pdf (2 pages, 82605 bytes).
 PDF statistics:
- 35 PDF objects out of 1000 (max. 8388607)
+ 38 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -17,11 +17,29 @@ Ju{\v{s}} Kocijan, Roderick Murray-Smith, Carl~Edward Rasmussen, and Agathe
 \newblock In {\em Proceedings of the 2004 American control conference},
   volume~3, pages 2214--2219. IEEE, 2004.
 
+\bibitem{meier2014efficient}
+Franziska Meier, Philipp Hennig, and Stefan Schaal.
+\newblock Efficient bayesian local model learning for control.
+\newblock In {\em 2014 IEEE/RSJ International Conference on Intelligent Robots
+  and Systems}, pages 2244--2249. IEEE, 2014.
+
+\bibitem{nguyen2009local}
+Duy Nguyen-Tuong, Jan~R Peters, and Matthias Seeger.
+\newblock Local gaussian process regression for real time online model
+  learning.
+\newblock In {\em Advances in Neural Information Processing Systems}, pages
+  1193--1200, 2009.
+
 \bibitem{ostafew2014learning}
 Chris~J Ostafew, Angela~P Schoellig, and Timothy~D Barfoot.
 \newblock Learning-based nonlinear model predictive control to improve
   vision-based mobile robot path-tracking in challenging outdoor environments.
 \newblock In {\em 2014 IEEE International Conference on Robotics and Automation
   (ICRA)}, pages 4029--4036. IEEE, 2014.
+
+\bibitem{van2017online}
+Benjamin Van~Niekerk, Andreas Damianou, and Benjamin~S Rosman.
+\newblock Online constrained model-based reinforcement learning.
+\newblock 2017.
 
 \end{thebibliography}
