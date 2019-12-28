@@ -83,7 +83,53 @@ Notation. Define notation.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{BACKGROUND}
 
-In this section necessary background information on MPC and a revision of GPs are presented.\\
+In this section a revision of GPs for our application and necessary background information on MPC are presented. The revison of GPs follows Kabzan et al.~\cite{kabzan2019learning} as well as Rasmussen and Williams~\cite{williams2006gaussian}\\
+ \\
+As described in the Introduction a GP is used to identify the disturbance $d_{true}$ which describes the error between the nominal plant dynamics $f_{nom}$ and the true dynamics $f_{true}$. Thus, the true system equations are given by
+\begin{align}
+\begin{split}
+x_{k+1} &= f_{true}(x_k,u_k) \\
+        &=  f_{nom}(x_k,u_k) + B_d\big(d_{true}(z_k)+ w\big),
+\end{split}
+\end{align}
+with $z_k = B_z x_k$ and $w \sim \mathcal{N}(0,\Sigma_w)$, where $\Sigma_w= diag(\sigma_1^2, \cdots ,\sigma_{n_d}^2)$ the gaussian measurement noise.
+The disturbance $d = d_{true}(z_k) + w_k$ is identified using input and output data pairs $(z_k,y_k=d_{true}(z_k)+w_k)$ which are saved in a dictionary $\mathcal{D}$ of length $m$
+\begin{align}
+\begin{split}
+\mathcal{D} = \{Z &=[z_1, \cdots, z_m] \in \R^{n_z \times m} , \\
+                Y &=[y_{1},\cdots,y_{m}]\in \R^{n_d \times m} \}.
+\end{split}
+\end{align}
+If $m>m_{max}$, the dictionary is updated by removing the oldest data pair.\\
+Each output dimension $a \in \{1, \cdots, n_d\}$ is treated as a different GP with the kernel $k^a$, which results in the posterior distribution mean $\mu^a(z)$ and variance $\Sigma^a(z)$
+\begin{align}
+\mu^a(z) &= k_{zZ}^a( K_{ZZ}^a +I \sigma_a)^{-1}[Y]_{.,i},\\
+\Sigma^a(z) &= k_{zz}^a-k_{zZ}^a ( K_{ZZ}^a +I \sigma_a)^{-1} k_{Zz}^a
+\end{align}
+in dimension $a$ for a test point $z$.
+The expressions $k_{zz}^a$, $ k_{zZ}^a$, $k_{Zz}^a$ and $K_{ZZ}^a$ are compact notations for $k^a(z,z) \in \R$, $[k_{zZ}^a]_j =k^a(z,z_j)$, $[k_{Zz}^a]_j =k^a(z_j,z)$ and $[K_{ZZ}^a]_{ij} = k^a(z_i,z_j)$, respectively. It holds $k_{Zz}^a=(k_{zZ}^a)^T \in \R^m$.\\
+For each output dimension $a$ we make use of the squared exponentional kernel given by
+\begin{equation}
+k^a(z,\bar{z}) = \sigma_{f,a}^2 \exp(-0.5(z-\bar{z})^T M^{-1} (z-\bar{z})),
+\end{equation}
+where $\sigma_{f,a}^2$ and $M$ are the squared output variance and the positive diagonal length scale matrix, respectively.
+The practical implementation of Gaussian process regression from page 19 of Rasmussen and Williams~\cite{williams2006gaussian} which uses the Cholesky factorization to address the matrix inversion is applied. This results in the following algorithm
+\begin{align}
+L^a &= \text{cholesky}(K(Z,Z) + \sigma_n(a,a)^2I)\\
+\alpha^a &= L^T\backslash(L \backslash Y(:,a)),
+\end{align}
+where $[K(Z,Z)]_{ij}=k(z_i,z_j)$ with $z_i, z_j \in Z$.
+Thus, the predictive mean and variance are given by
+\begin{align}
+\mu_y^a&=K(z,Z)^T\alpha^a\\
+\Sigma_y^a&=k(z,z)-v^Tv,
+\end{align}
+with $v=L/K(z,Z)$.
+ \\
+The model considered for control including the identified disturbance $d_{GP}$ is given by
+\begin{equation}
+x_{k+1} = f_{nom}(x_k,u_k) + B_d d(z_k).
+\end{equation}
  \\
 Model predictive control (MPC), receding  horizon  control or moving horizon control are all names for a control strategy which predicts the future dynamic behaviour within a finite prediction horizion and chooses the control input such that a perfomance functional is minimized (Allgöwer). Since the predicted behaviour is not equal to the system behaviour due to disturbances and model-plant mismatch, only the first input of the computed control input sequence is applied. Using the new measurement one sampling time later, the procedure is repeated to find a new control sequence within the receding horizon.\\
 The mathematical formulation is summarized below.

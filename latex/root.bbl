@@ -42,4 +42,9 @@ Benjamin Van~Niekerk, Andreas Damianou, and Benjamin~S Rosman.
 \newblock Online constrained model-based reinforcement learning.
 \newblock 2017.
 
+\bibitem{williams2006gaussian}
+Christopher~KI Williams and Carl~Edward Rasmussen.
+\newblock {\em Gaussian processes for machine learning}, volume~2.
+\newblock MIT press Cambridge, MA, 2006.
+
 \end{thebibliography}
