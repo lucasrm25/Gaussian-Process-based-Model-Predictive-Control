@@ -47,7 +47,7 @@ var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
 % create true dynamics model
 %   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
 trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
-% trueModel = MotionModelGP_SingleTrack(d,var_w);
+trueModel = MotionModelGP_SingleTrack(d,var_w);
 
 
 %% Create Estimation Model and Nominal Model
@@ -281,20 +281,20 @@ for k = ki:kmax
     % ---------------------------------------------------------------------
     % Add data to GP model
     % ---------------------------------------------------------------------
-    % if mod(k-1,1)==0
-    %     % calculate disturbance (error between measured and nominal)
-    %     d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
-    %     % select subset of coordinates that will be used in GP prediction
-    %     zhat = estModel.Bz * out.xhat(:,k);
-    %     % add data point to the GP dictionary
-    %     d_GP.add(zhat,d_est);
-    %     d_GP.updateModel();
-    % end
-    % 
-    % if d_GP.N > 50 && out.t(k) > 3
-    %     % d_GP.isActive = true;
-    % end
-    
+%     if mod(k-1,1)==0
+%         % calculate disturbance (error between measured and nominal)
+%         d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
+%         % select subset of coordinates that will be used in GP prediction
+%         zhat = estModel.Bz * out.xhat(:,k);
+%         % add data point to the GP dictionary
+%         d_GP.add(zhat,d_est');
+%     end
+%     
+%     if d_GP.N > 50 && out.t(k) > 15
+%        d_GP.updateModel();
+%        d_GP.isActive = true;
+%     end
+%     
     % check if these values are the same:
     % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
    
@@ -328,17 +328,19 @@ trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 50;     % penalization of lag error
-    q_c   = 100;     % penalization of contouring error
-    q_o   = 50;     % penalization for orientation error
-    q_d   = 3;      % reward high track centerline velocites
-    q_r   = 1000;   % penalization when vehicle is outside track
+    q_l   = 500;  % 50   % penalization of lag error
+    q_c   = 700;  %100 % penalization of contouring error
+    q_o   = 0;    % penalization for orientation error
+    q_d   = 4;   % 3   % reward high track centerline velocites
+    q_r   = 10000; %1000  % penalization when vehicle is outside track
     
     % state and input penalization
     q_v   = 0; % reward high absolute velocities
-    q_st  = 100; % penalization of steering
+    q_st  = 50; %100 % penalization of steering
     q_br  = 0; % penalization of breaking
     q_acc = 0; % reward for accelerating
+    
+    % changes in input penalization
 
     % label inputs and outputs
     I_x        = mu_x(1);  % x position in global coordinates

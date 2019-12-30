@@ -118,6 +118,7 @@ classdef GP < handle
         % out:
         %   kernel: <N1,N2>
         %------------------------------------------------------------------
+        
             D = pdist2(x1',x2','mahalanobis',obj.M).^2;
             %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
             kernel = obj.var_f * exp( -0.5 * D );
