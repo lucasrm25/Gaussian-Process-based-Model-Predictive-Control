@@ -46,7 +46,7 @@ var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
 
 % create true dynamics model
 %   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
-trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
+% trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
 trueModel = MotionModelGP_SingleTrack(d,var_w);
 
 
@@ -249,7 +249,8 @@ for k = ki:kmax
     [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,k),zeros(trueModel.n),out.u(:,k),dt);
     out.x(:,k+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
-    
+     [lag_error, countour_error, offroad_error, orientation_error] = ...
+        track.getVehicleDeviation([mu_xkp1(1);mu_xkp1(2)], mu_xkp1(3), mu_xkp1(7));
     % ---------------------------------------------------------------------
     % Measure data
     % ---------------------------------------------------------------------
@@ -330,15 +331,17 @@ function cost = costFunction(mu_x, var_x, u, track)
     % Track oriented penalization
     q_l   = 50;  % 50   % penalization of lag error
     q_c   = 100;  %100 % penalization of contouring error
-    q_o   = 50;    % penalization for orientation error
+    q_o   = 50;    %50 penalization for orientation error
     q_d   = 2;   % 3   % reward high track centerline velocites
-    q_r   = 1000; %1000  % penalization when vehicle is outside track
+    q_r   = 500000; %1000  % penalization when vehicle is outside track
     
     % state and input penalization
-    q_v   = 1; % reward high absolute velocities
-    q_st  = 100; %100 % penalization of steering
-    q_br  = 1; % penalization of breaking
+    q_v   = 0; % reward high absolute velocities
+    q_st  = 0; %100 % penalization of steering
+    q_br  = 0; % penalization of breaking
     q_acc = 0; % reward for accelerating
+    
+    % changes in input penalization
 
     % label inputs and outputs
     I_x        = mu_x(1);  % x position in global coordinates
@@ -374,8 +377,8 @@ function cost = costFunction(mu_x, var_x, u, track)
     % offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
     gamma = 1000;
     lambda = -0.1;
-    offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
-
+    %offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
+    offroad_error = (offroad_error>0)*offroad_error*100;
     % CHECK SMOOTH TRANSITION
     % x = -0.5:0.01:0.5
     % % Smooth >=0 boolean function
