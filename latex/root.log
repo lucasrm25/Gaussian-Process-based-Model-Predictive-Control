@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  28 DEC 2019 19:41
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  2 JAN 2020 11:55
 entering extended mode
 **./root.tex
 (root.tex
@@ -254,19 +254,31 @@ Underfull \hbox (badness 10000) in paragraph at lines 72--77
  []
 
 
-Underfull \hbox (badness 1789) in paragraph at lines 72--77
-\OT1/ptm/m/n/10 Introduce topic and de-scribe mo-ti-va-tion and rel-e-vance
+Underfull \hbox (badness 10000) in paragraph at lines 80--82
+
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 86--89
+Underfull \hbox (badness 10000) in paragraph at lines 87--88
 
  []
 
 [1{C:/Users/Luzia/AppData/Local/MiKTeX/2.9/pdftex/config/pdftex.map}
 
 
-] (root.bbl)
+]
+Underfull \hbox (badness 4608) in paragraph at lines 132--134
+\OT1/ptm/m/n/10 where the mean $\OML/cmm/m/it/10 []\OT1/cmr/m/n/10 (\OML/cmm/m
+/it/10 z\OT1/cmr/m/n/10 ) \OMS/cmsy/m/n/10 2 R[]$ \OT1/ptm/m/n/10 and the vari-
+ance
+ []
+
+
+Overfull \hbox (9.34485pt too wide) detected at line 158
+[]
+ []
+
+(root.bbl [2])
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -278,38 +290,40 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the US letter (8.5in X 11in) paper size.
 
-[2] (root.aux) ) 
+[3
+
+] (root.aux) ) 
 Here is how much of TeX's memory you used:
- 2321 strings out of 492970
- 33168 string characters out of 3126594
- 103966 words of memory out of 3000000
- 6200 multiletter control sequences out of 15000+200000
+ 2324 strings out of 492970
+ 33212 string characters out of 3126594
+ 105988 words of memory out of 3000000
+ 6203 multiletter control sequences out of 15000+200000
  43044 words of font info for 99 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
  27i,18n,27p,1834b,299s stack positions out of 5000i,500n,10000p,200000b,50000s
-{C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/enc/dvi
-ps/base/8r.enc}<C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/pu
-blic/amsfonts/cm/cmex10.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/f
-onts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/Luzia/AppData/Local/Programs
-/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi5.pfb><C:/Users/Luzia/AppData/Lo
-cal/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/Luzi
-a/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr10.pfb><C
-:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/
-cmr6.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/a
-msfonts/cm/cmr7.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/typ
-e1/public/amsfonts/cm/cmr8.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.
-9/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Luzia/AppData/Local/Progr
-ams/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/Luzia/AppData
-/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/symbols/msbm10.pfb><C:/U
-sers/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/courier/ucrr8a.pfb
-><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/times/utmb8a
-.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/times/ut
-mbi8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/tim
-es/utmr8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw
-/times/utmri8a.pfb>
-Output written on root.pdf (2 pages, 169535 bytes).
+{C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/enc/dvips
+/base/8r.enc}<C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/publ
+ic/amsfonts/cm/cmex10.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fon
+ts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/Luzia/AppData/Local/Programs/M
+iKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi5.pfb><C:/Users/Luzia/AppData/Loca
+l/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/Luzia/
+AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/
+Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cm
+r6.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/ams
+fonts/cm/cmr7.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1
+/public/amsfonts/cm/cmr8.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/
+fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Luzia/AppData/Local/Program
+s/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/Luzia/AppData/L
+ocal/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/symbols/msbm10.pfb><C:/Use
+rs/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/courier/ucrr8a.pfb><
+C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/times/utmb8a.p
+fb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/times/utmb
+i8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/times
+/utmr8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/t
+imes/utmri8a.pfb>
+Output written on root.pdf (3 pages, 179077 bytes).
 PDF statistics:
- 74 PDF objects out of 1000 (max. 8388607)
+ 77 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

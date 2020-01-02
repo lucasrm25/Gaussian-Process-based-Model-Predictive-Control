@@ -71,28 +71,29 @@ read the whole paper.
 \section{INTRODUCTION}
 Model predictive control (MPC) is a popular control strategy which uses a dynamic plant model to obtain the control input that optimizes future reactions of the plant~\cite{kocijan2004gaussian}. The performance of MPC depends highly on how well the model captures the dynamics of the plant~\cite{kabzan2019learning}. But the identification of such an \textit{a priori} model can be challenging and the dynamics of the plant could also change during the application~\cite{kabzan2019learning,ostafew2014learning}. Therefore, a simple and fixed nominal model of the plant can be used in combination with a learned disturbance model. The disturbance model represents the error between the observed behaviour of the plant and the behaviour of the nominal model~\cite{ostafew2014learning}. It can be modelled as a Gaussian Process (GP) regression which is a probabilistic, non-parametric model~\cite{kocijan2004gaussian}. GPs have the advantage of characterizing the prediction uncertainities~\cite{kocijan2004gaussian}. The mean estiamte of a GP can also be used to model the full dynamics of the plant and not only the model error. This approach was applied to a cart pole swing-up environment and an autonomous racing task in \cite{van2017online}. To reduce high computational costs they choose sparce spectrum GPs. Kocijan et al.~\cite{kocijan2004gaussian} use an offline-identified GP model instead. Another alternative is the generation of local GPs (LGPs) where for each subspace of the GP input space different GPs are identified. While Nguyen-Tuong et al.~\cite{nguyen2009local} and Meier et al.~\cite{meier2014efficient} identify many LGPs, Ostafew et al.~\cite{ostafew2014learning} compute one single LGP based on data within a sliding window. Other applications of GPs in a MPC framework are .
  \\
-In this report we present the results of our project within the course ``Statistical Learning and Stochastic Control''. First, our literature research on GP-based MPC is summarized. Then a short introduction to the theory of MPC and GPs is given. Later, two examples which's  implementation was part of the project are explained.\\
+In this report we present the results of our project within the course ``Statistical Learning and Stochastic Control''. First, our literature research on GP-based MPC is summarized. Then a short introduction to the theory of MPC and GPs is given. Later, two examples which's  implementation was part of the project are introduced in Section~\ref{main_results} and the results are discussed in Section~\ref{examples}.\\
   \\
+We start by defining the used noation below.
+
 Introduce topic and describe motivation and relevance of problem/topic.
 
 In this paper we give an introduction to the results presented in paper(s) \cite{Bro-14}.
-We present the main results, discuss ideas and illustrate the results with simulations.
+We present the main results, discuss ideas and illustrate the results with simulations.\\
 
 Notation. Define notation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{BACKGROUND}
+In this section a revision of GPs for our application and necessary background information on MPC are presented. The revison of GPs follows Kabzan et al.~\cite{kabzan2019learning} as well as Rasmussen and Williams~\cite{williams2006gaussian}. \\
 
-In this section a revision of GPs for our application and necessary background information on MPC are presented. The revison of GPs follows Kabzan et al.~\cite{kabzan2019learning} as well as Rasmussen and Williams~\cite{williams2006gaussian}\\
- \\
-As described in the Introduction a GP is used to identify the disturbance $d_{true}$ which describes the error between the nominal plant dynamics $f_{nom}$ and the true dynamics $f_{true}$. Thus, the true system equations are given by
+As mentioned in the Introduction, a GP is used to identify the disturbance $d_{true}$, which describes the error between the nominal plant dynamics $f_{nom}$ and the true dynamics $f_{true}$. Thus, the true system equations are given by
 \begin{align}
 \begin{split}
 x_{k+1} &= f_{true}(x_k,u_k) \\
         &=  f_{nom}(x_k,u_k) + B_d\big(d_{true}(z_k)+ w\big),
 \end{split}
 \end{align}
-with $z_k = B_z x_k$ and $w \sim \mathcal{N}(0,\Sigma_w)$, where $\Sigma_w= diag(\sigma_1^2, \cdots ,\sigma_{n_d}^2)$ the gaussian measurement noise.
+with $z_k = B_z x_k$ ($B_z \in \mathcal{n_z \times n}$ and $w \sim \mathcal{N}(0,\Sigma_w)$  the gaussian measurement noise, where $\Sigma_w= diag(\sigma_1^2, \cdots ,\sigma_{n_d}^2)$.
 The disturbance $d = d_{true}(z_k) + w_k$ is identified using input and output data pairs $(z_k,y_k=d_{true}(z_k)+w_k)$ which are saved in a dictionary $\mathcal{D}$ of length $m$
 \begin{align}
 \begin{split}
@@ -124,25 +125,54 @@ Thus, the predictive mean and variance are given by
 \mu_y^a&=K(z,Z)^T\alpha^a\\
 \Sigma_y^a&=k(z,z)-v^Tv,
 \end{align}
-with $v=L/K(z,Z)$.
- \\
-The model considered for control including the identified disturbance $d_{GP}$ is given by
+with $v=L/K(z,Z)$.\\
+Combining the GPs of each dimension results in the multivariate GP approximation 
+\begin{equation}
+d(z)\sim \mathcal{N}(\mu^d(z),\Sigma^d(z)),
+\end{equation}
+where the mean $\mu^d(z) \in \mathcal{R}^{n_d}$ and the variance $\Sigma^d(z)~\in~\mathcal{R}^{n_d \times n_d}$ are given by
+\begin{align}
+\mu^d(z) &= [\mu^1(z),\cdots, \mu^{n_d}(z)]^T,\\
+\Sigma^d(z) &= \text{diag}([\Sigma^1(z),\cdots, \Sigma^{n_d}(z)]).
+\end{align}
+The model considered for control including the identified disturbance $d$ is given by
 \begin{equation}
 x_{k+1} = f_{nom}(x_k,u_k) + B_d d(z_k).
 \end{equation}
  \\
-Model predictive control (MPC), receding  horizon  control or moving horizon control are all names for a control strategy which predicts the future dynamic behaviour within a finite prediction horizion and chooses the control input such that a perfomance functional is minimized (Allgöwer). Since the predicted behaviour is not equal to the system behaviour due to disturbances and model-plant mismatch, only the first input of the computed control input sequence is applied. Using the new measurement one sampling time later, the procedure is repeated to find a new control sequence within the receding horizon.\\
-The mathematical formulation is summarized below.
+Model predictive control (MPC), receding  horizon  control or moving horizon control are all names for a control strategy which predicts the future dynamic behaviour within a finite prediction horizion and chooses the control input such that a perfomance functional is minimized~\cite{allgeowernonlinear}. Since the predicted behaviour is not equal to the system behaviour due to disturbances and model-plant mismatch, only the first input of the computed control input sequence is applied~\cite{allgeowernonlinear}. Using the new measurement one sampling time later, the procedure is repeated to find a new control sequence within the receding horizon.\\
+Evaluating the GP model $d(x_k,u_k)$ results in a stochastic distribution, which leads to a stochastic distribution of the state $x$. The distribution at each prediction step is assumed to be Gaussian with $x_k \sim \mathcal{N}(\mu^x_k,\Sigma^x_k)$. To evaluate the uncertainity over the prediction horizon $N$ the mean and variance of $x$ are propagated forward which results in
+\begin{align}
+\mu^x_{k+1}&= f_{nom}(\mu^x_k,u_k)+B_d \mu^d(\mu^x_k,u_k)\\
+\Sigma^x_{k+1} &= ????.
+\end{align}
+For more information on the propagation see ???? Appendix.
+Thus, the MPC problem is given by
+\begin{align}
+\min_{\tilde{u}} &\big(\sum_{k=0}^{N-1} f_o(t_k,\mu^x_k,\Sigma^x_k,\tilde{u}_k,r(t))\big) + f_{end}(t_N,\mu^x_N,\Sigma^x_N,r(t_N))\\
+&\mu^x_0 = x(t)\\
+&\mu^x_{k+1}= f_{nom}(\mu^x_k,\tilde{u}_k)+B_d \mu^d_k\\
+&\Sigma^x_{k+1}=\nabla^T  f_{nom}(\mu^x_k,\tilde{u}_k),\Sigma_{xdw} \nabla f_{nom}(\mu^x_k,\tilde{u}_k),\\
+&\mu^x_k \in \mathcal{X},\\
+&u_k \in \mathcal{U},
+\end{align}
+where $\tilde{u}(\dot):[t,t+N] \rightarrow \mathcal{U}$ and $\tilde{u}_k$ refers to the k-th element of $\tilde{u}$. The reference trajectory is given by $r(t)$. The input and state constraint sets $\mathcal{U}$ and $\mathcal{X}$ can be defined as box constraints according to Allgöwer et al.~\cite{allgeowernonlinear}
+\begin{align}
+\mathcal{U} &= \{u \in \mathcal{R}^p|u_{min}\leq u \leq u_{max}\},\\
+\mathcal{X} &= \{u \in \mathcal{R}^n|x_{min}\leq x \leq x_{max}\}.
+\end{align}
+According to the control problem, a cost function $f_o$ and the final cost $f_{end}$ are defined. The cost functions, which were used during this project, are further described for each example in Section~\ref{main_results}.
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{MAIN RESULTS}
+\section{MAIN RESULTS}\label{main_results}
 
 Ideas, theorems, proofs and discussions .....
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{EXAMPLES}
+\section{EXAMPLES}\label{examples}
 
 Show and discuss simulation examples etc....
 

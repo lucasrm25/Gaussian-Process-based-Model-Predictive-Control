@@ -1,5 +1,9 @@
 \begin{thebibliography}{1}
 
+\bibitem{allgeowernonlinear}
+Frank Allgöwer, Rolf Findeisen, Christian Ebenbauer, et~al.
+\newblock Nonlinear model predictive control.
+
 \bibitem{Bro-14}
 R.~Brockett.
 \newblock The early days of geometric nonlinear control.
