@@ -180,6 +180,55 @@ classdef RaceTrack < handle
             orientation_error = 1 - abs([cos(psi_c); sin(psi_c)]' * [cos(psi_vehicle); sin(psi_vehicle)]);  
         end
         
+        function offroad_error = ...
+                getoffroaderror(obj, pos_vehicle, psi_vehicle, track_dist)
+        %------------------------------------------------------------------
+        %   outs: 
+        %     - lag_error, countour_error: lag and countour errors from a 
+        %       track position that is given by the traveled distance along 
+        %       the centerline. Normalized by track radius at that point
+        %     - offroad_error: \in [0 Inf] how far the vehicle is from the
+        %       track borders. Normalized by track radius at that point
+        %     - orientation_error \in [0 1], where 0 means that vehicle and
+        %       track have the same orientation and 1 mean they are orthogonal
+        %
+        %   NOTE:
+        %   - positive lag_error means that the vehicle is lagging behind
+        %   - positive countour_error means the vehicle is to the right size
+        %     of the track
+        %------------------------------------------------------------------    
+            
+            % get information (x,y,track radius and track orientation) of the point 
+            % in the track that corresponds to a traveled distance of 'dist' meters.
+            [pos_c, psi_c, R_c] = obj.getTrackInfo(track_dist);
+
+            % ---------------------------------------------------------------------
+            % contour and lag error
+            % ---------------------------------------------------------------------
+            % vehicle position in inertial coordinates
+            I_x = pos_vehicle(1);
+            I_y = pos_vehicle(2);
+            % rotation to a frame with x-axis tangencial to the track (T frame)
+            A_TI = [ cos(psi_c)  -sin(psi_c);    
+                     sin(psi_c)   cos(psi_c)];
+            % error in the inertial coordinates
+            I_error = pos_c - [I_x;I_y];       
+            % error in the T frame [lag_error; contouring_error]
+            T_error = A_TI' * I_error;
+            
+            % get lag and countour error (normalized by the road radius).
+            % contour_error=+-1, when we are at the border
+            % contour_error=0,   when we are at the middle at the track
+            % lag_error>0,       when we are lagging behind
+            lag_error      = T_error(1) / R_c;
+            countour_error = T_error(2) / R_c;
+            
+            % calculate normalized offroad_error (desired is to be < 0)
+            offroad_error = norm(T_error)/R_c - 1;
+            
+            % calculate orientation error (\in [0 1])
+            orientation_error = 1 - abs([cos(psi_c); sin(psi_c)]' * [cos(psi_vehicle); sin(psi_vehicle)]);  
+        end
         
         function h_fig = plotTrack(obj)
         % -------------------------------------------------------------

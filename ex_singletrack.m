@@ -130,14 +130,18 @@ fo   = @(t,mu_x,var_x,u,e,r) costFunction(mu_x, var_x, u, track);            % e
 fend = @(t,mu_x,var_x,e,r)   2 * costFunction(mu_x, var_x, zeros(m,1), track);   % end cost function
 
 % define dynamics
-f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
+% f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
+f  = @(mu_x,var_x,u) trueModel.xkp1(mu_x, var_x, u, dt);
 % define additional constraints
+
 h  = @(x,u,e) [];
-g  = @(x,u,e) [];
-u_lb = [-deg2rad(25);  % delta >= -10deg
+g  = @(x,u,e) track.getoffroaderror([x(1);x(2)], x(3), x(7));
+delta_min = -deg2rad(25);
+delta_max = deg2rad(25);
+u_lb = [delta_min;  % delta >= -10deg
          -1;           % wheel torque gain >= -1
-         5];           % track velocity >= 0
-u_ub = [deg2rad(25);   % delta <=  10 deg
+         0];           % track velocity >= 0
+u_ub = [delta_max;   % delta <=  10 deg
         1;             % wheel torque gain <= 1
         30];           % track velocity <= 1
 
@@ -291,13 +295,13 @@ for k = ki:kmax
 %         d_GP.add(zhat,d_est');
 %     end
 %     
-%     if d_GP.N > 50 && out.t(k) > 15
+%     if d_GP.N > 20 && out.t(k) > 5
 %        d_GP.updateModel();
 %        d_GP.isActive = true;
 %     end
-%     
-    % check if these values are the same:
-    % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
+    
+%     check if these values are the same:
+%     d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
    
 end
 
@@ -329,15 +333,15 @@ trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 50;  % 50   % penalization of lag error
-    q_c   = 50;  %100 % penalization of contouring error
-    q_o   = 50;    %50 penalization for orientation error
-    q_d   = 2;   % 3   % reward high track centerline velocites
-    q_r   = 2000; %1000  % penalization when vehicle is outside track
+    q_l   = 0;  % 50   % penalization of lag error
+    q_c   = 0;  %100 % penalization of contouring error
+    q_o   = 0;    %50 penalization for orientation error
+    q_d   = 1;   % 3   % reward high track centerline velocites
+    q_r   = 500; %1000  % penalization when vehicle is outside track
     
     % state and input penalization
-    q_v   = 0; % reward high absolute velocities
-    q_st  = 90; %100 % penalization of steering
+    q_v   = 0.5; % reward high absolute velocities
+    q_st  = 0; %100 % penalization of steering
     q_br  = 0; % penalization of breaking
     q_acc = 0; % reward for accelerating
     
@@ -348,7 +352,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     I_y        = mu_x(2);  % y position in global coordinates
     psi        = mu_x(3);  % yaw
     V_vx       = mu_x(4);  % x velocity in vehicle coordinates
-    V_vy       = mu_x(5);  % x velocity in vehicle coordinates
+    V_vy       = mu_x(5);  % y velocity in vehicle coordinates
     track_dist = mu_x(7);  % track centerline distance
     delta      = u(1);     % steering angle rad2deg(delta)
     T          = u(2);     % torque gain (1=max.acc, -1=max.braking)
@@ -377,7 +381,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     % offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
     gamma = 1000;
     lambda = -0.1;
-    offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
+    offroad_error = 5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
 %     offroad_error = (offroad_error>0)*offroad_error*100;
     % CHECK SMOOTH TRANSITION
     % x = -0.5:0.01:0.5

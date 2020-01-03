@@ -118,10 +118,12 @@ classdef GP < handle
         % out:
         %   kernel: <N1,N2>
         %------------------------------------------------------------------
+        for pi=1:obj.p
+            D(:,:,pi) = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
         
-            D = pdist2(x1',x2','mahalanobis',obj.M).^2;
             %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
-            kernel = obj.var_f * exp( -0.5 * D );
+            kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
+        end
         end
         
         
@@ -136,11 +138,13 @@ classdef GP < handle
                 
                 % for each output dimension
                 obj.alpha = zeros(obj.N,obj.p);
+                obj.L = zeros(obj.N,obj.N);
+                K=obj.K(obj.X,obj.X);
                 for pi=1:obj.p
-                    obj.L = chol( obj.K(obj.X,obj.X) + obj.var_n(pi) * I ,'lower');
+                    obj.L(:,:,pi) = chol(K(:,:,pi)+ obj.var_n(pi) * I ,'lower');
                     % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
                     
-                    obj.alpha(:,pi) = obj.L'\(obj.L\(obj.Y(:,pi)-obj.mu(obj.X)));
+                    obj.alpha(:,pi) = obj.L(:,:,pi)'\(obj.L(:,:,pi)\(obj.Y(:,pi)-obj.mu(obj.X)));
                 end
                 
                 %-------------------- (DEPRECATED) ------------------------ 
@@ -222,16 +226,18 @@ classdef GP < handle
             KxX = obj.K(x,obj.X);
             mu_y = zeros(obj.p,Nx);
             for pi=1:obj.p
-                mu_y(pi,:) = obj.mu(x) + KxX * obj.alpha(:,pi);
+                mu_y(pi,:) = obj.mu(x) + KxX(:,:,pi) * obj.alpha(:,pi);
             end
             
             % Calculate posterior covariance var_y
             var_y = zeros(obj.p,obj.p,Nx);
+       
             for pi=1:obj.p
                 for i=1:Nx
                     % (less efficient) v = obj.L\obj.K(x(:,i),obj.X)';
-                    v = obj.L(:,:,pi)\KxX(i,:)';
-                    var_y(pi,pi,i) = obj.K(x(:,i),x(:,i)) - v'*v;
+                    v = obj.L(:,:,pi)\KxX(i,:,pi)';
+                    K = obj.K(x(:,i),x(:,i));
+                    var_y(pi,pi,i) = K(:,:,pi) - v'*v;
                 end
             end
             
