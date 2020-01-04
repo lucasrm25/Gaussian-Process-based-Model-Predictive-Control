@@ -337,11 +337,11 @@ function cost = costFunction(mu_x, var_x, u, track)
     q_c   = 0;  %100 % penalization of contouring error
     q_o   = 0;    %50 penalization for orientation error
     q_d   = 1;   % 3   % reward high track centerline velocites
-    q_r   = 500; %1000  % penalization when vehicle is outside track
+    q_r   = 1000; %1000  % penalization when vehicle is outside track
     
     % state and input penalization
     q_v   = 0.5; % reward high absolute velocities
-    q_st  = 0; %100 % penalization of steering
+    q_st  = 1; %100 % penalization of steering
     q_br  = 0; % penalization of breaking
     q_acc = 0; % reward for accelerating
     
