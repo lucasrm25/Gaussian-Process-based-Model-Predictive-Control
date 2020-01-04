@@ -32,6 +32,7 @@
 %\usepackage{times} % assumes new font selection scheme installed
 %\usepackage{amsmath} % assumes amsmath package installed
 %\usepackage{amssymb}  % assumes amsmath package installed
+\usepackage{pdfpages}
 
 \title{\LARGE \bf
 GP-based Model Predictive Control*
@@ -41,11 +42,11 @@ GP-based Model Predictive Control*
 \author{Dimitrios Gkoutzos$^{1}$, Luzia Knödler$^{2}$ and Lucas Rath$^{3}$% <-this % stops a space
 \thanks{*Project within the course Statistical Learning and Stochastic Control, University of Stuttgart, \today.}% <-this % stops a space
 \thanks{$^{1}$Dimitrios Gkoutzos is a student of the Master study programm Engineering Cybernetics, University of Stuttgart,
-        {\tt\small albert.author@papercept.net}}%
+        {\tt\small email???}}%
 \thanks{$^{2}$Luzia Knödler is a student of the Master study program Engineering Cybernetics, University of Stuttgart,
-        {\tt\small b.d.researcher@ieee.org}}%
+        {\tt\small luzia.knoedler@web.de}}%
 \thanks{$^{3}$Lucas Rath is a student of the Master study program Engineering Cybernetics, University of Stuttgart, and of the Master study program Systems, Control and Mechatronics, Chalmers University of Technology,
-        {\tt\small b.d.researcher@ieee.org}}%
+        {\tt\small lucasrm25@gmail.com}}%
 }
 
 
@@ -72,8 +73,8 @@ read the whole paper.
 Model predictive control (MPC) is a popular control strategy which uses a dynamic plant model to obtain the control input that optimizes future reactions of the plant~\cite{kocijan2004gaussian}. The performance of MPC depends highly on how well the model captures the dynamics of the plant~\cite{kabzan2019learning}. But the identification of such an \textit{a priori} model can be challenging and the dynamics of the plant could also change during the application~\cite{kabzan2019learning,ostafew2014learning}. Therefore, a simple and fixed nominal model of the plant can be used in combination with a learned disturbance model. The disturbance model represents the error between the observed behaviour of the plant and the behaviour of the nominal model~\cite{ostafew2014learning}. It can be modelled as a Gaussian Process (GP) regression which is a probabilistic, non-parametric model~\cite{kocijan2004gaussian}. GPs have the advantage of characterizing the prediction uncertainities~\cite{kocijan2004gaussian}. The mean estiamte of a GP can also be used to model the full dynamics of the plant and not only the model error. This approach was applied to a cart pole swing-up environment and an autonomous racing task in \cite{van2017online}. To reduce high computational costs they choose sparce spectrum GPs. Kocijan et al.~\cite{kocijan2004gaussian} use an offline-identified GP model instead. Another alternative is the generation of local GPs (LGPs) where for each subspace of the GP input space different GPs are identified. While Nguyen-Tuong et al.~\cite{nguyen2009local} and Meier et al.~\cite{meier2014efficient} identify many LGPs, Ostafew et al.~\cite{ostafew2014learning} compute one single LGP based on data within a sliding window. Other applications of GPs in a MPC framework are .
  \\
 In this report we present the results of our project within the course ``Statistical Learning and Stochastic Control''. First, our literature research on GP-based MPC is summarized. Then a short introduction to the theory of MPC and GPs is given. Later, two examples which's  implementation was part of the project are introduced in Section~\ref{main_results} and the results are discussed in Section~\ref{examples}.\\
-  \\
-We start by defining the used noation below.
+We start by defining the used noation below.\\
+Bold lowercase letters are used for vectors $\boldsymbol{x} \in \mathcal{R}^n$ and bold uppercase letters for matrices $\boldsymbol{X} \in \mathcal{R}^{n \times m}$.
 
 Introduce topic and describe motivation and relevance of problem/topic.
 
@@ -86,80 +87,80 @@ Notation. Define notation.
 \section{BACKGROUND}
 In this section a revision of GPs for our application and necessary background information on MPC are presented. The revison of GPs follows Kabzan et al.~\cite{kabzan2019learning} as well as Rasmussen and Williams~\cite{williams2006gaussian}. \\
 
-As mentioned in the Introduction, a GP is used to identify the disturbance $d_{true}$, which describes the error between the nominal plant dynamics $f_{nom}$ and the true dynamics $f_{true}$. Thus, the true system equations are given by
+As mentioned in the Introduction, a GP is used to identify the disturbance $\boldsymbol{d_{true}}$, which describes the error between the nominal plant dynamics $f_{nom}$ and the true dynamics $f_{true}$. Thus, the true system equations are given by
 \begin{align}
 \begin{split}
-x_{k+1} &= f_{true}(x_k,u_k) \\
-        &=  f_{nom}(x_k,u_k) + B_d\big(d_{true}(z_k)+ w\big),
+\boldsymbol{x_{k+1}} &= f_{true}(\boldsymbol{x_k},\boldsymbol{u_k}) \\
+        &=  f_{nom}(\boldsymbol{x_k},\boldsymbol{u_k}) + \boldsymbol{B_d}\big(\boldsymbol{d_{true}}(\boldsymbol{z_k})+ \boldsymbol{w}\big),
 \end{split}
 \end{align}
-with $z_k = B_z x_k$ ($B_z \in \mathcal{n_z \times n}$ and $w \sim \mathcal{N}(0,\Sigma_w)$  the gaussian measurement noise, where $\Sigma_w= diag(\sigma_1^2, \cdots ,\sigma_{n_d}^2)$.
-The disturbance $d = d_{true}(z_k) + w_k$ is identified using input and output data pairs $(z_k,y_k=d_{true}(z_k)+w_k)$ which are saved in a dictionary $\mathcal{D}$ of length $m$
+with $\boldsymbol{z_k} = \boldsymbol{B_z} \boldsymbol{x_k}$ ($\boldsymbol{B_z} \in \mathcal{R}^{n_z \times n}$ and $\boldsymbol{w}~\sim~\mathcal{N}(0,\boldsymbol{\Sigma_w})$  the gaussian measurement noise, where $\boldsymbol{\Sigma_w}= diag(\sigma_1^2, \cdots ,\sigma_{n_d}^2)$.
+The disturbance $\boldsymbol{d} = \boldsymbol{d_{true}}(\boldsymbol{z_k}) + \boldsymbol{w_k}$ is identified using input and output data pairs $(\boldsymbol{z_k},\boldsymbol{y_k}=\boldsymbol{d_{true}}(\boldsymbol{z_k})+\boldsymbol{w_k})$ which are saved in a dictionary $\mathcal{D}$ of length $m$
 \begin{align}
 \begin{split}
-\mathcal{D} = \{Z &=[z_1, \cdots, z_m] \in \R^{n_z \times m} , \\
-                Y &=[y_{1},\cdots,y_{m}]\in \R^{n_d \times m} \}.
+\mathcal{D} = \{\boldsymbol{Z} &=[\boldsymbol{z_1}, \cdots, 		\boldsymbol{z_m}] \in \R^{n_z \times m} , \\
+                \boldsymbol{Y} &=[\boldsymbol{y_{1}},\cdots,\boldsymbol{y_{m}}]\in \R^{n_d \times m} \}.
 \end{split}
 \end{align}
 If $m>m_{max}$, the dictionary is updated by removing the oldest data pair.\\
-Each output dimension $a \in \{1, \cdots, n_d\}$ is treated as a different GP with the kernel $k^a$, which results in the posterior distribution mean $\mu^a(z)$ and variance $\Sigma^a(z)$
+Each output dimension $a \in \{1, \cdots, n_d\}$ is treated as a different GP with the kernel $\boldsymbol{k^a}$, which results in the posterior distribution mean $\boldsymbol{\mu^a(z)}$ and variance $\boldsymbol{\Sigma^a(z)}$
 \begin{align}
-\mu^a(z) &= k_{zZ}^a( K_{ZZ}^a +I \sigma_a)^{-1}[Y]_{.,i},\\
-\Sigma^a(z) &= k_{zz}^a-k_{zZ}^a ( K_{ZZ}^a +I \sigma_a)^{-1} k_{Zz}^a
+\boldsymbol{\mu^a(z)} &= \boldsymbol{k_{zZ}^a}( \boldsymbol{K_{ZZ}^a} +\boldsymbol{I} \boldsymbol{\sigma_a})^{-1}[\boldsymbol{Y}]_{.,i},\\
+\boldsymbol{\Sigma^a(z)} &= k_{zz}^a-\boldsymbol{k_{zZ}^a} ( \boldsymbol{K_{ZZ}^a} +\boldsymbol{I} \boldsymbol{\sigma_a})^{-1} \boldsymbol{k_{Zz}^a}
 \end{align}
-in dimension $a$ for a test point $z$.
-The expressions $k_{zz}^a$, $ k_{zZ}^a$, $k_{Zz}^a$ and $K_{ZZ}^a$ are compact notations for $k^a(z,z) \in \R$, $[k_{zZ}^a]_j =k^a(z,z_j)$, $[k_{Zz}^a]_j =k^a(z_j,z)$ and $[K_{ZZ}^a]_{ij} = k^a(z_i,z_j)$, respectively. It holds $k_{Zz}^a=(k_{zZ}^a)^T \in \R^m$.\\
+in dimension $a$ for a test point $\boldsymbol{z}$.
+The expressions $k_{zz}^a$, $ \boldsymbol{k_{zZ}^a}$, $\boldsymbol{k_{Zz}^a}$ and $\boldsymbol{K_{ZZ}^a}$ are compact notations for $k^a(\boldsymbol{z},\boldsymbol{z}) \in \R$, $[\boldsymbol{k_{zZ}^a}]_j =k^a(\boldsymbol{z},z_j)$, $[\boldsymbol{k_{Zz}^a}]_j =k^a(z_j,\boldsymbol{z})$ and $[\boldsymbol{K_{ZZ}^a}]_{ij} = k^a(z_i,z_j)$, respectively. It holds $\boldsymbol{k_{Zz}^a}=(\boldsymbol{k_{zZ}^a})^T \in \R^m$.\\
 For each output dimension $a$ we make use of the squared exponentional kernel given by
 \begin{equation}
-k^a(z,\bar{z}) = \sigma_{f,a}^2 \exp(-0.5(z-\bar{z})^T M^{-1} (z-\bar{z})),
+k^a(\boldsymbol{z},\boldsymbol{\bar{z}}) = \boldsymbol{\sigma_{f,a}}^2 \exp(-0.5(\boldsymbol{z}-\boldsymbol{\bar{z}})^T \boldsymbol{M}^{-1} (\boldsymbol{z}-\boldsymbol{\bar{z}})),
 \end{equation}
-where $\sigma_{f,a}^2$ and $M$ are the squared output variance and the positive diagonal length scale matrix, respectively.
+where $\boldsymbol{\sigma_{f,a}}^2$ and $\boldsymbol{M}$ are the squared output variance and the positive diagonal length scale matrix, respectively.
 The practical implementation of Gaussian process regression from page 19 of Rasmussen and Williams~\cite{williams2006gaussian} which uses the Cholesky factorization to address the matrix inversion is applied. This results in the following algorithm
 \begin{align}
-L^a &= \text{cholesky}(K(Z,Z) + \sigma_n(a,a)^2I)\\
-\alpha^a &= L^T\backslash(L \backslash Y(:,a)),
+\boldsymbol{L^a} &= \text{cholesky}(\boldsymbol{K}(\boldsymbol{Z},\boldsymbol{Z}) + \boldsymbol{\sigma_n(a,a)}^2\boldsymbol{I})\\
+\boldsymbol{\alpha^a} &= \boldsymbol{L}^T\backslash(\boldsymbol{L} \backslash \boldsymbol{Y}(:,a)),
 \end{align}
-where $[K(Z,Z)]_{ij}=k(z_i,z_j)$ with $z_i, z_j \in Z$.
+where $[\boldsymbol{K}(\boldsymbol{Z},\boldsymbol{Z})]_{ij}=k(z_i,z_j)$ with $z_i, z_j \in \boldsymbol{Z}$.
 Thus, the predictive mean and variance are given by
 \begin{align}
-\mu_y^a&=K(z,Z)^T\alpha^a\\
-\Sigma_y^a&=k(z,z)-v^Tv,
+\mu_y^a&=\boldsymbol{K}(\boldsymbol{z},\boldsymbol{Z})^T\boldsymbol{\alpha^a}\\
+\Sigma_y^a&=k(\boldsymbol{z},\boldsymbol{z})-\boldsymbol{v^a}^T\boldsymbol{v^a},
 \end{align}
-with $v=L/K(z,Z)$.\\
+with $\boldsymbol{v^a}=\boldsymbol{L^a}/\boldsymbol{K(z,Z)}$.\\
 Combining the GPs of each dimension results in the multivariate GP approximation 
 \begin{equation}
-d(z)\sim \mathcal{N}(\mu^d(z),\Sigma^d(z)),
+\boldsymbol{d}(\boldsymbol{z})\sim \mathcal{N}(\boldsymbol{\mu^d}(\boldsymbol{z}),\boldsymbol{\Sigma^d}(\boldsymbol{z})),
 \end{equation}
-where the mean $\mu^d(z) \in \mathcal{R}^{n_d}$ and the variance $\Sigma^d(z)~\in~\mathcal{R}^{n_d \times n_d}$ are given by
+where the mean $\boldsymbol{\mu^d(z)} \in \mathcal{R}^{n_d}$ and the variance $\boldsymbol{\Sigma^d(z)}~\in~\mathcal{R}^{n_d \times n_d}$ are given by
 \begin{align}
-\mu^d(z) &= [\mu^1(z),\cdots, \mu^{n_d}(z)]^T,\\
-\Sigma^d(z) &= \text{diag}([\Sigma^1(z),\cdots, \Sigma^{n_d}(z)]).
+\boldsymbol{\mu^d}(\boldsymbol{z}) &= [\mu^1(\boldsymbol{z}),\cdots, \mu^{n_d}(\boldsymbol{z})]^T,\\
+\boldsymbol{\Sigma^d}(\boldsymbol{z}) &= \text{diag}([\Sigma^1(\boldsymbol{z}),\cdots, \Sigma^{n_d}(\boldsymbol{z})]).
 \end{align}
 The model considered for control including the identified disturbance $d$ is given by
 \begin{equation}
-x_{k+1} = f_{nom}(x_k,u_k) + B_d d(z_k).
+\boldsymbol{x_{k+1}} = f_{nom}(\boldsymbol{x_k},\boldsymbol{u_k}) + \boldsymbol{B_d} \boldsymbol{d}(\boldsymbol{z_k}).
 \end{equation}
  \\
 Model predictive control (MPC), receding  horizon  control or moving horizon control are all names for a control strategy which predicts the future dynamic behaviour within a finite prediction horizion and chooses the control input such that a perfomance functional is minimized~\cite{allgeowernonlinear}. Since the predicted behaviour is not equal to the system behaviour due to disturbances and model-plant mismatch, only the first input of the computed control input sequence is applied~\cite{allgeowernonlinear}. Using the new measurement one sampling time later, the procedure is repeated to find a new control sequence within the receding horizon.\\
-Evaluating the GP model $d(x_k,u_k)$ results in a stochastic distribution, which leads to a stochastic distribution of the state $x$. The distribution at each prediction step is assumed to be Gaussian with $x_k \sim \mathcal{N}(\mu^x_k,\Sigma^x_k)$. To evaluate the uncertainity over the prediction horizon $N$ the mean and variance of $x$ are propagated forward which results in
+Evaluating the GP model $\boldsymbol{d}(\boldsymbol{x_k},\boldsymbol{u_k})$ results in a stochastic distribution, which leads to a stochastic distribution of the state $\boldsymbol{x}$. The distribution at each prediction step is assumed to be Gaussian with $\boldsymbol{x_k} \sim \mathcal{N}(\boldsymbol{\mu^x_k},\boldsymbol{\Sigma^x_k})$. To evaluate the uncertainity over the prediction horizon $N$ the mean and variance of $\boldsymbol{x}$ are propagated forward which results in
 \begin{align}
-\mu^x_{k+1}&= f_{nom}(\mu^x_k,u_k)+B_d \mu^d(\mu^x_k,u_k)\\
-\Sigma^x_{k+1} &= ????.
+\boldsymbol{\mu^x_{k+1}}&= f_{nom}(\boldsymbol{\mu^x_k},\boldsymbol{u_k})+\boldsymbol{B_d} \boldsymbol{\mu^d}(\boldsymbol{\mu^x_k},\boldsymbol{u_k})\\
+\boldsymbol{\Sigma^x_{k+1}} &= ????.
 \end{align}
 For more information on the propagation see ???? Appendix.
 Thus, the MPC problem is given by
 \begin{align}
-\min_{\tilde{u}} &\big(\sum_{k=0}^{N-1} f_o(t_k,\mu^x_k,\Sigma^x_k,\tilde{u}_k,r(t))\big) + f_{end}(t_N,\mu^x_N,\Sigma^x_N,r(t_N))\\
-&\mu^x_0 = x(t)\\
-&\mu^x_{k+1}= f_{nom}(\mu^x_k,\tilde{u}_k)+B_d \mu^d_k\\
-&\Sigma^x_{k+1}=\nabla^T  f_{nom}(\mu^x_k,\tilde{u}_k),\Sigma_{xdw} \nabla f_{nom}(\mu^x_k,\tilde{u}_k),\\
-&\mu^x_k \in \mathcal{X},\\
-&u_k \in \mathcal{U},
+\min_{\tilde{u}} &\big(\sum_{k=0}^{N-1} f_o(t_k,\boldsymbol{\mu^x_k},\boldsymbol{\Sigma^x_k},\boldsymbol{\tilde{u}_k},r(t))\big) + f_{end}(t_N,\boldsymbol{\mu^x_N},\boldsymbol{\Sigma^x_N},r(t_N))\\
+&\boldsymbol{\mu^x_0} = \boldsymbol{x}(t)\\
+&\boldsymbol{\mu^x_{k+1}}= f_{nom}(\boldsymbol{\mu^x_k},\boldsymbol{\tilde{u}_k})+\boldsymbol{B_d} \boldsymbol{\mu^d_k}\\
+&\boldsymbol{\Sigma^x_{k+1}}=\nabla^T  f_{nom}(\boldsymbol{\mu^x_k},\boldsymbol{\tilde{u}_k}),\boldsymbol{\Sigma_{xdw}} \nabla f_{nom}(\boldsymbol{\mu^x_k},\boldsymbol{\tilde{u}_k}),\\
+&\boldsymbol{\mu^x_k} \in \mathcal{X},\\
+&\boldsymbol{u_k} \in \mathcal{U},
 \end{align}
-where $\tilde{u}(\dot):[t,t+N] \rightarrow \mathcal{U}$ and $\tilde{u}_k$ refers to the k-th element of $\tilde{u}$. The reference trajectory is given by $r(t)$. The input and state constraint sets $\mathcal{U}$ and $\mathcal{X}$ can be defined as box constraints according to Allgöwer et al.~\cite{allgeowernonlinear}
+where $\boldsymbol{\tilde{u}}(\dot):[t,t+N] \rightarrow \mathcal{U}$ and $\tilde{u}_k$ refers to the k-th element of $\boldsymbol{\tilde{u}}$. The reference trajectory is given by $r(t)$. The input and state constraint sets $\mathcal{U}$ and $\mathcal{X}$ can be defined as box constraints according to Allgöwer et al.~\cite{allgeowernonlinear}
 \begin{align}
-\mathcal{U} &= \{u \in \mathcal{R}^p|u_{min}\leq u \leq u_{max}\},\\
-\mathcal{X} &= \{u \in \mathcal{R}^n|x_{min}\leq x \leq x_{max}\}.
+\mathcal{U} &= \{u \in \mathcal{R}^p|\boldsymbol{u_{min}}\leq \boldsymbol{u} \leq \boldsymbol{u_{max}}\},\\
+\mathcal{X} &= \{u \in \mathcal{R}^n|\boldsymbol{x_{min}}\leq \boldsymbol{x} \leq x_{max}\}.
 \end{align}
 According to the control problem, a cost function $f_o$ and the final cost $f_{end}$ are defined. The cost functions, which were used during this project, are further described for each example in Section~\ref{main_results}.
 
@@ -167,6 +168,13 @@ According to the control problem, a cost function $f_o$ and the final cost $f_{e
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MAIN RESULTS}\label{main_results}
+A schematic drawing of the inverted pendulum can be seen in Figure~\ref{fig:inverted_pendulum}.
+\begin{figure}
+  \includegraphics[width=\linewidth]{tikz_inverted_pendulum.pdf}
+  \caption{A schematic drawing of the inverted pendulum on a carriage. The mass of the carriage and the pole are given by $M_c$ and $M_p$, respectively. The pole is defined by its length $l$ and its moment of intertia $I$. $b$ is the friction coefficient between the carriage and the floor. The states of the state-space model are the carriage position $s$, its derivative $\dot{s}$, the pole angle with the vertical $\theta$ and its derivative $\dot{\theta}$. $F$ is the applied force. }
+  \label{fig:inverted_pendulum}
+\end{figure}
+
 
 Ideas, theorems, proofs and discussions .....
 
