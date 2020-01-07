@@ -21,8 +21,8 @@ clear all; close all; clc;
 %------------------------------------------------------------------
 dt = 0.1;       % simulation timestep size
 tf = 50;        % simulation time
-maxiter = 10;   % max NMPC iterations per time step
-N = 10;         % NMPC prediction horizon
+maxiter = 20;   % max NMPC iterations per time step
+N = 15;         % NMPC prediction horizon
 
 lookahead = dt*N;
 fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
@@ -46,8 +46,8 @@ var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
 
 % create true dynamics model
 %   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
-trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
-% trueModel = MotionModelGP_SingleTrack(d,var_w);
+%trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
+ trueModel = MotionModelGP_SingleTrack(d,var_w);
 
 
 %% Create Estimation Model and Nominal Model
@@ -130,7 +130,8 @@ fo   = @(t,mu_x,var_x,u,e,r) costFunction(mu_x, var_x, u, track);            % e
 fend = @(t,mu_x,var_x,e,r)   2 * costFunction(mu_x, var_x, zeros(m,1), track);   % end cost function
 
 % define dynamics
-f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
+ f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
+%f  = @(mu_x,var_x,u) trueModel.xkp1(mu_x, var_x, u, dt);
 % define additional constraints
 h  = @(x,u,e) [];
 g  = @(x,u,e) [];
@@ -202,8 +203,8 @@ d_GP.isActive = false;
 
 %% Start simulation
 
-ki = 1;
-% ki = 30;
+ ki = 1;
+% ki = 41;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
@@ -281,19 +282,19 @@ for k = ki:kmax
     % ---------------------------------------------------------------------
     % Add data to GP model
     % ---------------------------------------------------------------------
-    % if mod(k-1,1)==0
-    %     % calculate disturbance (error between measured and nominal)
-    %     d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
-    %     % select subset of coordinates that will be used in GP prediction
-    %     zhat = estModel.Bz * out.xhat(:,k);
-    %     % add data point to the GP dictionary
-    %     d_GP.add(zhat,d_est);
-    %     d_GP.updateModel();
-    % end
-    % 
-    % if d_GP.N > 50 && out.t(k) > 3
-    %     % d_GP.isActive = true;
-    % end
+    if mod(k-1,1)==0
+        % calculate disturbance (error between measured and nominal)
+        d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
+        % select subset of coordinates that will be used in GP prediction
+        zhat = estModel.Bz * out.xhat(:,k);
+        % add data point to the GP dictionary
+        d_GP.add(zhat,d_est');
+        d_GP.updateModel();
+    end
+    
+    if d_GP.N > 3 && out.t(k) > 2
+        d_GP.isActive = true;
+    end
     
     % check if these values are the same:
     % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
@@ -328,15 +329,15 @@ trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 50;     % penalization of lag error
-    q_c   = 100;     % penalization of contouring error
-    q_o   = 50;     % penalization for orientation error
+    q_l   = 5;     % penalization of lag error
+    q_c   = 5;     % penalization of contouring error
+    q_o   = 5;     % penalization for orientation error
     q_d   = 3;      % reward high track centerline velocites
     q_r   = 1000;   % penalization when vehicle is outside track
     
     % state and input penalization
     q_v   = 0; % reward high absolute velocities
-    q_st  = 100; % penalization of steering
+    q_st  = 0; % penalization of steering
     q_br  = 0; % penalization of breaking
     q_acc = 0; % reward for accelerating
 
@@ -374,9 +375,9 @@ function cost = costFunction(mu_x, var_x, u, track)
     % offroad_error = (1+exp(-alpha*(offroad_error+0.05))).^-1;
     gamma = 1000;
     lambda = -0.1;
-    offroad_error = 0.5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
+    offroad_error = 5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
 
-    % CHECK SMOOTH TRANSITION
+    % % CHECK SMOOTH TRANSITION
     % x = -0.5:0.01:0.5
     % % Smooth >=0 boolean function
     % alpha = 40; % the larger the sharper the clip function
