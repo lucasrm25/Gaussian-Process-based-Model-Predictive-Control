@@ -21,8 +21,8 @@ clear all; close all; clc;
 %------------------------------------------------------------------
 dt = 0.1;       % simulation timestep size
 tf = 50;        % simulation time
-maxiter = 10;   % max NMPC iterations per time step
-N = 10;         % NMPC prediction horizon
+maxiter = 20;   % max NMPC iterations per time step
+N = 15;         % NMPC prediction horizon
 
 lookahead = dt*N;
 fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
@@ -135,7 +135,7 @@ f  = @(mu_x,var_x,u) trueModel.xkp1(mu_x, var_x, u, dt);
 % define additional constraints
 
 h  = @(x,u,e) [];
-g  = @(x,u,e) track.getoffroaderror([x(1);x(2)], x(3), x(7));
+g  = @(x,u,e) [];
 delta_min = -deg2rad(25);
 delta_max = deg2rad(25);
 u_lb = [delta_min;  % delta >= -10deg
@@ -206,7 +206,7 @@ d_GP.isActive = false;
 
 %% Start simulation
 
-ki = 1;
+ ki = 1;
 % ki = 30;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
 
@@ -333,15 +333,15 @@ trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 0;  % 50   % penalization of lag error
-    q_c   = 0;  %100 % penalization of contouring error
-    q_o   = 0;    %50 penalization for orientation error
-    q_d   = 1;   % 3   % reward high track centerline velocites
+    q_l   = 5;  % 50   % penalization of lag error
+    q_c   = 5;  %100 % penalization of contouring error
+    q_o   = 5;    %50 penalization for orientation error
+    q_d   = 3;   % 3   % reward high track centerline velocites
     q_r   = 1000; %1000  % penalization when vehicle is outside track
     
     % state and input penalization
-    q_v   = 0.5; % reward high absolute velocities
-    q_st  = 1; %100 % penalization of steering
+    q_v   = 0; % reward high absolute velocities
+    q_st  = 0; %100 % penalization of steering
     q_br  = 0; % penalization of breaking
     q_acc = 0; % reward for accelerating
     

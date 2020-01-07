@@ -20,7 +20,7 @@ clear all; close all; clc;
 %------------------------------------------------------------------
 dt = 0.1;       % simulation timestep size
 tf = 7;         % simulation time
-maxiter = 10;   % max NMPC iterations per time step
+maxiter = 30;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 lookahead = dt*N;
