@@ -19,7 +19,7 @@ classdef NMPC < handle
     %
     %   where the motion model evaluates   [E[xk+1],Var[xk+1]] = f(xk,uk)
     %
-    %   for [x0; u0;...;uN-1; e1;...;eN]
+    %   for [u0;...;uN-1; e1;...;eN]
     %
     %   where xk: state variables
     %         zk: selected state variables zk=Bd'*xk
@@ -65,7 +65,12 @@ classdef NMPC < handle
         %------------------------------------------------------------------
         % MPC constructor
         %
+        % args:
         %   f: motion model that evaluates  [E[xk+1],Var[xk+1]] = f(xk)
+        % 
+        % varargin:
+        %   provideDynamicsGradient: <bool> when set to true, then the
+        %   parameter f must return []
         %------------------------------------------------------------------
            % constraints
            obj.f  = f;
@@ -91,19 +96,24 @@ classdef NMPC < handle
            
            % define lower and upper bound constraints
             if ~isempty(u_lb)
-                obj.lb = [-Inf(obj.n,1);
-                          repmat(u_lb,obj.N,1);    % repeat lower bound for all u0,...,uN-1
+                obj.lb = [repmat(u_lb,obj.N,1);    % repeat lower bound for all u0,...,uN-1
                           -Inf(obj.ne*obj.N,1)];             
             else
                 obj.lb = [];
             end
             if ~isempty(u_ub)
-                obj.ub = [Inf(obj.n,1);
-                          repmat(u_ub,obj.N,1);     % repeat upper bound for all u0,...,uN-1
+                obj.ub = [repmat(u_ub,obj.N,1);     % repeat upper bound for all u0,...,uN-1
                           Inf(obj.ne*obj.N,1)];
             else
                 obj.ub = [];
             end
+            
+%             p = inputParser;
+%             addParameter(p,'gradx_f',false, @(x)0 );
+%             addParameter(p,'gradu_f',false, @(x)0 );
+%             parse(p,varargin{:});
+%             
+%             obj.provideDynamicsGradient = p.Results.provideDynamicsGradient;
         end
         
         
@@ -113,17 +123,17 @@ classdef NMPC < handle
         %
         %   vars_opt = [x0; u0;...;uN-1; e1;...;eN]
         %------------------------------------------------------------------
-            numvars = obj.n + obj.N*obj.m + obj.N*obj.ne;
+            numvars = obj.N*obj.m + obj.N*obj.ne;
         end
         
         
-        function [x0_opt, u_opt, e_opt] = optimize(obj, x0, t0, r)
+        function [u_opt, e_opt] = optimize(obj, x0, t0, r)
         %------------------------------------------------------------------
         % Calculate first uptimal control input
         %------------------------------------------------------------------
             
             %-------- Set initial guess for optimization variables  -------
-            varsguess = [x0; obj.uguess(:); obj.eguess(:)];
+            varsguess = [obj.uguess(:); obj.eguess(:)];
             
             
             %------------------ Optimize  ---------------------------------
@@ -133,13 +143,13 @@ classdef NMPC < handle
                 
             % define cost and constr. functions, as a function only of the
             % optimazation variables. This is a prerequisite for the function fmincon
-            costfun = @(vars) obj.costfun(vars, t0, r);
+            costfun = @(vars) obj.costfun(vars, t0, r, x0);
             nonlcon = @(vars) obj.nonlcon(vars, t0, x0);
             
             % define optimizer settings
             options = optimoptions('fmincon',...
                                    'Display','iter',...
-                                   'Algorithm','interior-point',... % 'sqp','interior-point'
+                                   'Algorithm', 'interior-point',... % 'interior-point',... % 'sqp','interior-point'
                                    'SpecifyConstraintGradient',false,...
                                    'UseParallel',false,... %'ConstraintTolerance',obj.tol,...
                                    'MaxIterations',obj.maxiter);
@@ -150,7 +160,7 @@ classdef NMPC < handle
             
             %------------------ Output results  ---------------------------
             % split variables since vars_opt = [x_opt; u_opt; e_opt]
-            [x0_opt, u_opt, e_opt] = splitvariables(obj, vars_opt);
+            [u_opt, e_opt] = splitvariables(obj, vars_opt);
             
             % store current optimization results to use as initial guess for future optimizations
             obj.uguess = u_opt(:,[2:end,end]);
@@ -158,19 +168,17 @@ classdef NMPC < handle
         end
         
     
-        function [x0, uvec, evec] = splitvariables(obj, vars)
+        function [uvec, evec] = splitvariables(obj, vars)
         %------------------------------------------------------------------
         % args:
         %   vars: <optSize,1> optimization variables
         % out:
-        %   x0: <n,1>
         %   uvec: <m,N>
         %   evec: <ne,N>
         %------------------------------------------------------------------
             % split variables
-            x0   = vars(1:obj.n);
-            uvec = vars( (1:obj.N*obj.m)  + length(x0) );
-            evec = vars( (1:obj.N*obj.ne) + length(x0)+ length(uvec) );
+            uvec = vars( (1:obj.N*obj.m) );
+            evec = vars( (1:obj.N*obj.ne) + length(uvec) );
             % reshape the column vector <m*N,1> to <m,N>
             uvec = reshape(uvec, obj.m, obj.N);
             % reshape the column vector <ne*N,1> to <ne,N>
@@ -189,7 +197,7 @@ classdef NMPC < handle
             mu_xk  = zeros(obj.n,obj.N+1);
             var_xk = zeros(obj.n,obj.n,obj.N+1);
             
-            mu_xk(:,1) = mu_x0;
+            mu_xk(:,1)    = mu_x0;
             var_xk(:,:,1) = var_x0;
             
             for iN=1:obj.N      % [x1,...,xN]
@@ -205,12 +213,12 @@ classdef NMPC < handle
         end
 
         
-        function cost = costfun(obj, vars, t0, r)
+        function cost = costfun(obj, vars, t0, r, mu_x0)
         %------------------------------------------------------------------
         % Evaluate cost function for the whole horizon, given variables
         %------------------------------------------------------------------
             % split variables
-            [mu_x0, uvec, evec] = obj.splitvariables(vars);
+            [uvec, evec] = obj.splitvariables(vars);
             var_x0 = zeros(obj.n);
             
             % calculate state sequence for given control input sequence and x0
@@ -239,7 +247,7 @@ classdef NMPC < handle
         end
         
 
-        function [cineq,ceq] = nonlcon(obj, vars, t0, x0)
+        function [cineq,ceq] = nonlcon(obj, vars, t0, mu_x0)
         % function [cineq,ceq,gradvars_cineq,gradvars_ceq] = nonlcon(obj, vars, t0, x0)
         %------------------------------------------------------------------
         % Evaluate nonlinear equality and inequality constraints
@@ -248,10 +256,15 @@ classdef NMPC < handle
         %   ceq   = h(x,u) == 0 : equality constraint function
         %   gradx_cineq(x,u): gradient of g(x,u) w.r.t. x
         %   gradx_ceq(x,u):   gradient of h(x,u) w.r.t. x
-        %------------------------------------------------------------------ 
-
+        %------------------------------------------------------------------             
+        
+            % if there are no constraints, then there is nothing to do here
+            if obj.nh==0 && obj.ng==0
+                ceq = []; cineq = [];
+                return
+            end
+            
             % init vectors to speedup calculations
-            ceq_dyn = zeros(obj.n,  1);
             ceq_h   = zeros(obj.nh, obj.N);
             cineq_g = zeros(obj.ng, obj.N);
             
@@ -259,14 +272,11 @@ classdef NMPC < handle
             % gradvars_cineq = zeros(vars_size,obj.n);
         
             % split variables
-            [mu_x0, uvec, evec] = obj.splitvariables(vars);
+            [uvec, evec] = obj.splitvariables(vars);
             var_x0 = zeros(obj.n);
             
             % calculate state sequence for given control input sequence and x0
             [mu_xvec,var_xvec] = obj.predictStateSequence(mu_x0, var_x0, uvec);
-            
-            % set initial state constraint: x0 - x(0) = 0
-            ceq_dyn(:,1) = x0 - mu_xvec(:,1);
             
             try
                 t = t0;
@@ -280,7 +290,7 @@ classdef NMPC < handle
             catch e
                 error('\n%s\n\n%s','Constraints h(x) or g(x) evaluated to error:',e.message)
             end
-            ceq   = [ceq_dyn(:); ceq_h(:)];
+            ceq   = ceq_h(:);
             cineq = cineq_g(:);
         end
         
