@@ -15,13 +15,6 @@ classdef GP < handle
     % The Kernel parameters, when optimized, are optimized for each output
     % dimension separately.
     %
-    %
-    %       ### TODO: ### 
-    %               Implement GP when we output with dimension p>1. To do  
-    %               this we should consider each output dimension as a
-    %               separate GP (each one with its own optimized kernel
-    %               parameters).
-    %
     %------------------------------------------------------------------
     
     properties

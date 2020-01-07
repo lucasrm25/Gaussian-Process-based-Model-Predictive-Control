@@ -111,7 +111,7 @@ classdef NMPC < handle
         %------------------------------------------------------------------
         % How many variables we need to optimize?
         %
-        %   vars_opt = [u0,...,uN-1]
+        %   vars_opt = [x0; u0;...;uN-1; e1;...;eN]
         %------------------------------------------------------------------
             numvars = obj.n + obj.N*obj.m + obj.N*obj.ne;
         end
@@ -243,7 +243,7 @@ classdef NMPC < handle
         % function [cineq,ceq,gradvars_cineq,gradvars_ceq] = nonlcon(obj, vars, t0, x0)
         %------------------------------------------------------------------
         % Evaluate nonlinear equality and inequality constraints
-        % args
+        % out:
         %   cineq = g(x,u) <= 0 : inequality constraint function
         %   ceq   = h(x,u) == 0 : equality constraint function
         %   gradx_cineq(x,u): gradient of g(x,u) w.r.t. x
@@ -268,18 +268,17 @@ classdef NMPC < handle
             % set initial state constraint: x0 - x(0) = 0
             ceq_dyn(:,1) = x0 - mu_xvec(:,1);
             
-            t = t0;
-            for iN=1:obj.N
-                try
+            try
+                t = t0;
+                for iN=1:obj.N
                     % append provided equality constraints(h==0)
                     ceq_h(:,iN) = obj.h(mu_xvec(:,iN),uvec(:,iN), evec(:,iN));
                     % provided inequality constraints (g<=0)
                     cineq_g(:,iN) = obj.g(mu_xvec(:,iN),uvec(:,iN),evec(:,iN));
-                catch e
-                    error('\n%s\n\n%s','Constraints h(h) or g(x) evaluated to error:',e.message)
+                    t = t + iN * obj.dt;
                 end
-
-                t = t + iN * obj.dt;
+            catch e
+                error('\n%s\n\n%s','Constraints h(x) or g(x) evaluated to error:',e.message)
             end
             ceq   = [ceq_dyn(:); ceq_h(:)];
             cineq = cineq_g(:);

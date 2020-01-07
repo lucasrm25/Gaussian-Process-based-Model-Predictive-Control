@@ -29,6 +29,8 @@ classdef (Abstract) MotionModelGP < handle
     end
     
     properties (SetAccess=private)
+        discretization = 'ode2';
+        
         d      % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
         var_w  % measurement noise covariance matrix. w ~ N(0,var_w)
 
@@ -101,30 +103,27 @@ classdef (Abstract) MotionModelGP < handle
         %   args:
         %       xkp1: <n,1> state prediction (without disturbance model)
         %       grad_xkp1: <n,n> gradient of xkp1 w.r.t. xk
-        %------------------------------------------------------------------
-            
-            solver = 'ode2';
-            
-            if strcmp(solver,'ode1')
+        %------------------------------------------------------------------            
+            if strcmp(obj.discretization,'ode1')
                 %-----------------
                 % Fixed step ODE1
                 %-----------------
                 % calculate continous time dynamics
                 xkp1 = xk + dt * obj.f(xk,uk);
                 
-            elseif strcmp(solver,'ode2')
+            elseif strcmp(obj.discretization,'ode2')
                 %-----------------
                 % Fixed step ODE2 (developed by myself)
                 %-----------------
                 [~,xkp1] = ODE.ode2(@(t,x) obj.f(x,uk), xk, dt, dt);
                 
-            elseif strcmp(solver,'ode4')
+            elseif strcmp(obj.discretization,'ode4')
                 %-----------------
                 % Fixed step ODE4 (developed by myself)
                 %-----------------
                 [~,xkp1] = ODE.ode4(@(t,x) obj.f(x,uk), xk, dt, dt);
                 
-            elseif strcmp(solver,'ode23')
+            elseif strcmp(obj.discretization,'ode23')
                 %-----------------
                 % Variable step ODE23
                 %-----------------
@@ -132,7 +131,7 @@ classdef (Abstract) MotionModelGP < handle
                 [~,xkp1_23] = ode23( @(t,x) obj.f(x,uk), [0 dt], xk, opts_1);
                 xkp1 = xkp1_23(end,:)';
             
-            elseif strcmp(solver,'ode23')
+            elseif strcmp(obj.discretization,'ode23')
                 %-----------------
                 % Variable step ODE23
                 %-----------------
@@ -141,7 +140,7 @@ classdef (Abstract) MotionModelGP < handle
                 xkp1 = xkp1_23(end,:)';
                 
             else
-                error('Not implemented');
+                error('Chosen discretization: %s is not yet implemented',obj.discretization);
             end
             
             % for now, gradient is being discretized using a simple ode1
