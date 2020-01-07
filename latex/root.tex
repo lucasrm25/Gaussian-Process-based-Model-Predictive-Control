@@ -168,7 +168,28 @@ According to the control problem, a cost function $f_o$ and the final cost $f_{e
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MAIN RESULTS}\label{main_results}
-A schematic drawing of the inverted pendulum can be seen in Figure~\ref{fig:inverted_pendulum}.
+Two examples were considered during this project. An inverted pendulum and autonomous driving based on a single track model. Both examples are intruduced in this chapter.\\
+\subsection{Inverted Pendulum}
+The motion of the inverted pendulum is decribed by 
+\begin{align}
+(M_c +M_p)\ddot{x} + b\dot{x} +\frac{1}{2}M_p l \ddot{\theta} \cos{\theta}- \frac{1}{2}M_p l \dot{\theta}^2\sin{\theta} &=F\\
+(I+M_p\Big(\frac{l}{2}\Big)^2)\ddot{\theta}-\frac{1}{2}M_p g l \sin{\theta} + M_p l \ddot{x} \cos{\theta}&= 0.
+\end{align}
+A schematic drawing of the inverted pendulum including the parameters can be seen in Figure~\ref{fig:inverted_pendulum}. The standard gravity on the surface of the earth $g$ is set to be $g=9.8$. The state space model with the states $[ x, \dot{x}, \theta, \dot{\theta}]$ is given by
+\begin{equation}
+\begin{bmatrix}
+\dot{x}\\
+\ddot{x}\\
+\dot{\theta}\\
+\ddot{\theta}
+ \end{bmatrix}=
+ \begin{bmatrix}
+ \dot{x}\\
+   \\
+   \dot{\theta}
+     \\
+ \end{bmatrix}
+\end{equation}
 \begin{figure}
   \includegraphics[width=\linewidth]{tikz_inverted_pendulum.pdf}
   \caption{A schematic drawing of the inverted pendulum on a carriage. The mass of the carriage and the pole are given by $M_c$ and $M_p$, respectively. The pole is defined by its length $l$ and its moment of intertia $I$. $b$ is the friction coefficient between the carriage and the floor. The states of the state-space model are the carriage position $s$, its derivative $\dot{s}$, the pole angle with the vertical $\theta$ and its derivative $\dot{\theta}$. $F$ is the applied force. }

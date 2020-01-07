@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  4 JAN 2020 18:19
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  7 JAN 2020 12:25
 entering extended mode
 **./root.tex
 (root.tex
@@ -420,12 +420,17 @@ Overfull \hbox (18.52765pt too wide) detected at line 159
 []
  []
 
+
+Underfull \hbox (badness 10000) in paragraph at lines 171--172
+
+ []
+
 <tikz_inverted_pendulum.pdf, id=25, 203.3477pt x 173.56142pt>
 File: tikz_inverted_pendulum.pdf Graphic file (type pdf)
 <use tikz_inverted_pendulum.pdf>
-Package pdftex.def Info: tikz_inverted_pendulum.pdf  used on input line 173.
+Package pdftex.def Info: tikz_inverted_pendulum.pdf  used on input line 194.
 (pdftex.def)             Requested size: 245.71811pt x 209.72656pt.
-[2 <./tikz_inverted_pendulum.pdf>] (root.bbl)
+[2] (root.bbl [3 <./tikz_inverted_pendulum.pdf>])
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -437,13 +442,13 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the US letter (8.5in X 11in) paper size.
 
-[3
+[4
 
 ] (root.aux) ) 
 Here is how much of TeX's memory you used:
  3932 strings out of 492970
  60156 string characters out of 3126594
- 140941 words of memory out of 3000000
+ 141941 words of memory out of 3000000
  7718 multiletter control sequences out of 15000+200000
  45801 words of font info for 108 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -475,9 +480,9 @@ sers/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/courier/ucrr8a.pfb
 mbi8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/tim
 es/utmr8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw
 /times/utmri8a.pfb>
-Output written on root.pdf (3 pages, 243809 bytes).
+Output written on root.pdf (4 pages, 247728 bytes).
 PDF statistics:
- 111 PDF objects out of 1000 (max. 8388607)
+ 114 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  6 words of extra memory for PDF output out of 10000 (max. 10000000)
 
