@@ -107,13 +107,6 @@ classdef NMPC < handle
             else
                 obj.ub = [];
             end
-            
-%             p = inputParser;
-%             addParameter(p,'gradx_f',false, @(x)0 );
-%             addParameter(p,'gradu_f',false, @(x)0 );
-%             parse(p,varargin{:});
-%             
-%             obj.provideDynamicsGradient = p.Results.provideDynamicsGradient;
         end
         
         
@@ -257,10 +250,12 @@ classdef NMPC < handle
         %   gradx_cineq(x,u): gradient of g(x,u) w.r.t. x
         %   gradx_ceq(x,u):   gradient of h(x,u) w.r.t. x
         %------------------------------------------------------------------             
+            % init outputs
+            ceq = []; 
+            cineq = [];
         
             % if there are no constraints, then there is nothing to do here
             if obj.nh==0 && obj.ng==0
-                ceq = []; cineq = [];
                 return
             end
             

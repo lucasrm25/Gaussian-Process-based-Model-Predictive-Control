@@ -32,7 +32,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
  
     properties
         M    = 500      % vehicle mass
-        I_z  = 800      % vehicle moment of inertia (yaw axis)
+        I_z  = 600      % vehicle moment of inertia (yaw axis)
         g    = 9.81     % gravitation
         l_f  = 0.9      % distance of the front wheel to the center of mass 
         l_r  = 1.5      % distance of the rear wheel to the center of mass
@@ -40,8 +40,8 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         deltamax    = deg2rad(30)   % maximum steering amplitude
         % deltadotmax = deg2rad(20)   % maximum steering velocity amplitude
         
-        maxbrakeWForce = 6000 % = 2*g*M;  % allow ~ 2g brake
-        maxmotorWForce = 6000 % = 1*g*M;  % allow ~ 1g acc
+        maxbrakeWForce = 8000 % = 2*g*M;  % allow ~ 2g brake
+        maxmotorWForce = 4000 % = 1*g*M;  % allow ~ 1g acc
         
         c_f = 14000 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
         c_r = 14000 % = 2*g*M/deltamax  % rear coornering stiffness

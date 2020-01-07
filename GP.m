@@ -111,11 +111,11 @@ classdef GP < handle
         % out:
         %   kernel: <N1,N2>
         %------------------------------------------------------------------
-        for pi = 1:obj.p
-            D(:,:,pi) = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
-            %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
-             kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
-        end
+            for pi = 1:obj.p
+                D(:,:,pi) = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
+                %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
+                 kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
+            end
         end
         
         

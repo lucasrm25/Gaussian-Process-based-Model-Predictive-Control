@@ -19,9 +19,9 @@ clear all; close all; clc;
 %--------------------------------------------------------------------------
 %   Simulation and controller parameters
 %------------------------------------------------------------------
-dt = 0.1;       % simulation timestep size
-tf = 50;        % simulation time
-maxiter = 20;   % max NMPC iterations per time step
+dt = 0.2;       % simulation timestep size
+tf = 200;        % simulation time
+maxiter = 15;   % max NMPC iterations per time step
 N = 15;         % NMPC prediction horizon
 
 lookahead = dt*N;
@@ -292,9 +292,9 @@ for k = ki:kmax
         d_GP.updateModel();
     end
     
-    if d_GP.N > 3 && out.t(k) > 2
-        d_GP.isActive = true;
-    end
+%     if d_GP.N > 3 && out.t(k) > 2
+%         d_GP.isActive = true;
+%     end
     
     % check if these values are the same:
     % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
@@ -329,17 +329,18 @@ trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 5;     % penalization of lag error
-    q_c   = 5;     % penalization of contouring error
-    q_o   = 5;     % penalization for orientation error
-    q_d   = 3;      % reward high track centerline velocites
-    q_r   = 1000;   % penalization when vehicle is outside track
+    q_l   = 50;     % penalization of lag error
+    q_c   = 50;     % penalization of contouring error
+    q_o   = 5;      % penalization for orientation error
+    q_d   = -3;     % reward high track centerline velocites
+    q_r   = 100;    % penalization when vehicle is outside track
     
     % state and input penalization
-    q_v   = 0; % reward high absolute velocities
-    q_st  = 0; % penalization of steering
-    q_br  = 0; % penalization of breaking
-    q_acc = 0; % reward for accelerating
+    q_v      = -0;  % reward high absolute velocities
+    q_st     =  0;  % penalization of steering
+    q_br     =  0;  % penalization of breaking
+    q_psidot =  25;  % penalize high yaw rates
+    q_acc    = -0;  % reward for accelerating
 
     % label inputs and outputs
     I_x        = mu_x(1);  % x position in global coordinates
@@ -347,6 +348,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     psi        = mu_x(3);  % yaw
     V_vx       = mu_x(4);  % x velocity in vehicle coordinates
     V_vy       = mu_x(5);  % x velocity in vehicle coordinates
+    psidot     = mu_x(6);
     track_dist = mu_x(7);  % track centerline distance
     delta      = u(1);     % steering angle rad2deg(delta)
     T          = u(2);     % torque gain (1=max.acc, -1=max.braking)
@@ -390,24 +392,36 @@ function cost = costFunction(mu_x, var_x, u, track)
     cost_outside = q_r * offroad_error^2;
     
     % ---------------------------------------------------------------------
-    % reward high velocities only if inside track
+    % reward high velocities
     % ---------------------------------------------------------------------
-    cost_vel = -q_v * norm([V_vx; V_vy]);
+    cost_vel = q_v * norm([V_vx; V_vy]);
+    
+    % ---------------------------------------------------------------------
+    % penalize high yaw rates
+    % ---------------------------------------------------------------------
+    cost_psidot = q_psidot * psidot^2;
     
     % ---------------------------------------------------------------------
     % reward high track velocities
     % ---------------------------------------------------------------------
-    cost_dist = -q_d * track_vel;
+    cost_dist = q_d * track_vel;
     
     % ---------------------------------------------------------------------
-    % reward acceleration and penalize braking and steering
+    % penalize acceleration, braking and steering
     % ---------------------------------------------------------------------
-    cost_inputs = - (T>0)*q_acc*T^2 + (T<0)*q_br*(T)^2 + q_st*(delta)^2 ;
+    cost_inputs = (T>0)*q_acc*T^2 + (T<0)*q_br*T^2 + q_st*(delta)^2 ;
     
     % ---------------------------------------------------------------------
     % Calculate final cost
     % ---------------------------------------------------------------------
-    cost = cost_contour + cost_lag + cost_orientation + cost_dist + cost_outside + cost_inputs + cost_vel;
+    cost = cost_contour + ...
+           cost_lag + ...
+           cost_orientation + ...
+           cost_dist + ...
+           cost_outside + ...
+           cost_inputs + ...
+           cost_vel + ...
+           cost_psidot;
     
     % fprintf('Contribution to cost:\n')
     % fprintf('   cost_contour:%.1f\n',cost_contour/cost*100);
