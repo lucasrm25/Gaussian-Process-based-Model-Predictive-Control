@@ -168,9 +168,9 @@ classdef GP < handle
         %   Y: <N,p>
         %------------------------------------------------------------------
             assert(size(Y,2) == obj.p, ...
-                sprintf('Y should have %d columns, but has %d. Dimension does not agree with the specified kernel parameters',obj.p,size(obj.Y,2)));
+                sprintf('Y should have %d columns, but has %d. Dimension does not agree with the specified kernel parameters',obj.p,size(Y,2)));
             assert(size(X,1) == obj.n, ...
-                sprintf('X should have %d rows, but has %d. Dimension does not agree with the specified kernel parameters',obj.n,size(obj.X,1)));
+                sprintf('X should have %d rows, but has %d. Dimension does not agree with the specified kernel parameters',obj.n,size(X,1)));
             
             
             % dictionary is full
