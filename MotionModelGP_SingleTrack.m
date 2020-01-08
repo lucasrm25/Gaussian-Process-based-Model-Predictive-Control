@@ -1,9 +1,9 @@
-%------------------------------------------------------------------
+%--------------------------------------------------------------------------
 % Programed by: 
 %   - Lucas Rath (lucasrm25@gmail.com)
 %   - 
 %   -
-%------------------------------------------------------------------
+%--------------------------------------------------------------------------
 
 classdef MotionModelGP_SingleTrack < MotionModelGP
 %--------------------------------------------------------------------------
@@ -14,105 +14,238 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
 %              w ~ N(0,sigmaw)
 %
 %   
-%   x = [...]'   
-%   u = [...]'               
+%   x = [I_x              (x position in global coordinates), 
+%        I_y              (y position in global coordinates), 
+%        psi              (yaw angle),
+%        V_vx             (longitudinal velocity in vehicle coordinates)             
+%        V_vy             (lateral velocity in vehicle coordinates)
+%        psi_dot          (yaw rate),
+%        track_dist       (distance traveled in the track centerline)
+%        ]
+%
+%   u = [delta          (steering angle),
+%        T              (wheel torque gain),  -1=max.braking, 1=max acc.
+%        track_vel      (velocity in the track centerline)
+%       ]
 %   
 %--------------------------------------------------------------------------
  
     properties
-        cf  = 100  % front coornering stiffness
-        cr  = 100  % rear coornering stiffness
-        M   = 1239 % vehicle mass
-        Iz  = 1752 % vehicle moment of inertia (yaw axis)
-        g   = 9.81 % gravitation
-        lf  = 1.19016 % distance of the front wheel to the center of mass 
-        lr  = 1.37484 % distance of the rear wheel to the center of mass
-        i_g = [3.91 2.002 1.33 1 0.805] % transmissions of the 1st ... 5th gear
-        g = 9.8
+        M    = 500      % vehicle mass
+        I_z  = 600      % vehicle moment of inertia (yaw axis)
+        g    = 9.81     % gravitation
+        l_f  = 0.9      % distance of the front wheel to the center of mass 
+        l_r  = 1.5      % distance of the rear wheel to the center of mass
+        
+        deltamax    = deg2rad(30)   % maximum steering amplitude
+        % deltadotmax = deg2rad(20)   % maximum steering velocity amplitude
+        
+        maxbrakeWForce = 8000 % = 2*g*M;  % allow ~ 2g brake
+        maxmotorWForce = 4000 % = 1*g*M;  % allow ~ 1g acc
+        
+        % Pacejka lateral dynamics parameters
+        B_f = 0.4;            % stiffnes factor (Pacejka) (front wheel)
+        C_f = 8;              % shape factor (Pacejka) (front wheel)
+        D_f = 4560.4;            % peak value (Pacejka) (front wheel)
+        E_f = -0.5;             % curvature factor (Pacejka) (front wheel)
+
+        B_r = 0.45;          % stiffnes factor (Pacejka) (rear wheel)
+        C_r = 8;                % shape factor (Pacejka) (rear wheel)
+        D_r = 4000;             % peak value (Pacejka) (rear wheel)
+        E_r = -0.5;             % curvature factor (Pacejka) (rear wheel)
     end
     
-    properties(SetAccess=private)
-        Bd = [zeros(6,4);
-              eye(4)]       % xk+1 = fd(xk,uk) + Bd*d(zk)
-        Bz = eye(10)        % z = Bz*x     
-        n = 10              % number of outputs x(t)
-        m = 5               % number of inputs u(t)
+    properties(Constant)
+        % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
+        Bz = [0 0 0  1 0 0  0;
+              0 0 0  0 1 0  0;
+              0 0 0  0 0 1  0] 
+        Bd = [zeros(3);
+              eye(3); 
+              0 0 0];               
+        n = 7                   % number of outputs x(t)
+        m = 3                   % number of inputs u(t)
+    end
+    
+    methods(Static)
+        function x = clip(x,lb,ub)
+            % standard nonsmooth clip (saturation) function
+            x = min(max(x,lb),ub);
+        end
     end
     
     methods
-        function obj = MotionModelGP_SingleTrack()
+        function obj = MotionModelGP_SingleTrack(d,sigmaw)
         %------------------------------------------------------------------
-        %   object constructor
+        %   object constructor. Create model and report model stability
+        %   analysis
         %------------------------------------------------------------------
             % call superclass constructor
             obj = obj@MotionModelGP(d,sigmaw);
         end
         
-        function [xdot, grad_xdot] = f (obj, x, u)
+        function xdot = f (obj, x, u)
         %------------------------------------------------------------------
-        %   Continuous time dynamics of the inverted pendulum (including
+        %   Continuous time dynamics of the single track (including
         %   disturbance):
         %------------------------------------------------------------------
-            
-            sx = x(1);
-            sy = x(2);
-            v = x(3);
-            beta = x(4);
-            psi = x(5);
-            omega = x(6);
-            x_dot = x(7);
-            y_dot = x(8);
-            psi_dot = x(9);
-            varphi_dot = x(10);
-            
-            delta = u(1);  % steering angle
-            G     = u(2);  % gear
-            Fb    = u(3);  % brake force
-            zeta  = u(4);  % brake force distribution
-            phi   = u(5);  % acc pedal position
-            
-            T_M=200*phi*(15-14*phi)-200*phi*(15-14*phi)*(((n*(30/pi))^(5*phi))/(4800^(5*phi))); % motor torque
-            
-            F_x_r = T_M - F_b;  % longitudinal force rear wheel
-            F_x_f = 0;          % longitudinal force front wheel
-            F_y_r = Cr * a_r;   % rear lateral force
-            F_y_f = Cf * a_f;   % front lateral force
 
+            %--------------------------------------------------------------
+            % Model parameters
+            %--------------------------------------------------------------
+            g = obj.g;
+            M = obj.M;
+            I_z  = obj.I_z;
+            l_f  = obj.l_f;
+            l_r  = obj.l_r;
+            deltamax = obj.deltamax;
+            maxbrakeWForce = obj.maxbrakeWForce;
+            maxmotorWForce = obj.maxmotorWForce;
+            B_f = obj.B_f;
+            C_f = obj.C_f;        
+            D_f = obj.D_f;     
+            E_f = obj.E_f;       
+            B_r = obj.B_r;      
+            C_r = obj.C_r;        
+            D_r = obj.D_r;    
+            E_r = obj.E_r;       
+        
+            %--------------------------------------------------------------
+            % State Vector
+            %--------------------------------------------------------------
+            I_x         = x(1);
+            I_y         = x(2);
+            psi         = x(3);
+            V_vx        = x(4);
+            V_vy        = x(5);
+            psi_dot     = x(6);
+            track_dist  = x(7);
+            beta = atan2(V_vy,V_vx);
+            
+            %--------------------------------------------------------------
+            % Inputs
+            %--------------------------------------------------------------
+            delta     = u(1);   % steering angle
+            T         = u(2);   % wheel torque gain,  -1=max.braking, 1=max acc.
+            track_vel = u(3);   % track centerline velocity
+            
+            %--------------------------------------------------------------
+            % Saturate inputs and 
+            %--------------------------------------------------------------
+            % saturate steering angle
+            delta = obj.clip(delta, -deltamax, deltamax); % (NOT DIFFERENTIABLE)
+            
+            % saturate pedal input
+            T = obj.clip( T, -1, 1);    % % (NOT DIFFERENTIABLE) 
+            
+            %--------------------------------------------------------------
+            % Wheel slip angles (slip ration not being used for now)
+            %--------------------------------------------------------------
+            a_r = atan2(V_vy-l_r*psi_dot,V_vx);
+            a_f = atan2(V_vy+l_f*psi_dot,V_vx) - delta;
+                
+            %--------------------------------------------------------------
+            % Tyre forces
+            %--------------------------------------------------------------
+            % desired total wheel torque to be applied
+            totalWForce = T * ( (T>0)*maxmotorWForce+(T<0)*maxbrakeWForce*sign(V_vx) ); % % (NOT DIFFERENTIABLE)   
+            % longitudinal wheel torque distribution
+            zeta = 0.5;
+            
+            % Wheel forces in wheel coordinates (z-axis points down, x-axis front)
+            % This means positive W_Fy_f turns vehicle to the right
+            W_Fx_r = zeta * totalWForce;
+            W_Fx_f = (1-zeta) * totalWForce;
+            % Pacejka tyre lateral dynamics
+            W_Fy_r = D_r*sin(C_r*atan(B_r*a_r-E_r*(B_r*a_r -atan(B_r*a_r)))); % rear lateral force
+            W_Fy_f = D_f*sin(C_f*atan(B_f*a_f-E_f*(B_f*a_f -atan(B_f*a_f)))); % front lateral force
+            
+            % Wheel forces in vehicle coordinates (z-axis points up, x-axis front)
+            V_Fx_r = W_Fx_r;
+            V_Fx_f = W_Fx_f;
+            V_Fy_r = - W_Fy_r;
+            V_Fy_f = - W_Fy_f;
+            
+            %--------------------------------------------------------------
+            % Calculate state space time derivatives
+            %--------------------------------------------------------------
             % vector field (right-hand side of differential equation)
+            I_x_dot = V_vx*cos(psi) - V_vy*sin(psi); % longitudinal velocity
+            I_y_dot = V_vx*sin(psi) + V_vy*cos(psi); % lateral velocity
+            V_vx_dot = 1/M * (V_Fx_r + V_Fx_f*cos(delta) - V_Fy_f*sin(delta) + V_vy*psi_dot);
+            V_vy_dot = 1/M * (V_Fy_r + V_Fx_f*sin(delta) + V_Fy_f*cos(delta) - V_vy*psi_dot);
+            psi_dot_dot = 1/I_z * (V_Fy_f*l_f*cos(delta) + V_Fx_f*l_f*sin(delta) - V_Fy_r*l_r);
+            track_dist_dot = track_vel; % Traveled distance in the track centerline
+                                
+            %--------------------------------------------------------------
+            % write outputs
+            %--------------------------------------------------------------
+            xdot  = [I_x_dot; I_y_dot; psi_dot; V_vx_dot; V_vy_dot; psi_dot_dot; track_dist_dot];
             
-            x_dot = v*cos(psi-beta); % longitudinal velocity
-            y_dot = v*sin(psi-beta); % lateral velocity
-            v_dot = (F_x_r*cos(beta)+F_x_f*cos(delta+beta)-F_y_r*sin(beta) -F_y_f*sin(delta+beta))/obj.M; % acceleration
-            beta_dot = omega-(F_x_r*sin(beta)+F_x_f*sin(delta+beta)+F_y_r*cos(beta) +F_y_f*cos(delta+beta))/(obj.M*v); % side slip rate
-            psi_dot  = omega; % yaw rate
-            omega_dot=(F_y_f*l_f*cos(delta)-F_y_r*l_r +F_x_f*l_f*sin(delta))/obj.Iz; % yaw angular acceleration
-            x_dot_dot=(F_x_r*cos(psi)+F_x_f*cos(delta+psi)-F_y_f*sin(delta+psi) -F_y_r*sin(psi))/obj.M; % longitudinal acceleration
-            y_dot_dot=(F_x_r*sin(psi)+F_x_f*sin(delta+psi)+F_y_f*cos(delta+psi) +F_y_r*cos(psi))/obj.M; % lateral acceleration
-            psi_dot_dot=(F_y_f*l_f*cos(delta)-F_y_r*l_r  +F_x_f*l_f*sin(delta))/obj.Iz; % yaw angular acceleration
-            varphi_dot_dot=(F_x_r*R)/obj.Iz; % wheel rotary acceleration
-            
-            
-            % calculate xdot and gradient
-            xdot  = [x_dot; y_dot; v_dot; beta_dot; psi_dot; omega_dot; x_dot_dot; y_dot_dot; psi_dot_dot; varphi_dot_dot];
-            grad_xdot = zeros(obj.n);
+            %--------------------------------------------------------------
+            % check model integrity
+            %--------------------------------------------------------------
+            if any(isnan(xdot)) || any(isinf(xdot)) || any(imag(xdot)~=0)
+                error('Single Track Model evaluated to Inf of NaN... CHECK MODEL!!!')
+            end
         end
         
-
-        function r = ref(obj, tk, xk, t_r, t_l)
-            %     xk = [2,1]';
-            % calculate trajectory center line
-            t_c = (t_r + t_l)/2;
-            % find closest trajectory point w.r.t. the vehicle
-            [~,idx] = min( pdist2(xk',t_c,'seuclidean',[1 1].^0.5).^2 );
-            % set target as 3 poins ahead
-            idx_target = idx +3;
-            % loop around when track is over
-            idx_target = mod(idx_target, size(t_c,1));
-            % return reference signal
-            r = t_c(idx_target,:);
+        function gradx = gradx_f(obj, ~, ~)
+        %------------------------------------------------------------------
+        %   Continuous time dynamics.
+        %   out:
+        %       gradx: <n,n> gradient of xdot w.r.t. x
+        %------------------------------------------------------------------
+            gradx = zeros(obj.n);
         end
+        
+        function gradu = gradu_f(obj, ~, ~)
+        %------------------------------------------------------------------
+        %   Continuous time dynamics.
+        %   out:
+        %       gradu: <m,n> gradient of xdot w.r.t. u
+        %------------------------------------------------------------------
+            gradu = zeros(obj.m,obj.n);
+        end
+        
+        function testTyres(obj)
+            c_f = 14000; % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
+            c_r = 14000; % = 2*g*M/deltamax  % rear coornering stiffness
+            
+            % Pacejka lateral dynamics parameters
+            B_f = 0.4;            % stiffnes factor (Pacejka) (front wheel)
+            C_f = 8;              % shape factor (Pacejka) (front wheel)
+            D_f = 4560.4;            % peak value (Pacejka) (front wheel)
+            E_f = -0.5;             % curvature factor (Pacejka) (front wheel)
+            
+            B_r = 0.45;          % stiffnes factor (Pacejka) (rear wheel)
+            C_r = 8;                % shape factor (Pacejka) (rear wheel)
+            D_r = 4000;             % peak value (Pacejka) (rear wheel)
+            E_r = -0.5;             % curvature factor (Pacejka) (rear wheel)
+            
+            a_r = deg2rad(-30:0.1:30);
+            a_f = deg2rad(-30:0.1:30);
+            W_Fy_r = D_r*sin(C_r*atan(B_r*a_r-E_r*(B_r*a_r -atan(B_r*a_r)))); % rear lateral force
+            W_Fy_f = D_f*sin(C_f*atan(B_f*a_f-E_f*(B_f*a_f -atan(B_f*a_f)))); % front lateral force
 
+            figure('Color','w'); hold on; grid on;
+            plot(rad2deg(a_r),W_Fy_r/1000,'DisplayName','Pacejka tyre model')
+            plot(rad2deg(a_r),a_r*c_r/1000,'DisplayName','Constant coornering stiffness model')
+            title('Rear tyre')
+            xlabel('Slip angle [deg]');
+            ylabel('Tyre lateral force [kN]')
+            legend
 
+            figure; hold on; grid on;
+            plot(rad2deg(a_f),W_Fy_f/1000,'DisplayName','Pacejka tyre model')
+            plot(rad2deg(a_f),a_r*c_f/1000,'DisplayName','Constant coornering stiffness model')
+            title('Front tyre')
+            xlabel('Slip angle [deg]');
+            ylabel('Tyre lateral force [kN]')
+            legend
+        end
+        
+        
     end
+    
 end
-

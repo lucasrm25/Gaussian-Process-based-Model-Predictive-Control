@@ -15,8 +15,17 @@
 
 clear all; close all; clc;
 
-dt = 0.1;  % simulation timestep size
-tf = 7;     % simulation time
+%--------------------------------------------------------------------------
+%   Simulation and controller parameters
+%------------------------------------------------------------------
+dt = 0.1;       % simulation timestep size
+tf = 7;         % simulation time
+maxiter = 10;   % max NMPC iterations per time step
+N = 10;         % NMPC prediction horizon
+
+lookahead = dt*N;
+fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
+
 
 % inverted pendulum parameters
 Mc = 5;
@@ -33,34 +42,34 @@ l = 3;
 %
 %       where: zk = Bz*xk,
 %              d ~ N(mean_d(zk),var_d(zk))
-%              w ~ N(0,sigmaw)
+%              w ~ N(0,var_w)
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
 % mu_d  = @(z) 1 * mvnpdf(z',[0,0], eye(2)*0.1);
-mu_d  = @(z) 0.1 * z(1) - 0.01*z(2) + deg2rad(3);
+mu_d  = @(z) (0.1 * z(1) - 0.01*z(2) + deg2rad(3))*1;
 var_d = @(z) 0;
 d_true  = @(z) deal(mu_d(z),var_d(z));
 % true measurement noise
-sigmaw = 1e-8;
+var_w = 1e-8;
 % create true dynamics model
-trueModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, d_true, sigmaw);
+trueModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, d_true, var_w);
 
 
 %% Create Estimation Model and Nominal Model
 
 % define model (mean and variance) for estimated disturbance
 % GP hyperparameters
-sigmaf2 = 0.01;         % output variance (std)
-M       = diag([1e-1,1e-1].^2);   % length scale
-sigman2 = 1e-5;         % measurement noise variance
-maxsize = 100;          % maximum number of points in the dictionary
+var_f   = 0.01;                   % output variance
+M       = diag([1e-1,1e-1].^2);     % length scale
+var_n   = var_w;                    % measurement noise variance
+maxsize = 100;                      % maximum number of points in the dictionary
 % create GP object
-d_GP = GP(sigmaf2, sigman2, M, maxsize);
+d_GP = GP(var_f, var_n, M, maxsize);
 
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
-estModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @d_GP.eval, sigmaw);
+estModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @d_GP.eval, var_w);
 
 % create nominal dynamics model (no disturbance)
 nomModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @(z)deal(0,0), 0); 
@@ -70,6 +79,7 @@ nomModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @(z)deal(0,0), 0);
 
 n = estModel.n;
 m = estModel.m;
+ne = 0;
 
 % -------------------------------------------------------------------------
 % LQR CONTROLLER
@@ -89,28 +99,29 @@ eig(Ak-Bk*K);
 % -------------------------------------------------------------------------
 % NONLINEAR MPC CONTROLLER
 % define cost function
-N = 10;     % prediction horizon
-Q = diag([1e-1 1e5 1]);
-Qf= diag([1e-1 1e5 1]);
-R = 1;
+Q = diag([1e-1 1e5 1e0]);
+Qf= diag([1e-1 1e5 1e0]);
+R = 10;
 Ck = [0 1 0 0; 0 0 1 0; 0 0 0 1];
-fo   = @(t,mu_x,var_x,u,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + R*u^2;  % cost function
-fend = @(t,mu_x,var_x,r)   (Ck*mu_x-r(t))'*Qf*(Ck*mu_x-r(t));          % end cost function
+fo   = @(t,mu_x,var_x,u,e,r) (Ck*mu_x-r(t))'*Q *(Ck*mu_x-r(t)) + R*u^2;  % cost function
+fend = @(t,mu_x,var_x,e,r)   (Ck*mu_x-r(t))'*Qf*(Ck*mu_x-r(t));          % end cost function
 f    = @(mu_xk,var_xk,u) estModel.xkp1(mu_xk, var_xk, u, dt);
-h    = @(x,u) []; % @(x,u) 0;  % h(x)==0
-g    = @(x,u) []; % @(x,u) 0;  % g(x)<=0
+h    = @(x,u,e) []; % @(x,u) 0;  % h(x)==0
+g    = @(x,u,e) []; % @(x,u) 0;  % g(x)<=0
 
-% mpc = NMPC(fo, fend, f, d_GP, Bd, Bz, N, sigmaw, h, g, n, m, ne, dt);
-mpc = NMPC(f, h, g, n, m, fo, fend, N, dt);
+u_lb = [];
+u_ub = [];
+
+mpc = NMPC (f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
 mpc.tol     = 1e-3;
-mpc.maxiter = 30;
+mpc.maxiter = maxiter;
 % -------------------------------------------------------------------------
 
 % TEST NMPC
-% x0 = 10;
-% t0 = 0;
-% r  = @(t)2;    % desired trajectory
-% u0 = mpc.optimize(x0, t0, r );
+x0 = [0 0 0.1 0]';
+t0 = 0;
+r  = @(t) [0 0 0]';    % desired trajectory
+[x0_opt, u_opt, e_opt] = mpc.optimize(x0, t0, r );
 
 
 
@@ -127,54 +138,86 @@ nr = size(r(0),1); % dimension of r(t)
 x0 = [0,0,deg2rad(5),0]';
 
 % initialize variables to store simulation results
-out.t = 0:dt:tf;
-out.x = [x0 zeros(n,length(out.t)-1)];
-out.xhat = [x0 zeros(n,length(out.t)-1)];
-out.xnom = [x0 zeros(n,length(out.t)-1)];
-out.u = zeros(m,length(out.t)-1);
-out.r = zeros(nr,length(out.t)-1);
+out.t    = 0:dt:tf;
+out.x    = [x0 nan(n,length(out.t)-1)];
+out.xhat = [x0 nan(n,length(out.t)-1)];
+out.xnom = [x0 nan(n,length(out.t)-1)];
+out.u    = nan(m,length(out.t)-1);
+out.r    = nan(nr,length(out.t)-1);
 
 
 d_GP.isActive = false;
 
-for i = 1:numel(out.t)-1
-    disp(out.t(i))
+
+ki = 1;
+% ki = 40;
+% mpc.uguess = out.u(:,ki);
+
+for k = ki:numel(out.t)-1
+    disp(out.t(k))
     
-    % read new reference
-    out.r(:,i) = r(out.t(i));
+    % ---------------------------------------------------------------------
+    % Read new reference
+    % ---------------------------------------------------------------------
+    out.r(:,k) = r(out.t(k));
     
-    % calculate control input
+    % ---------------------------------------------------------------------
     % LQR controller
+    % ---------------------------------------------------------------------
     % % out.u(:,i) = Kr*out.r(:,i) - K*out.xhat(:,i);
-    % NMPC controller
-    out.u(:,i) = mpc.optimize(out.xhat(:,i), out.t(i), r);
     
+    % ---------------------------------------------------------------------
+    % NPMC controller
+    % ---------------------------------------------------------------------
+    [x0_opt, u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r);
+    out.u(:,k) = u_opt(:,1);
+    
+    
+    % ---------------------------------------------------------------------
     % simulate real model
-    [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,i),zeros(trueModel.n),out.u(:,i),dt);
-    out.x(:,i+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
+    % ---------------------------------------------------------------------
+    [mu_xkp1,var_xkp1] = trueModel.xkp1(out.x(:,k),zeros(trueModel.n),out.u(:,k),dt);
+    out.x(:,k+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
+    % ---------------------------------------------------------------------
+    % Safety
+    % ---------------------------------------------------------------------
+    if abs(out.x(3,k+1)) > deg2rad(60)
+        error('Pole is completely unstable. theta = %.f[deg]... aborting',rad2deg(out.x(3,k+1)));
+    end
+    
+    % ---------------------------------------------------------------------
     % measure data
-    out.xhat(:,i+1) = out.x(:,i+1); % perfect observer
+    % ---------------------------------------------------------------------
+    out.xhat(:,k+1) = out.x(:,k+1); % perfect observer
     
+    
+    % ---------------------------------------------------------------------
     % calculate nominal model
-    out.xnom(:,i+1) = nomModel.xkp1(out.xhat(:,i),zeros(nomModel.n),out.u(:,i),dt);
+    % ---------------------------------------------------------------------
+    out.xnom(:,k+1) = nomModel.xkp1(out.xhat(:,k),zeros(nomModel.n),out.u(:,k),dt);
     
+    
+    % ---------------------------------------------------------------------
     % add data to GP model
-    if mod(i-1,1)==0
+    % ---------------------------------------------------------------------
+    if mod(k-1,1)==0
         % calculate disturbance (error between measured and nominal)
-        d_est = estModel.Bd \ (out.xhat(:,i+1) - out.xnom(:,i+1));
+        d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
         % select subset of coordinates that will be used in GP prediction
-        zhat = estModel.Bz * out.xhat(:,i);
+        zhat = estModel.Bz * out.xhat(:,k);
         % add data point to the GP dictionary
         d_GP.add(zhat,d_est);
     end
     
-    if d_GP.N > 20 && out.t(i) > 3
+    if d_GP.N > 20 && out.t(k) > 3
+        d_GP.updateModel();
         d_GP.isActive = true;
     end
     
     % check if these values are the same:
-    % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
+    % d_est == mu_d(zhat) == [mud,~]=trueModel.d(zhat)
+    
 end
 
 
