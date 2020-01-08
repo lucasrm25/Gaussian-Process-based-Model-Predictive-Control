@@ -238,8 +238,8 @@ for k = ki:kmax
     % ---------------------------------------------------------------------
     trackAnim.mu_x_pred_opt  = out.mu_x_pred_opt;
     trackAnim.var_x_pred_opt = out.var_x_pred_opt;
-    trackAnim.u_pred_opt = out.u_pred_opt;
-    trackAnim.x_ref      = out.x_ref;
+    trackAnim.u_pred_opt     = out.u_pred_opt;
+    trackAnim.x_ref          = out.x_ref;
     trackAnim.updateTrackAnimation(k);
     trackAnim.updateScope(k);
     drawnow;
@@ -309,8 +309,10 @@ close all;
 trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.var_x_pred_opt, out.u_pred_opt,out.x_ref);
 trackAnim.initTrackAnimation();
 % trackAnim.initScope();
-for k = 1:kmax
-    trackAnim.updateTrackAnimation(k);
+for k=1:kmax
+    if ~ trackAnim.updateTrackAnimation(k);
+        break;
+    end
     % trackAnim.updateScope(k);
     pause(0.1);
     drawnow;
