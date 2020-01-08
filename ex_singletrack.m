@@ -22,7 +22,7 @@ clear all; close all; clc;
 dt = 0.2;       % simulation timestep size
 tf = 200;        % simulation time
 maxiter = 15;   % max NMPC iterations per time step
-N = 5;         % NMPC prediction horizon
+N = 10;         % NMPC prediction horizon
 
 lookahead = dt*N;
 fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
