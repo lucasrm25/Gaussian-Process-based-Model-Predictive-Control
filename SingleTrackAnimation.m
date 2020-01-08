@@ -152,13 +152,18 @@ classdef SingleTrackAnimation < handle
             end
         end
         
-        function updateTrackAnimation(obj,k)
+        function status = updateTrackAnimation(obj,k)
         % -----------------------------------------------------------------
         %   Update track animation with the current time step k. Beware
         %   that the vectors obj.mu_x_pred_opt and obj.x_ref must have the
         %   correct values at position (:,:,k)
         % -----------------------------------------------------------------
-            vel = vecnorm(obj.mu_x_pred_opt(3:4,:,k));
+            status = 0;
+            if k < 1 || k > size(obj.mu_x_pred_opt,3) || any(isnan(obj.mu_x_pred_opt(:,:,k)),'all')
+                return;
+            end
+                
+            vel = vecnorm(obj.mu_x_pred_opt(4:5,:,k));
             % update predicted trajectory
             obj.h_mu_x_pred_opt.XData = [obj.mu_x_pred_opt(1,:,k) 0];
             obj.h_mu_x_pred_opt.YData = [obj.mu_x_pred_opt(2,:,k) NaN];
@@ -181,20 +186,23 @@ classdef SingleTrackAnimation < handle
             obj.h_x_ref.YData = obj.x_ref(2,:,k);
             
             % update trace
-            veltrace = vecnorm(squeeze(obj.mu_x_pred_opt(3:4,1,1:k)));
+            veltrace = vecnorm(squeeze(obj.mu_x_pred_opt(4:5,1,1:k)));
             obj.h_x_trace.XData = [squeeze(obj.mu_x_pred_opt(1,1,1:k))' NaN];
             obj.h_x_trace.YData = [squeeze(obj.mu_x_pred_opt(2,1,1:k))' NaN];
             obj.h_x_trace.CData = [veltrace NaN];
             
             % update car
             carpos = obj.mu_x_pred_opt(1:2,1,k); %[0;0]
-            psi = obj.mu_x_pred_opt(3,1,k); %deg2rad(30);
+            psi    = obj.mu_x_pred_opt(3,1,k); %deg2rad(30);
             car_w = 1;
             car_l = 2;
             V_carpoints = [[car_l/2;car_w/2],[car_l/2;-car_w/2],[-car_l/2;-car_w/2],[-car_l/2;car_w/2]];
             I_carpoints = [cos(psi) -sin(psi);
                            sin(psi)  cos(psi)] * V_carpoints + carpos;
             obj.h_car.Vertices = I_carpoints';
+            
+            % no error when updating graphics
+            status = 1;
         end
         
         function updateScope(obj,k)
@@ -215,8 +223,11 @@ classdef SingleTrackAnimation < handle
             % video rec
             videoframes = struct('cdata',[],'colormap',[]);
             obj.initTrackAnimation();
-            for k=1: 200 %size(obj.mu_x_pred_opt,3)
-                obj.updateTrackAnimation(k);
+            for k=1:size(obj.mu_x_pred_opt,3)
+                status = obj.updateTrackAnimation(k);
+                if status == 0
+                    break;
+                end
                 videoframes(k) = getframe(obj.h_fig);
             end
             % -----------------------------------------------------------------
