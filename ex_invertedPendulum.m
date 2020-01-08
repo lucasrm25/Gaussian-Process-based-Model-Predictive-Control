@@ -121,7 +121,7 @@ mpc.maxiter = maxiter;
 x0 = [0 0 0.1 0]';
 t0 = 0;
 r  = @(t) [0 0 0]';    % desired trajectory
-[x0_opt, u_opt, e_opt] = mpc.optimize(x0, t0, r );
+[u_opt, e_opt] = mpc.optimize(x0, t0, r );
 
 
 
@@ -169,7 +169,7 @@ for k = ki:numel(out.t)-1
     % ---------------------------------------------------------------------
     % NPMC controller
     % ---------------------------------------------------------------------
-    [x0_opt, u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r);
+    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r);
     out.u(:,k) = u_opt(:,1);
     
     
