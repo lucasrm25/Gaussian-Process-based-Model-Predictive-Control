@@ -3,9 +3,7 @@
 %   - Lucas Rath (lucasrm25@gmail.com)
 %   - 
 %   -
-%------------------------------------------------------------------
 
-%------------------------------------------------------------------
 %   1D Toy example:
 %
 %       - Simulate the GP learning of the nonlinear part of the plant
@@ -15,8 +13,10 @@
 
 clear all; close all; clc;
 
+
+
 %--------------------------------------------------------------------------
-%   Simulation and controller parameters
+%   Quick Access Simulation and controller parameters
 %------------------------------------------------------------------
 dt = 0.1;       % simulation timestep size
 tf = 7;         % simulation time

@@ -3,29 +3,25 @@
 %   - Lucas Rath (lucasrm25@gmail.com)
 %   - 
 %   -
-%------------------------------------------------------------------
 
-%------------------------------------------------------------------
-%   1D Toy example:
-%
-%       - Simulate the GP learning of the nonlinear part of the plant
-%       dynamics
-%       - System is being currently controlled with a state feedback control
+%   Control of a Race Car in a Race Track using Gaussian Process Optimal Control:
 %------------------------------------------------------------------
 
 clear all; close all; clc;
 
 
 %--------------------------------------------------------------------------
-%   Simulation and controller parameters
+% Quick Access Simulation and controller parameters
 %------------------------------------------------------------------
 dt = 0.2;       % simulation timestep size
-tf = 200;        % simulation time
-maxiter = 15;   % max NMPC iterations per time step
+tf = 600;       % simulation time
+maxiter = 20;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 lookahead = dt*N;
 fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
+
+
 
 
 
@@ -42,7 +38,7 @@ fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
 mu_d  = @(z) zeros(size(z,1),1);
 var_d = @(z) zeros(size(z,1));
 d     = @(z) deal( mu_d(z), var_d(z) );
-var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
+var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(3)/3)^2]);
 
 % create true dynamics model
 %   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
@@ -77,7 +73,7 @@ gp_p = nomModel.nd;
 var_f   = repmat(0.01,[gp_p,1]);   % output variance
 var_n   = diag(var_w);          % measurement noise variance
 M       = repmat(diag([1e-1,1e-1,1e-1].^2),[1,1,gp_p]);     % length scale
-maxsize = 100; % maximum number of points in the dictionary
+maxsize = 300; % maximum number of points in the dictionary
 
 % create GP object
 d_GP = GP(var_f, var_n, M, maxsize);
@@ -135,12 +131,12 @@ fend = @(t,mu_x,var_x,e,r)   2 * costFunction(mu_x, var_x, zeros(m,1), track);  
 % define additional constraints
 h  = @(x,u,e) [];
 g  = @(x,u,e) [];
-u_lb = [-deg2rad(25);  % delta >= -10deg
-         -1;           % wheel torque gain >= -1
-         5];           % track velocity >= 0
-u_ub = [deg2rad(25);   % delta <=  10 deg
-        1;             % wheel torque gain <= 1
-        30];           % track velocity <= 1
+u_lb = [-deg2rad(30);  % >= steering angle
+         -1;           % >= wheel torque gain
+         5];           % >= centerline track velocity
+u_ub = [deg2rad(30);   % <= steering angle
+        1;             % <= wheel torque gain
+        30];           % <= centerline track velocity 
 
 % Initialize NMPC object;
 mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
@@ -169,7 +165,7 @@ est_n = estModel.n;
 est_m = estModel.m;
 
 % initial state
-x0 = [10;0;0; 10;0;0; 0;];   % true initial state
+x0 = [10;0;0; 10;0;0; 0];   % true initial state
 x0(end) = track.getTrackDistance(x0(1:2)); % get initial track traveled distance
 
 % change initial guess for mpc solver. Set initial track velocity as
@@ -203,9 +199,11 @@ d_GP.isActive = false;
 
 %% Start simulation
 
- ki = 1;
-% ki = 41;
+ki = 1;
+% ki = 15;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
+
+% lap = 0;
 
 for k = ki:kmax
     disp(out.t(k))
@@ -255,10 +253,18 @@ for k = ki:kmax
     % Measure data
     % ---------------------------------------------------------------------
     out.xhat(:,k+1) = out.x(:,k+1); % perfect observer
-    % get traveled distance, given vehicle coordinates (this is the 11th
-    % state of the nominal model)
+    % get traveled distance, given vehicle coordinates
     out.xhat(end,k+1) = track.getTrackDistance(out.xhat([1,2],k+1));
     
+    
+    % ---------------------------------------------------------------------
+    % Lap timer
+    % ---------------------------------------------------------------------
+    [laptimes, idxnewlaps] = getLapTimes(out.xhat(end,:),dt)
+    if any(k==idxnewlaps)
+        dispLapTimes(laptimes);
+    end
+    % lap = numel(laptimes)+1;
     
     % ---------------------------------------------------------------------
     % Safety - Stop simulation in case vehicle is completely unstable
@@ -302,6 +308,11 @@ for k = ki:kmax
 end
 
 
+%% Calculate Lap times
+
+[laptimes] = getLapTimes(out.xhat(end,:),dt)
+
+
 %% Show animation
 close all;
 
@@ -341,7 +352,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     q_v      = -0;  % reward high absolute velocities
     q_st     =  0;  % penalization of steering
     q_br     =  0;  % penalization of breaking
-    q_psidot =  25;  % penalize high yaw rates
+    q_psidot =  8;  % penalize high yaw rates
     q_acc    = -0;  % reward for accelerating
 
     % label inputs and outputs
@@ -433,4 +444,35 @@ function cost = costFunction(mu_x, var_x, u, track)
     % fprintf('   cost_outside:%.1f\n',cost_outside/cost*100);
     % fprintf('   cost_inputs:%.1f\n',cost_inputs/cost*100);
     % fprintf('   cost_vel:%.1f\n',cost_vel/cost*100);
+end
+
+
+function [laptimes, idxnewlaps] = getLapTimes( trackDist, dt)
+    % calc lap times
+    idxnewlaps = find( conv(trackDist, [1 -1]) < -10 );
+    laptimes = conv(idxnewlaps, [1,-1], 'valid') * dt;
+end
+
+function dispLapTimes(laptimes)
+    % calc best lap time
+    [bestlaptime,idxbestlap] = min(laptimes);
+
+    fprintf('\n--------------- LAP RECORD -------------------\n');
+    fprintf('------ (Best Lap: %.2d    laptime: %4.2f) ------\n\n',idxbestlap,bestlaptime);
+    for i=1:numel(laptimes)
+        if i==idxbestlap
+            fprintf(2,'  (best lap)->  ')
+        else
+            fprintf('\t\t');
+        end
+            fprintf('Lap %.2d    laptime: %4.2fs',i,laptimes(i));
+            fprintf(2,'   (+%.3fs)\n',laptimes(i)-bestlaptime)
+
+    end
+    fprintf('--------------- LAP RECORD -------------------\n');
+
+    % figure('Color','w','Position',[441 389 736 221]); hold on; grid on;
+    % plot(laptimes,'-o')
+    % xlabel('Lap')
+    % ylabel('Lap time [s]')
 end
