@@ -189,7 +189,7 @@ out.x_ref          = NaN(2,     mpc.N+1, kmax);         % optimized reference tr
 out.mu_x_pred_opt  = NaN(mpc.n, mpc.N+1, kmax);         % mean of optimal state prediction sequence
 out.var_x_pred_opt = NaN(mpc.n, mpc.n, mpc.N+1, kmax);  % variance of optimal state prediction sequence
 out.u_pred_opt     = NaN(mpc.m, mpc.N,   kmax);         % open-loop optimal input prediction
-
+lap_time           = 0;
 
 % start animation
 trackAnim = SingleTrackAnimation(track, out.mu_x_pred_opt, out.var_x_pred_opt, out.u_pred_opt, out.x_ref);
@@ -203,8 +203,8 @@ d_GP.isActive = false;
 
 %% Start simulation
 
- ki = 1;
-% ki = 41;
+ki = 1;
+% ki = 35;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
 
 for k = ki:kmax
@@ -292,9 +292,19 @@ for k = ki:kmax
         d_GP.updateModel();
     end
     
-%     if d_GP.N > 3 && out.t(k) > 2
-%         d_GP.isActive = true;
-%     end
+    %----------------------------------------------------------------------
+    % Return lap time
+    %----------------------------------------------------------------------
+    if mod(out.x(7,k),max(track.dist))<10  && mod(out.x(7,k-1),max(track.dist))>(max(track.dist)-10)
+    lap_time = [lap_time out.t(k)-sum(lap_time)];
+    end
+    
+    
+    
+    
+    if d_GP.N > 50 && length(lap_time) == 3
+        d_GP.isActive = true;
+    end
     
     % check if these values are the same:
     % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
@@ -325,7 +335,24 @@ videoName = fullfile('simresults',sprintf('trackAnimVideo-%s',date));
 videoFormat = 'Motion JPEG AVI';
 trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 
+%% Output lap times
+LapTime = lap_time(2:end)';
+RoundNumber =zeros(length(lap_time)-1,1);
+for iN = 1:length(lap_time)-1
+RoundNumber(iN) = iN;
+end
+T = table(RoundNumber,LapTime)
 
+fig = uifigure('Position',[500 500 220 150]);
+uit = uitable(fig);
+uit.Position = [20 20 170 100];
+uit.Data = T{:,:};
+uit.RowName = ([]);
+uit.ColumnName = {'Round Number','Lap Time'};
+
+
+s = uistyle('BackgroundColor','yellow');
+addStyle(uit,s,'cell',[1:2,1:2]);
 %% Help functions
 
 function cost = costFunction(mu_x, var_x, u, track)
