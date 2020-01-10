@@ -3,26 +3,20 @@
 %   - Lucas Rath (lucasrm25@gmail.com)
 %   - 
 %   -
-%------------------------------------------------------------------
 
-%------------------------------------------------------------------
-%   1D Toy example:
-%
-%       - Simulate the GP learning of the nonlinear part of the plant
-%       dynamics
-%       - System is being currently controlled with a state feedback control
+%   Control of a Race Car in a Race Track using Gaussian Process Optimal Control:
 %------------------------------------------------------------------
 
 clear all; close all; clc;
 
 
 %--------------------------------------------------------------------------
-%   Simulation and controller parameters
+% Quick Access Simulation and controller parameters
 %------------------------------------------------------------------
-dt = 0.1;       % simulation timestep size
-tf = 50;        % simulation time
+dt = 0.2;       % simulation timestep size
+tf = 600;       % simulation time
 maxiter = 20;   % max NMPC iterations per time step
-N = 15;         % NMPC prediction horizon
+N = 10;         % NMPC prediction horizon
 
 lookahead = dt*N;
 fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
@@ -39,15 +33,16 @@ fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
 %------------------------------------------------------------------
 
 % define model (mean and variance) for true disturbance
-mu_d  = @(z) zeros(size(z,1),1);
-var_d = @(z) zeros(size(z,1));
+nd    = MotionModelGP_SingleTrack.nd ;
+mu_d  = @(z) zeros(nd,1);
+var_d = @(z) zeros(nd);
 d     = @(z) deal( mu_d(z), var_d(z) );
-var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
+var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(3)/3)^2]);
 
 % create true dynamics model
 %   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
-%trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
- trueModel = MotionModelGP_SingleTrack(d,var_w);
+% trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
+trueModel = MotionModelGP_SingleTrack(d,var_w);
 
 
 %% Create Estimation Model and Nominal Model
@@ -56,10 +51,14 @@ var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(1)/3)^2]);
 %  Create nominal model (no disturbance):  
 %       xk+1 = fd_nominal(xk,uk)
 % -------------------------------------------------------------------------
-mu_d  = @(z) zeros(size(z,1),1);
-var_d = @(z) zeros(size(z,1));
+nz = MotionModelGP_SingleTrackNominal.nz;
+nd = MotionModelGP_SingleTrackNominal.nd;
+
+mu_d  = @(z) zeros(nd,1);
+var_d = @(z) zeros(nd);
 d     = @(z) deal( mu_d(z), var_d(z) );
 nomModel = MotionModelGP_SingleTrackNominal(d, 0*var_w); 
+% nomModel = MotionModelGP_SingleTrack(d, 0*var_w);
 
 
 % -------------------------------------------------------------------------
@@ -69,28 +68,28 @@ nomModel = MotionModelGP_SingleTrackNominal(d, 0*var_w);
 % -------------------------------------------------------------------------
 
 % GP input dimension
-gp_n = nomModel.nz;
+gp_n = nz;
 % GP output dimension
-gp_p = nomModel.nd;
+gp_p = nd;
 
 % GP hyperparameters
-var_f   = repmat(0.01,[gp_p,1]);   % output variance
-var_n   = diag(var_w);          % measurement noise variance
-M       = repmat(diag([1e-1,1e-1,1e-1].^2),[1,1,gp_p]);     % length scale
-maxsize = 100; % maximum number of points in the dictionary
+var_f   = repmat(0.01,[gp_p,1]);    % output variance
+var_n   = diag(var_w);              % measurement noise variance
+M       = repmat(diag([1e-1,1e-1,1e-1,1e-1,1e-1].^2),[1,1,gp_p]);     % length scale
+maxsize = 300; % maximum number of points in the dictionary
 
 % create GP object
-d_GP = GP(var_f, var_n, M, maxsize);
+d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 
 % create nominal model with GP model as d(zk)
 estModel = MotionModelGP_SingleTrackNominal(@d_GP.eval, var_w);
+% estModel = MotionModelGP_SingleTrack(@d_GP.eval, var_w);
 
 
 %% Initialize Controller
 
 % -------------------------------------------------------------------------
-%                               (TODO)
-% LQR CONTROLLER:
+%       TODO: LQR CONTROLLER:
 % -------------------------------------------------------------------------
 % % % % [A,B] = estModel.linearize();
 % % % % Ak = eye(estModel.n)+dt*A;
@@ -135,12 +134,12 @@ fend = @(t,mu_x,var_x,e,r)   2 * costFunction(mu_x, var_x, zeros(m,1), track);  
 % define additional constraints
 h  = @(x,u,e) [];
 g  = @(x,u,e) [];
-u_lb = [-deg2rad(25);  % delta >= -10deg
-         -1;           % wheel torque gain >= -1
-         5];           % track velocity >= 0
-u_ub = [deg2rad(25);   % delta <=  10 deg
-        1;             % wheel torque gain <= 1
-        30];           % track velocity <= 1
+u_lb = [-deg2rad(20);  % >= steering angle
+         -1;           % >= wheel torque gain
+         5];           % >= centerline track velocity
+u_ub = [deg2rad(20);   % <= steering angle
+        1;             % <= wheel torque gain
+        30];           % <= centerline track velocity 
 
 % Initialize NMPC object;
 mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
@@ -169,7 +168,7 @@ est_n = estModel.n;
 est_m = estModel.m;
 
 % initial state
-x0 = [10;0;0; 10;0;0; 0;];   % true initial state
+x0 = [10;0;0; 10;0;0; 0];   % true initial state
 x0(end) = track.getTrackDistance(x0(1:2)); % get initial track traveled distance
 
 % change initial guess for mpc solver. Set initial track velocity as
@@ -203,9 +202,11 @@ d_GP.isActive = false;
 
 %% Start simulation
 
- ki = 1;
-% ki = 41;
+ki = 1;
+% ki = 15;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
+
+% lap = 0;
 
 for k = ki:kmax
     disp(out.t(k))
@@ -219,7 +220,7 @@ for k = ki:kmax
     % NPMC controller
     % ---------------------------------------------------------------------
     % calculate optimal input
-    [x0_opt, u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), 0);
+    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), 0);
     out.u(:,k) = u_opt(:,1);
     sprintf('\nSteering angle: %d\nTorque gain: %.1f\nTrack vel: %.1f\n',rad2deg(out.u(1,k)),out.u(2,k),out.u(3,k))
 
@@ -238,8 +239,8 @@ for k = ki:kmax
     % ---------------------------------------------------------------------
     trackAnim.mu_x_pred_opt  = out.mu_x_pred_opt;
     trackAnim.var_x_pred_opt = out.var_x_pred_opt;
-    trackAnim.u_pred_opt = out.u_pred_opt;
-    trackAnim.x_ref      = out.x_ref;
+    trackAnim.u_pred_opt     = out.u_pred_opt;
+    trackAnim.x_ref          = out.x_ref;
     trackAnim.updateTrackAnimation(k);
     trackAnim.updateScope(k);
     drawnow;
@@ -255,10 +256,18 @@ for k = ki:kmax
     % Measure data
     % ---------------------------------------------------------------------
     out.xhat(:,k+1) = out.x(:,k+1); % perfect observer
-    % get traveled distance, given vehicle coordinates (this is the 11th
-    % state of the nominal model)
+    % get traveled distance, given vehicle coordinates
     out.xhat(end,k+1) = track.getTrackDistance(out.xhat([1,2],k+1));
     
+    
+    % ---------------------------------------------------------------------
+    % Lap timer
+    % ---------------------------------------------------------------------
+    [laptimes, idxnewlaps] = getLapTimes(out.xhat(end,:),dt);
+    if any(k==idxnewlaps)
+        dispLapTimes(laptimes);
+    end
+    % lap = numel(laptimes)+1;
     
     % ---------------------------------------------------------------------
     % Safety - Stop simulation in case vehicle is completely unstable
@@ -286,20 +295,71 @@ for k = ki:kmax
         % calculate disturbance (error between measured and nominal)
         d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
         % select subset of coordinates that will be used in GP prediction
-        zhat = estModel.Bz * out.xhat(:,k);
+        zhat = [ estModel.Bz_x * out.xhat(:,k); estModel.Bz_u * out.u(:,k) ];
         % add data point to the GP dictionary
-        d_GP.add(zhat,d_est);
+        d_GP.add(zhat,d_est');
         d_GP.updateModel();
     end
     
-    if d_GP.N > 50 && out.t(k) > 13
-        % d_GP.isActive = true;
-    end
+%     if d_GP.N > 3 && out.t(k) > 2
+%         d_GP.isActive = true;
+%     end
     
     % check if these values are the same:
     % d_est == mu_d(zhat) == ([mud,~]=trueModel.d(zhat); mud*dt)
    
 end
+
+
+%% Display Lap times
+
+[laptimes, idxnewlaps] = getLapTimes(out.xhat(end,:),dt);
+dispLapTimes(laptimes)
+
+
+%% Analyse learning [IN PROGRESS]
+
+% Check in which region of the tyre dynamics we are working in the
+% simulation
+
+trueModel.testTyres
+
+l_f  = 0.9;
+l_r  = 1.5;
+V_vx = out.xhat(4,:);
+V_vy = out.xhat(5,:);
+psi_dot = out.xhat(6,:);
+delta = out.u(1,:);
+a_r = atan2(V_vy-l_r.*psi_dot,V_vx);
+a_f = atan2(V_vy+l_f.*psi_dot,V_vx) - [delta 0];
+
+figure('Color','w'); hold on; grid on;
+plot(rad2deg(a_r))
+plot(rad2deg(a_f))
+ylabel('slip angle')
+xlabel('time step')
+
+
+
+% Check how the GP reduces the prediction error
+
+figure('Color','w'); hold on; grid on;
+predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
+plot( predErrorNOgp' )
+title('Prediction error - without GP')
+
+vecnorm(predErrorNOgp')
+
+d_GP.isActive = true;
+
+zhat = [ estModel.Bz_x * out.xhat; estModel.Bz_u * [out.u,zeros(3,1)] ];
+dgp = d_GP.eval(zhat);
+
+figure('Color','w'); hold on; grid on;
+predErrorWITHgp = estModel.Bd\(out.xhat - (out.xnom + estModel.Bd*dgp) );
+plot( predErrorWITHgp' )
+title('Prediction error - with GP')
+
 
 
 %% Show animation
@@ -309,8 +369,10 @@ close all;
 trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.var_x_pred_opt, out.u_pred_opt,out.x_ref);
 trackAnim.initTrackAnimation();
 % trackAnim.initScope();
-for k = 1:kmax
-    trackAnim.updateTrackAnimation(k);
+for k=1:kmax
+    if ~ trackAnim.updateTrackAnimation(k)
+        break;
+    end
     % trackAnim.updateScope(k);
     pause(0.1);
     drawnow;
@@ -329,17 +391,18 @@ trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
-    q_l   = 5;     % penalization of lag error
-    q_c   = 5;     % penalization of contouring error
-    q_o   = 5;     % penalization for orientation error
-    q_d   = 3;      % reward high track centerline velocites
-    q_r   = 1000;   % penalization when vehicle is outside track
+    q_l   = 50;     % penalization of lag error
+    q_c   = 20;     % penalization of contouring error
+    q_o   = 5;      % penalization for orientation error
+    q_d   = -3;     % reward high track centerline velocites
+    q_r   = 100;    % penalization when vehicle is outside track
     
     % state and input penalization
-    q_v   = 0; % reward high absolute velocities
-    q_st  = 0; % penalization of steering
-    q_br  = 0; % penalization of breaking
-    q_acc = 0; % reward for accelerating
+    q_v      = -0;  % reward high absolute velocities
+    q_st     =  0;  % penalization of steering
+    q_br     =  0;  % penalization of breaking
+    q_psidot =  8;  % penalize high yaw rates
+    q_acc    = -0;  % reward for accelerating
 
     % label inputs and outputs
     I_x        = mu_x(1);  % x position in global coordinates
@@ -347,6 +410,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     psi        = mu_x(3);  % yaw
     V_vx       = mu_x(4);  % x velocity in vehicle coordinates
     V_vy       = mu_x(5);  % x velocity in vehicle coordinates
+    psidot     = mu_x(6);
     track_dist = mu_x(7);  % track centerline distance
     delta      = u(1);     % steering angle rad2deg(delta)
     T          = u(2);     % torque gain (1=max.acc, -1=max.braking)
@@ -390,31 +454,65 @@ function cost = costFunction(mu_x, var_x, u, track)
     cost_outside = q_r * offroad_error^2;
     
     % ---------------------------------------------------------------------
-    % reward high velocities only if inside track
+    % reward high velocities
     % ---------------------------------------------------------------------
-    cost_vel = -q_v * norm([V_vx; V_vy]);
+    cost_vel = q_v * norm([V_vx; V_vy]);
+    
+    % ---------------------------------------------------------------------
+    % penalize high yaw rates
+    % ---------------------------------------------------------------------
+    cost_psidot = q_psidot * psidot^2;
     
     % ---------------------------------------------------------------------
     % reward high track velocities
     % ---------------------------------------------------------------------
-    cost_dist = -q_d * track_vel;
+    cost_dist = q_d * track_vel;
     
     % ---------------------------------------------------------------------
-    % reward acceleration and penalize braking and steering
+    % penalize acceleration, braking and steering
     % ---------------------------------------------------------------------
-    cost_inputs = - (T>0)*q_acc*T^2 + (T<0)*q_br*(T)^2 + q_st*(delta)^2 ;
+    cost_inputs = (T>0)*q_acc*T^2 + (T<0)*q_br*T^2 + q_st*(delta)^2 ;
     
     % ---------------------------------------------------------------------
     % Calculate final cost
     % ---------------------------------------------------------------------
-    cost = cost_contour + cost_lag + cost_orientation + cost_dist + cost_outside + cost_inputs + cost_vel;
-    
-    % fprintf('Contribution to cost:\n')
-    % fprintf('   cost_contour:%.1f\n',cost_contour/cost*100);
-    % fprintf('   cost_lag:%.1f\n',cost_lag/cost*100);
-    % fprintf('   cost_orientation:%.1f\n',cost_orientation/cost*100);
-    % fprintf('   cost_dist:%.1f\n',cost_dist/cost*100);
-    % fprintf('   cost_outside:%.1f\n',cost_outside/cost*100);
-    % fprintf('   cost_inputs:%.1f\n',cost_inputs/cost*100);
-    % fprintf('   cost_vel:%.1f\n',cost_vel/cost*100);
+    cost = cost_contour + ...
+           cost_lag + ...
+           cost_orientation + ...
+           cost_dist + ...
+           cost_outside + ...
+           cost_inputs + ...
+           cost_vel + ...
+           cost_psidot;
+end
+
+
+function [laptimes, idxnewlaps] = getLapTimes( trackDist, dt)
+    % calc lap times
+    idxnewlaps = find( conv(trackDist, [1 -1]) < -10 );
+    laptimes = conv(idxnewlaps, [1,-1], 'valid') * dt;
+end
+
+function dispLapTimes(laptimes)
+    % calc best lap time
+    [bestlaptime,idxbestlap] = min(laptimes);
+
+    fprintf('\n--------------- LAP RECORD -------------------\n');
+    fprintf('------ (Best Lap: %.2d    laptime: %4.2f) ------\n\n',idxbestlap,bestlaptime);
+    for i=1:numel(laptimes)
+        if i==idxbestlap
+            fprintf(2,'  (best lap)->  ')
+        else
+            fprintf('\t\t');
+        end
+            fprintf('Lap %.2d    laptime: %4.2fs',i,laptimes(i));
+            fprintf(2,'   (+%.3fs)\n',laptimes(i)-bestlaptime)
+
+    end
+    fprintf('--------------- LAP RECORD -------------------\n');
+
+    % figure('Color','w','Position',[441 389 736 221]); hold on; grid on;
+    % plot(laptimes,'-o')
+    % xlabel('Lap')
+    % ylabel('Lap time [s]')
 end

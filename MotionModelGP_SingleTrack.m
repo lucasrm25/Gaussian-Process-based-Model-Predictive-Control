@@ -9,7 +9,7 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
-%       where: zk = Bz*xk,
+%       where: zk = [Bz_x*xk ; Bz_u*uk],
 %              d ~ N(mean_d(zk),var_d(zk))
 %              w ~ N(0,sigmaw)
 %
@@ -44,27 +44,42 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
         maxmotorWForce = 4000 % = 1*g*M;  % allow ~ 1g acc
         
         % Pacejka lateral dynamics parameters
-        B_f = 0.4;            % stiffnes factor (Pacejka) (front wheel)
-        C_f = 8;              % shape factor (Pacejka) (front wheel)
-        D_f = 4560.4;            % peak value (Pacejka) (front wheel)
+        B_f = 0.4;              % stiffnes factor (Pacejka) (front wheel)
+        C_f = 8;                % shape factor (Pacejka) (front wheel)
+        D_f = 4560.4;           % peak value (Pacejka) (front wheel)
         E_f = -0.5;             % curvature factor (Pacejka) (front wheel)
-
-        B_r = 0.45;          % stiffnes factor (Pacejka) (rear wheel)
+        
+        B_r = 0.45;             % stiffnes factor (Pacejka) (rear wheel)
         C_r = 8;                % shape factor (Pacejka) (rear wheel)
         D_r = 4000;             % peak value (Pacejka) (rear wheel)
         E_r = -0.5;             % curvature factor (Pacejka) (rear wheel)
+ 
+%         B_f = 10.96;              % stiffnes factor (Pacejka) (front wheel)
+%         C_f = 1.3;                % shape factor (Pacejka) (front wheel)
+%         D_f = 4560.4;             % peak value (Pacejka) (front wheel)
+%         E_f = -0.5;               % curvature factor (Pacejka) (front wheel)
+% 
+%         B_r = 12.67;              % stiffnes factor (Pacejka) (rear wheel)
+%         C_r = 1.3;                % shape factor (Pacejka) (rear wheel)
+%         D_r = 3947.81;            % peak value (Pacejka) (rear wheel)
+%         E_r = -0.5;               % curvature factor (Pacejka) (rear wheel)
     end
     
     properties(Constant)
-        % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
-        Bz = [0 0 0  1 0 0  0;
-              0 0 0  0 1 0  0;
-              0 0 0  0 0 1  0] 
+        % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(z)+w)),
+        % where z = [Bz_x*x;Bz_u*u] 
+        Bz_x = [0 0 0  1 0 0  0;
+                0 0 0  0 1 0  0;
+                0 0 0  0 0 1  0] 
+        Bz_u = [1 0 0;
+                0 1 0]
         Bd = [zeros(3);
               eye(3); 
               0 0 0];               
-        n = 7                   % number of outputs x(t)
-        m = 3                   % number of inputs u(t)
+        n  = 7   % number of outputs x(t)
+        m  = 3   % number of inputs u(t)
+        nz = 5   % dimension of z(t)
+        nd = 3   % output dimension of d(z)
     end
     
     methods(Static)
@@ -209,22 +224,23 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
         end
         
         function testTyres(obj)
+            %%
             c_f = 14000; % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
             c_r = 14000; % = 2*g*M/deltamax  % rear coornering stiffness
             
             % Pacejka lateral dynamics parameters
-            B_f = 0.4;            % stiffnes factor (Pacejka) (front wheel)
-            C_f = 8;              % shape factor (Pacejka) (front wheel)
-            D_f = 4560.4;            % peak value (Pacejka) (front wheel)
+            B_f = 0.4;              % stiffnes factor (Pacejka) (front wheel)
+            C_f = 8;                % shape factor (Pacejka) (front wheel)
+            D_f = 4560.4;           % peak value (Pacejka) (front wheel)
             E_f = -0.5;             % curvature factor (Pacejka) (front wheel)
             
-            B_r = 0.45;          % stiffnes factor (Pacejka) (rear wheel)
+            B_r = 0.45;             % stiffnes factor (Pacejka) (rear wheel)
             C_r = 8;                % shape factor (Pacejka) (rear wheel)
             D_r = 4000;             % peak value (Pacejka) (rear wheel)
             E_r = -0.5;             % curvature factor (Pacejka) (rear wheel)
             
-            a_r = deg2rad(-30:0.1:30);
-            a_f = deg2rad(-30:0.1:30);
+            a_r = deg2rad(-25:0.1:25);
+            a_f = deg2rad(-25:0.1:25);
             W_Fy_r = D_r*sin(C_r*atan(B_r*a_r-E_r*(B_r*a_r -atan(B_r*a_r)))); % rear lateral force
             W_Fy_f = D_f*sin(C_f*atan(B_f*a_f-E_f*(B_f*a_f -atan(B_f*a_f)))); % front lateral force
 

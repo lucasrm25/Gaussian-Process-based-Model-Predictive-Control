@@ -15,17 +15,20 @@ classdef (Abstract) MotionModelGP < handle
 %
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
-%       where: zk = Bz*xk,
+%       where: zk = [Bz_x*xk ; Bz_u*uk],
 %              d ~ N(mean_d(zk),var_d(zk))
 %              w ~ N(0,var_w)
 %   
 %--------------------------------------------------------------------------
 
     properties (Abstract, Constant)
-        Bd  % <n,xx> xk+1 = fd(xk,uk) + Bd*d(zk)
-        Bz  % <yy,n> z = Bz*x   
-        n   % <1>    number of outputs x(t)
-        m   % <1>    number of inputs u(t)
+        Bd    % <n,xx>  xk+1 = fd(xk,uk) + Bd*d(zk)
+        Bz_x  % <yy,n>  z = [Bz_x*x;Bz_u*u]  
+        Bz_u  % <ww,n>
+        n     % <1>     number of outputs x(t)
+        m     % <1>     number of inputs u(t)
+        nd    % <1>     output dimension of d(z)
+        nz    % <1>     dimension of z(t)
     end
     
     properties (SetAccess=private)
@@ -33,10 +36,6 @@ classdef (Abstract) MotionModelGP < handle
         
         d      % [E[d(z)] , Var[d(z)]] = d(z): disturbace model
         var_w  % measurement noise covariance matrix. w ~ N(0,var_w)
-
-        % this properties are obtained from Get methods
-        nd  % output dimension of du(z)
-        nz  % dimension of z(t)
     end
     
     methods (Abstract)
@@ -73,24 +72,27 @@ classdef (Abstract) MotionModelGP < handle
         %------------------------------------------------------------------
             obj.d = d;
             obj.var_w = var_w;
-            
-            % store input dimension z=Bz*x
-            obj.nz = size(obj.Bz,1);
-            % store output dimension of d(z)
-            obj.nd = size(obj.Bd,2);
 
             %--------------------------------------------------------------
             % assert model
             %--------------------------------------------------------------
+            assert(size(obj.Bz_x,1) + size(obj.Bz_u,1) == obj.nz, ...
+                sprintf('obj.Bz_x and obj.Bz_u matrices should have %d columns in total, but have %d',obj.nz,size(obj.Bz_x,1) + size(obj.Bz_u,1)))
+            assert(size(obj.Bd,2) == obj.nd, ...
+                sprintf('obj.Bd matrix should have %d columns, but has %d',obj.nd,size(obj.Bd,2)))
+            
             assert( all(size(var_w)==[obj.nd,obj.nd]), ...
                 sprintf('Variable var_w should have dimension %d, but has %d',obj.nd,size(var_w,1)))
             assert(size(obj.Bd,1) == obj.n, ...
                 sprintf('obj.Bd matrix should have %d rows, but has %d',obj.n,size(obj.Bd,1)))
-            assert(size(obj.Bz,2) == obj.n, ...
-                sprintf('obj.Bz matrix should have %d columns, but has %d',obj.n,size(obj.Bz,1)))
+            assert(size(obj.Bz_x,2) == obj.n || isempty(obj.Bz_x), ...
+                sprintf('obj.Bz_x matrix should have %d columns, but has %d',obj.n,size(obj.Bz_x,1)))
+            assert(size(obj.Bz_u,2) == obj.m || isempty(obj.Bz_u), ...
+                sprintf('obj.Bz_u matrix should have %d columns, but has %d',obj.m,size(obj.Bz_u,1)))
             
             % validate given disturbance model
-            [muy,vary] = d(obj.Bz*zeros(obj.n,1));
+            ztest = [obj.Bz_x*zeros(obj.n,1) ; obj.Bz_u*zeros(obj.m,1)];
+            [muy,vary] = d(ztest);
             assert( size(muy,1)==obj.nd, ...
                 sprintf('Disturbance model d evaluates to a mean value with wrong dimension. Got %d, expected %d',size(muy,1),obj.nd))
             assert( all(size(vary)==[obj.nd,obj.nd]), ...
@@ -162,8 +164,16 @@ classdef (Abstract) MotionModelGP < handle
             % calculate grad_{x,d,w} xk+1
             grad_xkp1 = [gradx_fd; obj.Bd'; obj.Bd'];
             
+            % select variables (xk,uk) -> z
+            if ~isempty(obj.Bz_x)
+                z_xk = obj.Bz_x * mu_xk;  else, z_xk=[];
+            end
+            if ~isempty(obj.Bz_u)
+                z_uk = obj.Bz_u * uk; else, z_uk = [];
+            end
+            z = [ z_xk ; z_uk ];
+            
             % evaluate disturbance
-            z = obj.Bz * mu_xk;
             [mu_d, var_d] = obj.d(z);
             
             % A) Mean Equivalent Approximation:

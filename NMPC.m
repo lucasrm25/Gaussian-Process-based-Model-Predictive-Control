@@ -194,11 +194,8 @@ classdef NMPC < handle
             var_xk(:,:,1) = var_x0;
             
             for iN=1:obj.N      % [x1,...,xN]
-                try
-                    [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
-                catch e
-                    error('\n%s\n\n%s','System dynamics evaluated to error:',e.message)
-                end
+                [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
+
                 if sum(isnan(mu_xk),'all') || sum(isinf(mu_xk),'all')
                     error('%s','System dynamics evaluated to NaN or Inf')
                 end
@@ -221,11 +218,7 @@ classdef NMPC < handle
             t = t0;
             for iN=1:obj.N      % i=0:N-1
                 % add cost: fo=@(t,mu_x,var_x,u,e,r)
-                try
-                    cost = cost + obj.fo(t, mu_xvec(:,iN), var_xvec(:,:,iN), uvec(:,iN), evec(:,iN), r);
-                catch e
-                    error('\n%s\n\n%s','Cost function evaluated to error:',e.message)
-                end
+                cost = cost + obj.fo(t, mu_xvec(:,iN), var_xvec(:,:,iN), uvec(:,iN), evec(:,iN), r);
                 if sum(isnan(cost),'all') || sum(isinf(cost),'all')
                     error('Cost function evaluated to NaN or Inf')
                 end
@@ -273,18 +266,16 @@ classdef NMPC < handle
             % calculate state sequence for given control input sequence and x0
             [mu_xvec,var_xvec] = obj.predictStateSequence(mu_x0, var_x0, uvec);
             
-            try
-                t = t0;
-                for iN=1:obj.N
-                    % append provided equality constraints(h==0)
-                    ceq_h(:,iN) = obj.h(mu_xvec(:,iN),uvec(:,iN), evec(:,iN));
-                    % provided inequality constraints (g<=0)
-                    cineq_g(:,iN) = obj.g(mu_xvec(:,iN),uvec(:,iN),evec(:,iN));
-                    t = t + iN * obj.dt;
-                end
-            catch e
-                error('\n%s\n\n%s','Constraints h(x) or g(x) evaluated to error:',e.message)
+
+            t = t0;
+            for iN=1:obj.N
+                % append provided equality constraints(h==0)
+                ceq_h(:,iN) = obj.h(mu_xvec(:,iN),uvec(:,iN), evec(:,iN));
+                % provided inequality constraints (g<=0)
+                cineq_g(:,iN) = obj.g(mu_xvec(:,iN),uvec(:,iN),evec(:,iN));
+                t = t + iN * obj.dt;
             end
+
             ceq   = ceq_h(:);
             cineq = cineq_g(:);
         end
