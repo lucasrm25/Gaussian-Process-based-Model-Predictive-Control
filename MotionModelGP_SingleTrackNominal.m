@@ -9,7 +9,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
-%       where: zk = Bz*xk,
+%       where: zk = [Bz_x*xk ; Bz_u*uk],
 %              d ~ N(mean_d(zk),var_d(zk))
 %              w ~ N(0,sigmaw)
 %
@@ -43,20 +43,27 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         maxbrakeWForce = 8000 % = 2*g*M;  % allow ~ 2g brake
         maxmotorWForce = 4000 % = 1*g*M;  % allow ~ 1g acc
         
+        
+        % Pacejka lateral dynamics parameters
         c_f = 14000 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
         c_r = 14000 % = 2*g*M/deltamax  % rear coornering stiffness
     end
     
     properties(Constant)
-        % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(Bz*xk)+w)
-        Bz = [0 0 0  1 0 0  0;
-              0 0 0  0 1 0  0;
-              0 0 0  0 0 1  0] 
+        % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(z)+w)),
+        % where z = [Bz_x*x;Bz_u*u] 
+        Bz_x = [0 0 0  1 0 0  0;
+                0 0 0  0 1 0  0;
+                0 0 0  0 0 1  0] 
+        Bz_u = [1 0 0;
+                0 1 0] 
         Bd = [zeros(3);
               eye(3); 
               0 0 0];               
-        n = 7                   % number of outputs x(t)
-        m = 3                   % number of inputs u(t)
+        n  = 7   % number of outputs x(t)
+        m  = 3   % number of inputs u(t)
+        nz = 5   % dimension of z(t)
+        nd = 3   % output dimension of d(z)
     end
     
     methods
@@ -69,6 +76,10 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             obj = obj@MotionModelGP(d,sigmaw);
             % report single track dynamics analysis
             obj.analyseSingleTrack();
+            
+            % add folder CODEGEN to path. Here there will be some functions
+            % generated with the method generate_grad_functions()
+            addpath(fullfile(pwd,'CODEGEN'))
         end
         
         function xdot = f (obj, x, u)
@@ -156,8 +167,11 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % This means positive W_Fy_f turns vehicle to the right
             W_Fx_r = zeta * totalWForce;
             W_Fx_f = (1-zeta) * totalWForce;
+            
             W_Fy_r = c_r * a_r;   
             W_Fy_f = c_f * a_f;
+            % W_Fy_r = D_r*sin(C_r*atan(B_r*a_r-E_r*(B_r*a_r -atan(B_r*a_r)))); % rear lateral force
+            % W_Fy_f = D_f*sin(C_f*atan(B_f*a_f-E_f*(B_f*a_f -atan(B_f*a_f)))); % front lateral force
             
             % Wheel forces in vehicle coordinates (z-axis points up, x-axis front)
             V_Fx_r = W_Fx_r;
@@ -191,6 +205,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             end
         end
         
+        
         function gradx = gradx_f(obj, x, u)
         %------------------------------------------------------------------
         %   Continuous time dynamics.
@@ -200,8 +215,9 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % gradx = zeros(obj.n);
             params = [obj.M obj.I_z obj.l_f obj.l_r obj.deltamax ...
                       obj.maxbrakeWForce obj.maxmotorWForce obj.c_f obj.c_r]';
-            gradx = CODEGEN_singletrack_gradx_f(x,u,params);
+            gradx = singletrack_gradx_f(x,u,params);
         end
+        
         
         function gradu = gradu_f(obj, x, u)
         %------------------------------------------------------------------
@@ -212,8 +228,9 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % gradu = zeros(obj.m,obj.n);
             params = [obj.M obj.I_z obj.l_f obj.l_r obj.deltamax ...
                       obj.maxbrakeWForce obj.maxmotorWForce obj.c_f obj.c_r]';
-            gradu = CODEGEN_singletrack_gradu_f(x,u,params);
+            gradu = singletrack_gradu_f(x,u,params);
         end
+        
         
         function generate_grad_functions(obj)
         %------------------------------------------------------------------
@@ -223,7 +240,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         %   diferentiable functions.
         %   
         %   To generate files, simply call:
-        %       nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(0,0), 0);
+        %       nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(zeros(3,1),zeros(3)), zeros(3));
         %       nomModel.generate_grad_functions() 
         %------------------------------------------------------------------
             syms I_x I_y vpsi V_vx V_vy psi_dot track_dist real
@@ -239,10 +256,19 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
             % gradx = simplify(expand(gradx));  % does not work. eqs are too complex
             % gradu = simplify(expand(gradu));  % does not work. eqs are too complex
 
-            matlabFunction(gradx,'Vars',{x,u,params},'File','CODEGEN_singletrack_gradx_f','Optimize',true);
-            matlabFunction(gradu,'Vars',{x,u,params},'File','CODEGEN_singletrack_gradu_f','Optimize',true);
-            disp('FINISHED! functions CODEGEN_singletrack_gradx_f and CODEGEN_singletrack_gradu_fssss generated!!')
+            % Save model
+            folder = fullfile(pwd,'CODEGEN');
+            if ~exist(folder,'dir')
+                mkdir(folder); 
+            end
+            addpath(folder)
+            
+            matlabFunction(gradx,'Vars',{x,u,params},'File',fullfile('CODEGEN','singletrack_gradx_f'),'Optimize',true);
+            matlabFunction(gradu,'Vars',{x,u,params},'File',fullfile('CODEGEN','singletrack_gradu_f'),'Optimize',true);
+            
+            disp('FINISHED! functions CODEGEN_singletrack_gradx_f and CODEGEN_singletrack_gradu_f generated!!')
         end
+        
         
         function analyseSingleTrack(obj)
         %------------------------------------------------------------------
