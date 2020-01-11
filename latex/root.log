@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  7 JAN 2020 12:25
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  11 JAN 2020 17:29
 entering extended mode
 **./root.tex
 (root.tex
@@ -270,36 +270,265 @@ File: pppdftex.def 2019/12/17 v0.5p Pdfpages driver for pdfTeX (AM)
 \AM@toc@title=\toks23
 \c@AM@survey=\count112
 \AM@templatesizebox=\box30
-) (root.aux)
+)
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\siunitx\siunitx.st
+y"
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\l3kernel\expl3.sty
+"
+Package: expl3 2018-10-19 L3 programming layer (loader) 
+
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\l3kernel\expl3-cod
+e.tex"
+Package: expl3 2018-10-19 L3 programming layer (code)
+\c_max_int=\count113
+\l_tmpa_int=\count114
+\l_tmpb_int=\count115
+\g_tmpa_int=\count116
+\g_tmpb_int=\count117
+\g__kernel_prg_map_int=\count118
+\c_log_iow=\count119
+\l_iow_line_count_int=\count120
+\l__iow_line_target_int=\count121
+\l__iow_one_indent_int=\count122
+\l__iow_indent_int=\count123
+\c_zero_dim=\dimen128
+\c_max_dim=\dimen129
+\l_tmpa_dim=\dimen130
+\l_tmpb_dim=\dimen131
+\g_tmpa_dim=\dimen132
+\g_tmpb_dim=\dimen133
+\c_zero_skip=\skip53
+\c_max_skip=\skip54
+\l_tmpa_skip=\skip55
+\l_tmpb_skip=\skip56
+\g_tmpa_skip=\skip57
+\g_tmpb_skip=\skip58
+\c_zero_muskip=\muskip11
+\c_max_muskip=\muskip12
+\l_tmpa_muskip=\muskip13
+\l_tmpb_muskip=\muskip14
+\g_tmpa_muskip=\muskip15
+\g_tmpb_muskip=\muskip16
+\l_keys_choice_int=\count124
+\l__intarray_loop_int=\count125
+\c__intarray_sp_dim=\dimen134
+\g__intarray_font_int=\count126
+\c__fp_leading_shift_int=\count127
+\c__fp_middle_shift_int=\count128
+\c__fp_trailing_shift_int=\count129
+\c__fp_big_leading_shift_int=\count130
+\c__fp_big_middle_shift_int=\count131
+\c__fp_big_trailing_shift_int=\count132
+\c__fp_Bigg_leading_shift_int=\count133
+\c__fp_Bigg_middle_shift_int=\count134
+\c__fp_Bigg_trailing_shift_int=\count135
+\c__kernel_randint_max_int=\count136
+\g__fp_array_int=\count137
+\l__fp_array_loop_int=\count138
+\l__sort_length_int=\count139
+\l__sort_min_int=\count140
+\l__sort_top_int=\count141
+\l__sort_max_int=\count142
+\l__sort_true_max_int=\count143
+\l__sort_block_int=\count144
+\l__sort_begin_int=\count145
+\l__sort_end_int=\count146
+\l__sort_A_int=\count147
+\l__sort_B_int=\count148
+\l__sort_C_int=\count149
+\l__tl_analysis_normal_int=\count150
+\l__tl_analysis_index_int=\count151
+\l__tl_analysis_nesting_int=\count152
+\l__tl_analysis_type_int=\count153
+\l__regex_internal_a_int=\count154
+\l__regex_internal_b_int=\count155
+\l__regex_internal_c_int=\count156
+\l__regex_balance_int=\count157
+\l__regex_group_level_int=\count158
+\l__regex_mode_int=\count159
+\c__regex_cs_in_class_mode_int=\count160
+\c__regex_cs_mode_int=\count161
+\l__regex_catcodes_int=\count162
+\l__regex_default_catcodes_int=\count163
+\c__regex_catcode_D_int=\count164
+\c__regex_catcode_S_int=\count165
+\c__regex_catcode_L_int=\count166
+\c__regex_catcode_O_int=\count167
+\c__regex_catcode_A_int=\count168
+\c__regex_all_catcodes_int=\count169
+\l__regex_show_lines_int=\count170
+\l__regex_min_state_int=\count171
+\l__regex_max_state_int=\count172
+\l__regex_left_state_int=\count173
+\l__regex_right_state_int=\count174
+\l__regex_capturing_group_int=\count175
+\l__regex_min_pos_int=\count176
+\l__regex_max_pos_int=\count177
+\l__regex_curr_pos_int=\count178
+\l__regex_start_pos_int=\count179
+\l__regex_success_pos_int=\count180
+\l__regex_curr_char_int=\count181
+\l__regex_curr_catcode_int=\count182
+\l__regex_last_char_int=\count183
+\l__regex_case_changed_char_int=\count184
+\l__regex_curr_state_int=\count185
+\l__regex_step_int=\count186
+\l__regex_min_active_int=\count187
+\l__regex_max_active_int=\count188
+\l__regex_replacement_csnames_int=\count189
+\l__regex_match_count_int=\count190
+\l__regex_min_submatch_int=\count191
+\l__regex_submatch_int=\count192
+\l__regex_zeroth_submatch_int=\count193
+\g__regex_trace_regex_int=\count194
+\c_empty_box=\box31
+\l_tmpa_box=\box32
+\l_tmpb_box=\box33
+\g_tmpa_box=\box34
+\g_tmpb_box=\box35
+\l__box_top_dim=\dimen135
+\l__box_bottom_dim=\dimen136
+\l__box_left_dim=\dimen137
+\l__box_right_dim=\dimen138
+\l__box_top_new_dim=\dimen139
+\l__box_bottom_new_dim=\dimen140
+\l__box_left_new_dim=\dimen141
+\l__box_right_new_dim=\dimen142
+\l__box_internal_box=\box36
+\l__coffin_internal_box=\box37
+\l__coffin_internal_dim=\dimen143
+\l__coffin_offset_x_dim=\dimen144
+\l__coffin_offset_y_dim=\dimen145
+\l__coffin_x_dim=\dimen146
+\l__coffin_y_dim=\dimen147
+\l__coffin_x_prime_dim=\dimen148
+\l__coffin_y_prime_dim=\dimen149
+\c_empty_coffin=\box38
+\l__coffin_aligned_coffin=\box39
+\l__coffin_aligned_internal_coffin=\box40
+\l_tmpa_coffin=\box41
+\l_tmpb_coffin=\box42
+\l__coffin_display_coffin=\box43
+\l__coffin_display_coord_coffin=\box44
+\l__coffin_display_pole_coffin=\box45
+\l__coffin_display_offset_dim=\dimen150
+\l__coffin_display_x_dim=\dimen151
+\l__coffin_display_y_dim=\dimen152
+\g__file_internal_ior=\read1
+\l__coffin_bounding_shift_dim=\dimen153
+\l__coffin_left_corner_dim=\dimen154
+\l__coffin_right_corner_dim=\dimen155
+\l__coffin_bottom_corner_dim=\dimen156
+\l__coffin_top_corner_dim=\dimen157
+\l__coffin_scaled_total_height_dim=\dimen158
+\l__coffin_scaled_width_dim=\dimen159
+\l__seq_internal_a_int=\count195
+\l__seq_internal_b_int=\count196
+)
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\l3kernel\l3pdfmode
+.def"
+File: l3pdfmode.def 2018-10-19 v L3 Experimental driver: PDF mode
+\l__driver_color_stack_int=\count197
+))
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\l3packages\xparse\
+xparse.sty"
+Package: xparse 2018-10-17 L3 Experimental document command parser
+\l__xparse_current_arg_int=\count198
+\g__xparse_grabber_int=\count199
+\l__xparse_m_args_int=\count266
+\l__xparse_mandatory_args_int=\count267
+\l__xparse_v_nesting_int=\count268
+)
+Package: siunitx 2018/05/17 v2.7s A comprehensive (SI) units package
+
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\tools\array.sty"
+Package: array 2018/04/30 v2.4h Tabular extension package (FMi)
+\col@sep=\dimen160
+\ar@mcellbox=\box46
+\extrarowheight=\dimen161
+\NC@list=\toks24
+\extratabsurround=\skip59
+\backup@length=\skip60
+\ar@cellbox=\box47
+)
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\l3packages\l3keys2
+e\l3keys2e.sty"
+Package: l3keys2e 2018-10-17 LaTeX2e option processing using LaTeX3 keys
+)
+\l__siunitx_tmp_box=\box48
+\l__siunitx_tmp_dim=\dimen162
+\l__siunitx_tmp_int=\count269
+\l__siunitx_number_mantissa_length_int=\count270
+\l__siunitx_number_uncert_length_int=\count271
+\l__siunitx_round_int=\count272
+\l__siunitx_process_decimal_int=\count273
+\l__siunitx_process_uncertainty_int=\count274
+\l__siunitx_process_fixed_int=\count275
+\l__siunitx_process_integer_min_int=\count276
+\l__siunitx_process_precision_int=\count277
+\l__siunitx_group_min_int=\count278
+\l__siunitx_angle_marker_box=\box49
+\l__siunitx_angle_unit_box=\box50
+\l__siunitx_angle_marker_dim=\dimen163
+\l__siunitx_angle_unit_dim=\dimen164
+\l__siunitx_unit_int=\count279
+\l__siunitx_unit_denominator_int=\count280
+\l__siunitx_unit_numerator_int=\count281
+\l__siunitx_unit_prefix_int=\count282
+\l__siunitx_unit_prefix_base_int=\count283
+\l__siunitx_unit_prefix_gram_int=\count284
+\l__siunitx_number_product_int=\count285
+\c__siunitx_one_fill_skip=\skip61
+\l__siunitx_table_unit_align_skip=\skip62
+\l__siunitx_table_exponent_dim=\dimen165
+\l__siunitx_table_integer_dim=\dimen166
+\l__siunitx_table_mantissa_dim=\dimen167
+\l__siunitx_table_marker_dim=\dimen168
+\l__siunitx_table_result_dim=\dimen169
+\l__siunitx_table_uncert_dim=\dimen170
+\l__siunitx_table_fill_pre_dim=\dimen171
+\l__siunitx_table_fill_post_dim=\dimen172
+\l__siunitx_table_fill_mid_dim=\dimen173
+\l__siunitx_table_pre_box=\box51
+\l__siunitx_table_post_box=\box52
+\l__siunitx_table_mantissa_box=\box53
+\l__siunitx_table_result_box=\box54
+\l__siunitx_table_number_align_skip=\skip63
+\l__siunitx_table_text_align_skip=\skip64
+
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\translator\transla
+tor.sty"
+Package: translator 2018/01/04 v1.12 Easy translation of strings in LaTeX
+)) (root.aux)
 \openout1 = `root.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 53.
-LaTeX Font Info:    ... okay on input line 53.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 53.
-LaTeX Font Info:    ... okay on input line 53.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 53.
-LaTeX Font Info:    ... okay on input line 53.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 53.
-LaTeX Font Info:    ... okay on input line 53.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 53.
-LaTeX Font Info:    ... okay on input line 53.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 53.
-LaTeX Font Info:    ... okay on input line 53.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 54.
+LaTeX Font Info:    ... okay on input line 54.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 54.
+LaTeX Font Info:    ... okay on input line 54.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 54.
+LaTeX Font Info:    ... okay on input line 54.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 54.
+LaTeX Font Info:    ... okay on input line 54.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 54.
+LaTeX Font Info:    ... okay on input line 54.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 54.
+LaTeX Font Info:    ... okay on input line 54.
 
 ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\context\base\supp-pdf.mk
 ii"
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count113
-\scratchdimen=\dimen128
-\scratchbox=\box31
-\nofMPsegments=\count114
-\nofMParguments=\count115
-\everyMPshowfont=\toks24
-\MPscratchCnt=\count116
-\MPscratchDim=\dimen129
-\MPnumerator=\count117
-\makeMPintoPDFobject=\count118
-\everyMPtoPDFconversion=\toks25
+\scratchcounter=\count286
+\scratchdimen=\dimen174
+\scratchbox=\box55
+\nofMPsegments=\count287
+\nofMParguments=\count288
+\everyMPshowfont=\toks25
+\MPscratchCnt=\count289
+\MPscratchDim=\dimen175
+\MPnumerator=\count290
+\makeMPintoPDFobject=\count291
+\everyMPtoPDFconversion=\toks26
 )
 ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\oberdiek\epstopdf-
 base.sty"
@@ -351,7 +580,7 @@ Package grfext Info: Graphics extension search list:
 G,.JBIG2,.JB2,.eps]
 (grfext)             \AppendGraphicsExtensions on input line 456.
 )
-\AtBeginShipoutBox=\box32
+\AtBeginShipoutBox=\box56
 
 ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\oberdiek\pdflscape
 .sty"
@@ -367,41 +596,125 @@ Package pdflscape Info: Auto-detected driver: pdftex on input line 81.
 sty"
 Package: ifxetex 2010/09/12 v0.6 Provides ifxetex conditional
 ))
-LaTeX Font Info:    Calculating math sizes for size <11> on input line 57.
-LaTeX Font Info:    Try loading font information for U+msa on input line 57.
+Now handling font encoding TS1 ...
+... processing UTF-8 mapping file for font encoding TS1
+
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\base\ts1enc.dfu"
+File: ts1enc.dfu 2018/04/05 v1.2c UTF-8 support for inputenc
+   defining Unicode char U+00A2 (decimal 162)
+   defining Unicode char U+00A3 (decimal 163)
+   defining Unicode char U+00A4 (decimal 164)
+   defining Unicode char U+00A5 (decimal 165)
+   defining Unicode char U+00A6 (decimal 166)
+   defining Unicode char U+00A7 (decimal 167)
+   defining Unicode char U+00A8 (decimal 168)
+   defining Unicode char U+00A9 (decimal 169)
+   defining Unicode char U+00AA (decimal 170)
+   defining Unicode char U+00AC (decimal 172)
+   defining Unicode char U+00AE (decimal 174)
+   defining Unicode char U+00AF (decimal 175)
+   defining Unicode char U+00B0 (decimal 176)
+   defining Unicode char U+00B1 (decimal 177)
+   defining Unicode char U+00B2 (decimal 178)
+   defining Unicode char U+00B3 (decimal 179)
+   defining Unicode char U+00B4 (decimal 180)
+   defining Unicode char U+00B5 (decimal 181)
+   defining Unicode char U+00B6 (decimal 182)
+   defining Unicode char U+00B7 (decimal 183)
+   defining Unicode char U+00B9 (decimal 185)
+   defining Unicode char U+00BA (decimal 186)
+   defining Unicode char U+00BC (decimal 188)
+   defining Unicode char U+00BD (decimal 189)
+   defining Unicode char U+00BE (decimal 190)
+   defining Unicode char U+00D7 (decimal 215)
+   defining Unicode char U+00F7 (decimal 247)
+   defining Unicode char U+0192 (decimal 402)
+   defining Unicode char U+02C7 (decimal 711)
+   defining Unicode char U+02D8 (decimal 728)
+   defining Unicode char U+02DD (decimal 733)
+   defining Unicode char U+0E3F (decimal 3647)
+   defining Unicode char U+2016 (decimal 8214)
+   defining Unicode char U+2020 (decimal 8224)
+   defining Unicode char U+2021 (decimal 8225)
+   defining Unicode char U+2022 (decimal 8226)
+   defining Unicode char U+2030 (decimal 8240)
+   defining Unicode char U+2031 (decimal 8241)
+   defining Unicode char U+203B (decimal 8251)
+   defining Unicode char U+203D (decimal 8253)
+   defining Unicode char U+2044 (decimal 8260)
+   defining Unicode char U+204E (decimal 8270)
+   defining Unicode char U+2052 (decimal 8274)
+   defining Unicode char U+20A1 (decimal 8353)
+   defining Unicode char U+20A4 (decimal 8356)
+   defining Unicode char U+20A6 (decimal 8358)
+   defining Unicode char U+20A9 (decimal 8361)
+   defining Unicode char U+20AB (decimal 8363)
+   defining Unicode char U+20AC (decimal 8364)
+   defining Unicode char U+20B1 (decimal 8369)
+   defining Unicode char U+2103 (decimal 8451)
+   defining Unicode char U+2116 (decimal 8470)
+   defining Unicode char U+2117 (decimal 8471)
+   defining Unicode char U+211E (decimal 8478)
+   defining Unicode char U+2120 (decimal 8480)
+   defining Unicode char U+2122 (decimal 8482)
+   defining Unicode char U+2126 (decimal 8486)
+   defining Unicode char U+2127 (decimal 8487)
+   defining Unicode char U+212E (decimal 8494)
+   defining Unicode char U+2190 (decimal 8592)
+   defining Unicode char U+2191 (decimal 8593)
+   defining Unicode char U+2192 (decimal 8594)
+   defining Unicode char U+2193 (decimal 8595)
+   defining Unicode char U+2329 (decimal 9001)
+   defining Unicode char U+232A (decimal 9002)
+   defining Unicode char U+2422 (decimal 9250)
+   defining Unicode char U+25E6 (decimal 9702)
+   defining Unicode char U+25EF (decimal 9711)
+   defining Unicode char U+266A (decimal 9834)
+   defining Unicode char U+FEFF (decimal 65279)
+)
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\translator\transla
+tor-basic-dictionary-English.dict"
+Dictionary: translator-basic-dictionary, Language: English 
+)
+("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\siunitx\siunitx-ab
+breviations.cfg"
+File: siunitx-abbreviations.cfg 2017/11/26 v2.7k siunitx: Abbreviated units
+)
+LaTeX Font Info:    Try loading font information for U+msa on input line 54.
 
 ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\amsfonts\umsa.fd"
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 57.
+LaTeX Font Info:    Try loading font information for U+msb on input line 54.
 ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\amsfonts\umsb.fd"
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Try loading font information for OT1+pcr on input line 57.
+LaTeX Font Info:    Calculating math sizes for size <11> on input line 58.
+LaTeX Font Info:    Try loading font information for OT1+pcr on input line 58.
 ("C:\Users\Luzia\AppData\Local\Programs\MiKTeX 2.9\tex\latex\psnfss\ot1pcr.fd"
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
 )
-Underfull \hbox (badness 10000) in paragraph at lines 81--83
+Underfull \hbox (badness 10000) in paragraph at lines 82--84
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 88--89
+Underfull \hbox (badness 10000) in paragraph at lines 89--90
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 96--99
+Underfull \hbox (badness 10000) in paragraph at lines 97--100
 \OT1/ptm/m/n/10 the gaus-sian mea-sure-ment noise, where $[] \OT1/cmr/m/n/10 =
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 96--99
+Underfull \hbox (badness 10000) in paragraph at lines 97--100
 \OT1/ptm/m/n/10 is iden-ti-fied us-ing in-put and out-put data pairs
  []
 
 
-Underfull \hbox (badness 1817) in paragraph at lines 96--99
+Underfull \hbox (badness 1817) in paragraph at lines 97--100
 \OT1/cmr/m/n/10 ([]\OML/cmm/m/it/10 ; [] \OT1/cmr/m/n/10 = []([]) + [])$ \OT1/p
 tm/m/n/10 which are saved in a
  []
@@ -410,27 +723,33 @@ tm/m/n/10 which are saved in a
 
 
 ]
-Underfull \hbox (badness 3690) in paragraph at lines 133--135
+Underfull \hbox (badness 3690) in paragraph at lines 134--136
 \OT1/ptm/m/n/10 where the mean $[] \OMS/cmsy/m/n/10 2 R[]$ \OT1/ptm/m/n/10 and 
 the vari-ance
  []
 
 
-Overfull \hbox (18.52765pt too wide) detected at line 159
+Overfull \hbox (18.52765pt too wide) detected at line 160
 []
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 171--172
+Underfull \hbox (badness 10000) in paragraph at lines 173--174
 
  []
 
 <tikz_inverted_pendulum.pdf, id=25, 203.3477pt x 173.56142pt>
 File: tikz_inverted_pendulum.pdf Graphic file (type pdf)
 <use tikz_inverted_pendulum.pdf>
-Package pdftex.def Info: tikz_inverted_pendulum.pdf  used on input line 194.
+Package pdftex.def Info: tikz_inverted_pendulum.pdf  used on input line 196.
 (pdftex.def)             Requested size: 245.71811pt x 209.72656pt.
-[2] (root.bbl [3 <./tikz_inverted_pendulum.pdf>])
+[2]
+<tikz_singletrack.pdf, id=29, 315.1233pt x 200.35654pt>
+File: tikz_singletrack.pdf Graphic file (type pdf)
+<use tikz_singletrack.pdf>
+Package pdftex.def Info: tikz_singletrack.pdf  used on input line 230.
+(pdftex.def)             Requested size: 245.71811pt x 156.23465pt.
+ (root.bbl [3 <./tikz_inverted_pendulum.pdf> <./tikz_singletrack.pdf>])
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -446,13 +765,13 @@ Before submitting the final camera ready copy, remember to:
 
 ] (root.aux) ) 
 Here is how much of TeX's memory you used:
- 3932 strings out of 492970
- 60156 string characters out of 3126594
- 141941 words of memory out of 3000000
- 7718 multiletter control sequences out of 15000+200000
- 45801 words of font info for 108 fonts, out of 3000000 for 9000
+ 15547 strings out of 492970
+ 308375 string characters out of 3126594
+ 344353 words of memory out of 3000000
+ 19286 multiletter control sequences out of 15000+200000
+ 577317 words of font info for 130 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
- 41i,18n,27p,1834b,306s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 41i,18n,63p,1834b,482s stack positions out of 5000i,500n,10000p,200000b,50000s
 {C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/enc/dvips
 /base/8r.enc}<C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/publ
 ic/amsfonts/cm/cmbx10.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fon
@@ -480,9 +799,9 @@ sers/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/courier/ucrr8a.pfb
 mbi8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/tim
 es/utmr8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw
 /times/utmri8a.pfb>
-Output written on root.pdf (4 pages, 247728 bytes).
+Output written on root.pdf (4 pages, 263982 bytes).
 PDF statistics:
- 114 PDF objects out of 1000 (max. 8388607)
+ 122 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
- 6 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

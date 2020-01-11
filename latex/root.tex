@@ -33,6 +33,7 @@
 %\usepackage{amsmath} % assumes amsmath package installed
 %\usepackage{amssymb}  % assumes amsmath package installed
 \usepackage{pdfpages}
+\usepackage{siunitx} 
 
 \title{\LARGE \bf
 GP-based Model Predictive Control*
@@ -73,8 +74,8 @@ read the whole paper.
 Model predictive control (MPC) is a popular control strategy which uses a dynamic plant model to obtain the control input that optimizes future reactions of the plant~\cite{kocijan2004gaussian}. The performance of MPC depends highly on how well the model captures the dynamics of the plant~\cite{kabzan2019learning}. But the identification of such an \textit{a priori} model can be challenging and the dynamics of the plant could also change during the application~\cite{kabzan2019learning,ostafew2014learning}. Therefore, a simple and fixed nominal model of the plant can be used in combination with a learned disturbance model. The disturbance model represents the error between the observed behaviour of the plant and the behaviour of the nominal model~\cite{ostafew2014learning}. It can be modelled as a Gaussian Process (GP) regression which is a probabilistic, non-parametric model~\cite{kocijan2004gaussian}. GPs have the advantage of characterizing the prediction uncertainities~\cite{kocijan2004gaussian}. The mean estiamte of a GP can also be used to model the full dynamics of the plant and not only the model error. This approach was applied to a cart pole swing-up environment and an autonomous racing task in \cite{van2017online}. To reduce high computational costs they choose sparce spectrum GPs. Kocijan et al.~\cite{kocijan2004gaussian} use an offline-identified GP model instead. Another alternative is the generation of local GPs (LGPs) where for each subspace of the GP input space different GPs are identified. While Nguyen-Tuong et al.~\cite{nguyen2009local} and Meier et al.~\cite{meier2014efficient} identify many LGPs, Ostafew et al.~\cite{ostafew2014learning} compute one single LGP based on data within a sliding window. Other applications of GPs in a MPC framework are .
  \\
 In this report we present the results of our project within the course ``Statistical Learning and Stochastic Control''. First, our literature research on GP-based MPC is summarized. Then a short introduction to the theory of MPC and GPs is given. Later, two examples which's  implementation was part of the project are introduced in Section~\ref{main_results} and the results are discussed in Section~\ref{examples}.\\
-We start by defining the used noation below.\\
-Bold lowercase letters are used for vectors $\boldsymbol{x} \in \mathcal{R}^n$ and bold uppercase letters for matrices $\boldsymbol{X} \in \mathcal{R}^{n \times m}$.
+We start by defining the used notation below.\\
+Bold lowercase letters are used for vectors $\boldsymbol{x} \in \mathcal{R}^n$ and bold uppercase letters for matrices $\boldsymbol{X} \in \mathcal{R}^{n \times m}$. The j-th column of a matrix $\boldsymbol{X}$ is denoted by $[\boldsymbol{X}]_{.,j}$ and the element in the i-th row and j-th column is $[\boldsymbol{X}]_{ij}$. A diagonal matrix $\boldsymbol{X}$ with the diagonal elements $x_{11}, x_{22}, \cdots, x_{nn}$ is represented by $\text{diag}(x_{11}, x_{22}, \cdots, x_{nn})$. If ${w}~\sim~\mathcal{N}(\boldsymbol{\mu},\boldsymbol{\Sigma})$ $w$ is normal distributed with mean $\boldsymbol{\mu}$ and variance $\boldsymbol{\Sigma}$.
 
 Introduce topic and describe motivation and relevance of problem/topic.
 
@@ -94,7 +95,7 @@ As mentioned in the Introduction, a GP is used to identify the disturbance $\bol
         &=  f_{nom}(\boldsymbol{x_k},\boldsymbol{u_k}) + \boldsymbol{B_d}\big(\boldsymbol{d_{true}}(\boldsymbol{z_k})+ \boldsymbol{w}\big),
 \end{split}
 \end{align}
-with $\boldsymbol{z_k} = \boldsymbol{B_z} \boldsymbol{x_k}$ ($\boldsymbol{B_z} \in \mathcal{R}^{n_z \times n}$ and $\boldsymbol{w}~\sim~\mathcal{N}(0,\boldsymbol{\Sigma_w})$  the gaussian measurement noise, where $\boldsymbol{\Sigma_w}= diag(\sigma_1^2, \cdots ,\sigma_{n_d}^2)$.
+with $\boldsymbol{z_k} = \boldsymbol{B_z} \boldsymbol{x_k}$ ($\boldsymbol{B_z} \in \mathcal{R}^{n_z \times n}$) and $\boldsymbol{w}~\sim~\mathcal{N}(\boldsymbol{0},\boldsymbol{\Sigma_w})$  the gaussian measurement noise, where $\boldsymbol{\Sigma_w}= diag(\sigma_1^2, \cdots ,\sigma_{n_d}^2)$.
 The disturbance $\boldsymbol{d} = \boldsymbol{d_{true}}(\boldsymbol{z_k}) + \boldsymbol{w_k}$ is identified using input and output data pairs $(\boldsymbol{z_k},\boldsymbol{y_k}=\boldsymbol{d_{true}}(\boldsymbol{z_k})+\boldsymbol{w_k})$ which are saved in a dictionary $\mathcal{D}$ of length $m$
 \begin{align}
 \begin{split}
@@ -150,7 +151,7 @@ Evaluating the GP model $\boldsymbol{d}(\boldsymbol{x_k},\boldsymbol{u_k})$ resu
 For more information on the propagation see ???? Appendix.
 Thus, the MPC problem is given by
 \begin{align}
-\min_{\tilde{u}} &\big(\sum_{k=0}^{N-1} f_o(t_k,\boldsymbol{\mu^x_k},\boldsymbol{\Sigma^x_k},\boldsymbol{\tilde{u}_k},r(t))\big) + f_{end}(t_N,\boldsymbol{\mu^x_N},\boldsymbol{\Sigma^x_N},r(t_N))\\
+\min_{\tilde{u}} &\big(\sum_{k=1}^{N-1} f_o(t_k,\boldsymbol{\mu^x_k},\boldsymbol{\Sigma^x_k},\boldsymbol{\tilde{u}_k},r(t))\big) + f_{end}(t_N,\boldsymbol{\mu^x_N},\boldsymbol{\Sigma^x_N},r(t_N))\\
 &\boldsymbol{\mu^x_0} = \boldsymbol{x}(t)\\
 &\boldsymbol{\mu^x_{k+1}}= f_{nom}(\boldsymbol{\mu^x_k},\boldsymbol{\tilde{u}_k})+\boldsymbol{B_d} \boldsymbol{\mu^d_k}\\
 &\boldsymbol{\Sigma^x_{k+1}}=\nabla^T  f_{nom}(\boldsymbol{\mu^x_k},\boldsymbol{\tilde{u}_k}),\boldsymbol{\Sigma_{xdw}} \nabla f_{nom}(\boldsymbol{\mu^x_k},\boldsymbol{\tilde{u}_k}),\\
@@ -163,19 +164,20 @@ where $\boldsymbol{\tilde{u}}(\dot):[t,t+N] \rightarrow \mathcal{U}$ and $\tilde
 \mathcal{X} &= \{u \in \mathcal{R}^n|\boldsymbol{x_{min}}\leq \boldsymbol{x} \leq x_{max}\}.
 \end{align}
 According to the control problem, a cost function $f_o$ and the final cost $f_{end}$ are defined. The cost functions, which were used during this project, are further described for each example in Section~\ref{main_results}.
+Solving the above optimal control problem at each sampling time $t= j\delta$  with $j=0,1,\cdots$ results in an optimal control sequence $\tilde{u}^*$ for each sample time, where only value is applied $u^*=\tilde{u}^*1$.
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{MAIN RESULTS}\label{main_results}
-Two examples were considered during this project. An inverted pendulum and autonomous driving based on a single track model. Both examples are intruduced in this chapter.\\
+Two examples were considered during this project. An inverted pendulum and autonomous driving based on a single track model. Both examples are introduced in this chapter.\\
 \subsection{Inverted Pendulum}
-The motion of the inverted pendulum is decribed by 
+The motion of the 2-dimensional inverted pendulum is described by 
 \begin{align}
 (M_c +M_p)\ddot{x} + b\dot{x} +\frac{1}{2}M_p l \ddot{\theta} \cos{\theta}- \frac{1}{2}M_p l \dot{\theta}^2\sin{\theta} &=F\\
 (I+M_p\Big(\frac{l}{2}\Big)^2)\ddot{\theta}-\frac{1}{2}M_p g l \sin{\theta} + M_p l \ddot{x} \cos{\theta}&= 0.
 \end{align}
-A schematic drawing of the inverted pendulum including the parameters can be seen in Figure~\ref{fig:inverted_pendulum}. The standard gravity on the surface of the earth $g$ is set to be $g=9.8$. The state space model with the states $[ x, \dot{x}, \theta, \dot{\theta}]$ is given by
+A schematic drawing of the inverted pendulum including the parameters can be seen in Figure~\ref{fig:inverted_pendulum}. The standard gravity on the surface of the earth $g$ is set to be $g=9.8$. The objective of this system is to achieve an upright pendulum position by applying force to the cart. The nonlinear state space model with the states $[ x, \dot{x}, \theta, \dot{\theta}]$ is given by
 \begin{equation}
 \begin{bmatrix}
 \dot{x}\\
@@ -192,12 +194,45 @@ A schematic drawing of the inverted pendulum including the parameters can be see
 \end{equation}
 \begin{figure}
   \includegraphics[width=\linewidth]{tikz_inverted_pendulum.pdf}
-  \caption{A schematic drawing of the inverted pendulum on a carriage. The mass of the carriage and the pole are given by $M_c$ and $M_p$, respectively. The pole is defined by its length $l$ and its moment of intertia $I$. $b$ is the friction coefficient between the carriage and the floor. The states of the state-space model are the carriage position $s$, its derivative $\dot{s}$, the pole angle with the vertical $\theta$ and its derivative $\dot{\theta}$. $F$ is the applied force. }
+  \caption{A schematic drawing of the inverted pendulum on a carriage. The mass of the carriage and the pole are given by $M_c$ and $M_p$, respectively. The pole is defined by its length $l$ and its moment of inertia $I$. $b$ is the friction coefficient between the carriage and the floor. The states of the state-space model are the carriage position $s$, its derivative $\dot{s}$, the pole angle with the vertical $\theta$ and its derivative $\dot{\theta}$. $F$ is the applied force. }
   \label{fig:inverted_pendulum}
 \end{figure}
+The above state space model defines the nominal dynamics $f_{nom}$ of the inverted pendulum. A true disturbance $d_{true}$ is added to the nominal model to form the true dynamics $f_{true}$. Representing a defect in the joint connecting the cart and the pole the disturbance is given by 
+\begin{align}
+\begin{split}
+d_{true} &= 0.1 \theta -0.01 \dot{\theta} + 0.0524\\
+&= 0.1 \boldsymbol{z(1)}-0.01 \boldsymbol{z(2)} + 0.0524,
+\end{split}
+\end{align}
+with $\boldsymbol{z}=\boldsymbol{B_z} \boldsymbol{x}$ and 
+\begin{equation}
+    \boldsymbol{B_z}=
+    \begin{bmatrix}
+    0 & 0 & 1 & 0\\
+    0 & 0 & 0 & 1
+    \end{bmatrix}.
+\end{equation}
+The disturbance only affects $\theta$ which is implemented by setting $\boldsymbol{B_d} = [0, 0, 1, 0]$.
+In our example the parameters of the inverted pendulum were set to $M_c=5$, $M_p=2$, $I=0.6$, $l=3$ and $b=0.1$. The implemented MPC has a prediction horizon $N$ of $N=10$ and the number of iterations to optimize the cost function at each time step is limited to ten.
+The control formulation aims to stabilize the pole at $\theta=\pi$. Therefore, the cost function $f_c$ is defined to
+\begin{equation}
+f_c= (\boldsymbol{C_k} \boldsymbol{\mu_x}-\boldsymbol{r(t)})^T \boldsymbol{Q} (\boldsymbol{C_k} \boldsymbol{\mu_x}-\boldsymbol{r(t)}) + R u^2,
+\end{equation}
+where $\boldsymbol{Q}$ and $R$ are weight matrices/values penalizing the deviation between a selection of mean states $\boldsymbol{C_k}\boldsymbol{\mu_x}$ and the reference signal as well as the amplitude of the input force $F$, respectively. The reference $r$ is defined to $\dot{x}= 0$, $\theta=0$ and $\dot{\theta}=0$.\\
+The final cost is defined by
+\begin{equation}
+f_{end}= (\boldsymbol{C_k} \boldsymbol{\mu_x}-\boldsymbol{r(t)})^T \boldsymbol{Q} (\boldsymbol{C_k} \boldsymbol{\mu_x}-\boldsymbol{r(t)}).
+\end{equation}
+\subsection{Single-Track System}
+The single-track model is a simplified version of the more complex twin-track model, where the front and rear axis only carry one wheel each instead of two.
 
-
+\begin{figure}
+  \includegraphics[width=\linewidth]{tikz_singletrack.pdf}
+  \caption{A schematic drawing of the single-track model. The vehicle mass and the vehicle moment of inertia (yaw axis) are given by $M$ and $I$, respectively. The distance from the front wheel as well as from the rear wheel to the center of mass are defined by $L_f$ and $L_f$, respectively. $\psi$ is the yaw angle. The forces which act on the rear and front wheel in longitudinal and lateral direction are named $F_{r,long}$, $F_{r,lat}$, $F_{f,long}$ and $F_{f,lat}$. The rear-slip angle is $\alpha_r$ and the front-slip angle is $\alpha_f$ }
+  \label{fig:singletrack}
+\end{figure}
 Ideas, theorems, proofs and discussions .....
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
