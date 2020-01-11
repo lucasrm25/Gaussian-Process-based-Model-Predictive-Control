@@ -18,9 +18,9 @@ coordinate (X);
 \draw[thick] (F1)  -- (F2) node[pos=0.55,sloped,reactor] (M){~}
 node[pos=0,sloped,pill]{};
 \draw[green!70!black,thick,-latex] (M.center) -- ($(M.center)!1cm!0:(F2)$)
-node[above]{$L$};
+node[above]{$x'$};
 \draw[green!70!black,thick,-latex] (M.center) -- ($(M.center)!-1cm!90:(F2)$)
-node[right]{$C$};
+node[right]{$y'$};
 \draw[thick,dashed] (F2) -- ++ (48:2) coordinate(H)  node[pos=0,sloped,pill,solid]{}
 pic ["$\delta$",draw,solid,->,angle radius=1cm,angle eccentricity=1.3] {angle = TR--F2--H};
 \draw[thick,red,-latex] (F2) -- ++ (62:2) coordinate (A2) node[below=0.46cm,right=-0.32cm]{$\alpha_f$}
@@ -28,12 +28,12 @@ pic [draw,->,red,thick,angle radius=1.3cm] {angle = H--F2--A2};
 \draw[thick,red,-latex] (F1) -- ++ (48:2) coordinate (A1)
 pic ["$\alpha_r$",draw,->,red,thick,angle radius=1cm,angle eccentricity=1.3] {angle = F2--F1--A1};
 % rear forces
-\draw[latex-,thick] ($(F1)!10mm!-90:(M)$) -- ($(F1)!3.5mm!-90:(M)$) node[below=0.3cm,right=0.2cm]{$F_{r,y}$};
-\draw[latex-,thick] ($(F1)!-6mm!0:(M)$) -- ($(F1)!-12mm!0:(M)$) node[below=0.2cm,right=0.05cm]{$F_{r,x}$};
+\draw[latex-,thick] ($(F1)!10mm!-90:(M)$) -- ($(F1)!3.5mm!-90:(M)$) node[below=0.3cm,right=0.2cm]{$F_{r,y'}$};
+\draw[latex-,thick] ($(F1)!-6mm!0:(M)$) -- ($(F1)!-12mm!0:(M)$) node[below=0.2cm,right=0.05cm]{$F_{r,x'}$};
 
 % front forces
-\draw[latex-,thick] ($(F2)!10mm!115:(M)$) -- ($(F2)!3.5mm!115:(M)$) node[below=0.1cm,right=0.2cm]{$F_{f,y}$};
-\draw[latex-,thick] ($(F2)!6mm!25:(M)$) -- ($(F2)!12mm!25:(M)$) node[below=0.03cm]{$F_{f,x}$};
+\draw[latex-,thick] ($(F2)!10mm!115:(M)$) -- ($(F2)!3.5mm!115:(M)$) node[below=0.1cm,right=0.2cm]{$F_{f,y'}$};
+\draw[latex-,thick] ($(F2)!6mm!25:(M)$) -- ($(F2)!12mm!25:(M)$) node[below=0.03cm]{$F_{f,x'}$};
 
 \draw[{Bar}{Latex}-{Latex}{Bar}] ($(F1)!1.5cm!90:(M)$) -- 
 ($(M)!1.5cm!90:(F2)$) node[midway,sloped,fill=white]{$L_r$};

@@ -225,12 +225,43 @@ f_{end}= (\boldsymbol{C_k} \boldsymbol{\mu_x}-\boldsymbol{r(t)})^T \boldsymbol{Q
 \end{equation}
 \subsection{Single-Track System}
 The single-track model is a simplified version of the more complex twin-track model, where the front and rear axis only carry one wheel each instead of two.
-
+A schematic drawing of the single-track model including the relevant parameters can be seen in Figure~\ref{fig:singletrack}.
 \begin{figure}
   \includegraphics[width=\linewidth]{tikz_singletrack.pdf}
-  \caption{A schematic drawing of the single-track model. The vehicle mass and the vehicle moment of inertia (yaw axis) are given by $M$ and $I$, respectively. The distance from the front wheel as well as from the rear wheel to the center of mass are defined by $L_f$ and $L_f$, respectively. $\psi$ is the yaw angle. The forces which act on the rear and front wheel in longitudinal and lateral direction are named $F_{r,long}$, $F_{r,lat}$, $F_{f,long}$ and $F_{f,lat}$. The rear-slip angle is $\alpha_r$ and the front-slip angle is $\alpha_f$ }
+  \caption{A schematic drawing of the single-track model. The vehicle mass and the vehicle moment of inertia (yaw axis) are given by $M$ and $I$, respectively. The distance from the front wheel as well as from the rear wheel to the center of mass are defined by $L_f$ and $L_f$, respectively. $\psi$ is the yaw angle. The forces which act on the rear and front wheel in longitudinal and lateral direction are named $F_{r,x'}$, $F_{r,y'}$, $F_{f,x'}$ and $F_{f,y'}$. The rear-slip angle is $\alpha_r$ and the front-slip angle is $\alpha_f$ }
   \label{fig:singletrack}
 \end{figure}
+
+The state-space representation of the single-track model is given by
+\begin{align}
+\dot{I}_x &= V_{x'} \cos(\psi) - V_{y'} \sin(\psi)\\
+\dot{I}_y &= V_{x'} \sin(\psi) + V_{y'} \cos(\psi)\\
+\dot{\psi} &= \dot{\psi}\\
+\dot{V}_{x'} &=  \frac{1}{M}  (F_{r,x'} + F_{f,x'}*\cos(\delta) - F_{f,y'} \sin(\delta) + V_{y'}\dot{\psi})\\
+\dot{V}_{y'} &=  \frac{1}{M}   (F_{r,y'} + F_{f,x'} \sin(\delta) + F_{f,y'} \cos(\delta) - V_{y'} \dot{\psi})\\
+\ddot{\psi} &= \frac{1}{I} (F_{f,y'} L_f \cos(\delta) + F_{f,x'} L_f \sin(\delta) - F_{r,y'} L_r)\\
+\dot{d_{track}} &= v_{track},
+\end{align}
+where the steering angle $\delta$, the wheel torque gain $T$ and the track center line velocity $v_{track}$ are inputs. The wheel torque gain is bounded by -1 (maximum deceleration) and 1 (maximum acceleration). Additionally, the steering angle is bounded between -30 degree and 30 degree.
+The wheel forces in vehicle coordinates are defined to
+\begin{align}
+ F_{r,x'} &= \zeta  F_W\\
+ F_{r,y'} &= c_r \alpha_r \\
+ F_{f,x'} &= (1-\zeta)  F_W\\
+ F_{f,y'} &= c_f  \alpha_f, 
+\end{align}
+where $\zeta=0.5$ is longitudinal wheel torque distribution and $c_f =c_r=14000$ front  and rear cornering stiffness. The is total wheel force $F_W$ given by
+\begin{equation}
+F_W = T  ( (T\geq0) 4000+(T\leq0) 8000 sign(V_{x'}) ),
+\end{equation}
+where the factor 4000 allows 1g (1 $g M$) acceleration and the factor 8000 2g (2 $g M$) breaking.
+The wheel slip angles $\alpha_r$ and $\alpha_f$ are defined by
+\begin{align}
+\alpha_r &= \text{atan2}(V_{y'}-L_r \dot{\psi},V_{x'})\\
+\alpha_f &= \text{atan2}(V_{y'}+L_f \dot{\psi},V_{x'}) - \delta.
+\end{align}
+ \\
+Ideas, theorems, proofs and discussions .....
 Ideas, theorems, proofs and discussions .....
 
 

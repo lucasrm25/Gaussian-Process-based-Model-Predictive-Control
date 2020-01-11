@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  11 JAN 2020 17:29
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  11 JAN 2020 18:32
 entering extended mode
 **./root.tex
 (root.tex
@@ -749,7 +749,7 @@ File: tikz_singletrack.pdf Graphic file (type pdf)
 <use tikz_singletrack.pdf>
 Package pdftex.def Info: tikz_singletrack.pdf  used on input line 230.
 (pdftex.def)             Requested size: 245.71811pt x 156.23465pt.
- (root.bbl [3 <./tikz_inverted_pendulum.pdf> <./tikz_singletrack.pdf>])
+ [3 <./tikz_inverted_pendulum.pdf> <./tikz_singletrack.pdf>] (root.bbl)
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -771,7 +771,7 @@ Here is how much of TeX's memory you used:
  19286 multiletter control sequences out of 15000+200000
  577317 words of font info for 130 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
- 41i,18n,63p,1834b,482s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 41i,18n,63p,1834b,484s stack positions out of 5000i,500n,10000p,200000b,50000s
 {C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/enc/dvips
 /base/8r.enc}<C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/publ
 ic/amsfonts/cm/cmbx10.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fon
@@ -791,17 +791,18 @@ cmr6.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/a
 msfonts/cm/cmr7.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/typ
 e1/public/amsfonts/cm/cmr8.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.
 9/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Luzia/AppData/Local/Progr
-ams/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/Luzia/AppData
-/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/symbols/msbm10.pfb><C:/U
-sers/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/courier/ucrr8a.pfb
-><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/times/utmb8a
-.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/times/ut
-mbi8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/tim
-es/utmr8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw
-/times/utmri8a.pfb>
-Output written on root.pdf (4 pages, 263982 bytes).
+ams/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy5.pfb><C:/Users/Luzia/AppData
+/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy7.pfb><C:/Users/L
+uzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/symbols/msbm
+10.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/courie
+r/ucrr8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/urw/
+times/utmb8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/
+urw/times/utmbi8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/t
+ype1/urw/times/utmr8a.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fon
+ts/type1/urw/times/utmri8a.pfb>
+Output written on root.pdf (4 pages, 275531 bytes).
 PDF statistics:
- 122 PDF objects out of 1000 (max. 8388607)
+ 134 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

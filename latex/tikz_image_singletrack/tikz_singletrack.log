@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  11 JAN 2020 17:21
+This is pdfTeX, Version 3.14159265-2.6-1.40.19 (MiKTeX 2.9.6840 64-bit) (preloaded format=pdflatex 2018.11.1)  11 JAN 2020 18:02
 entering extended mode
 **./tikz_singletrack.tex
 (tikz_singletrack.tex
@@ -538,17 +538,19 @@ etrack.aux) )
 Here is how much of TeX's memory you used:
  12871 strings out of 492970
  271518 string characters out of 3126594
- 312972 words of memory out of 3000000
+ 312978 words of memory out of 3000000
  16514 multiletter control sequences out of 15000+200000
  3640 words of font info for 14 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
  62i,9n,71p,451b,1038s stack positions out of 5000i,500n,10000p,200000b,50000s
 <C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/publ
 ic/amsfonts/cm/cmmi10.pfb><C:/Users/Luzia/AppData/Local/Programs/MiKTeX 2.9/fon
-ts/type1/public/amsfonts/cm/cmmi7.pfb>
-Output written on tikz_singletrack.pdf (1 page, 22387 bytes).
+ts/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/Luzia/AppData/Local/Programs/Mi
+KTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy5.pfb><C:/Users/Luzia/AppData/Local
+/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy7.pfb>
+Output written on tikz_singletrack.pdf (1 page, 37189 bytes).
 PDF statistics:
- 17 PDF objects out of 1000 (max. 8388607)
+ 25 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
  13 words of extra memory for PDF output out of 10000 (max. 10000000)
 
