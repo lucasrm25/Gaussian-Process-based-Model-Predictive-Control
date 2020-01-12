@@ -252,7 +252,7 @@ The wheel forces in vehicle coordinates are defined to
 \end{align}
 where $\zeta=0.5$ is longitudinal wheel torque distribution and $c_f =c_r=14000$ front  and rear cornering stiffness. The is total wheel force $F_W$ given by
 \begin{equation}
-F_W = T  ( (T\geq0) 4000+(T\leq0) 8000 sign(V_{x'}) ),
+F_W = T  ( (T>0) 4000+(T<0) 8000 sign(V_{x'}) ),
 \end{equation}
 where the factor 4000 allows 1g (1 $g M$) acceleration and the factor 8000 2g (2 $g M$) breaking.
 The wheel slip angles $\alpha_r$ and $\alpha_f$ are defined by
