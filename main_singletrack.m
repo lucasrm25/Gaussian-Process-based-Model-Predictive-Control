@@ -394,7 +394,7 @@ end
 
 %% Record video
 
-FrameRate = 10;
+FrameRate = 7;
 videoName = fullfile('simresults',sprintf('trackAnimVideo-%s',date));
 videoFormat = 'Motion JPEG AVI';
 trackAnim.recordvideo(videoName, videoFormat, FrameRate);
