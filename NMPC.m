@@ -196,9 +196,10 @@ classdef NMPC < handle
             for iN=1:obj.N      % [x1,...,xN]
                 [mu_xk(:,iN+1),var_xk(:,:,iN+1)] = obj.f(mu_xk(:,iN),var_xk(:,:,iN),uk(:,iN));
 
-                if sum(isnan(mu_xk),'all') || sum(isinf(mu_xk),'all')
-                    error('%s','System dynamics evaluated to NaN or Inf')
-                end
+                % % % % if sum(isnan(mu_xk),'all') || sum(isinf(mu_xk),'all')
+                % % % %     error('%s','System dynamics evaluated to NaN or Inf')
+                % % % % end
+
             end
         end
 
@@ -219,9 +220,11 @@ classdef NMPC < handle
             for iN=1:obj.N      % i=0:N-1
                 % add cost: fo=@(t,mu_x,var_x,u,e,r)
                 cost = cost + obj.fo(t, mu_xvec(:,iN), var_xvec(:,:,iN), uvec(:,iN), evec(:,iN), r);
-                if sum(isnan(cost),'all') || sum(isinf(cost),'all')
-                    error('Cost function evaluated to NaN or Inf')
-                end
+                
+                % % % % if sum(isnan(cost),'all') || sum(isinf(cost),'all')
+                % % % %     error('Cost function evaluated to NaN or Inf')
+                % % % % end
+                
                 % update current time
                 t = t + iN * obj.dt;
             end

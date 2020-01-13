@@ -25,65 +25,53 @@ fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
 
 %% Create True Dynamics Simulation Model
 %--------------------------------------------------------------------------
-%   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
+%   xk+1 = fd_true(xk,uk) + Bd * ( w ),    
 %
-%       where: zk = Bz*xk,
-%              d ~ N(mean_d(zk),var_d(zk))
-%              w ~ N(0,var_w)
+%       where: w ~ N(0,var_w)
 %------------------------------------------------------------------
 
-% define model (mean and variance) for true disturbance
-nd    = MotionModelGP_SingleTrack.nd ;
-mu_d  = @(z) zeros(nd,1);
-var_d = @(z) zeros(nd);
-d     = @(z) deal( mu_d(z), var_d(z) );
+% define noise for true disturbance
 var_w = diag([(1/3)^2 (1/3)^2 (deg2rad(3)/3)^2]);
 
 % create true dynamics model
-%   xk+1 = fd_true(xk,uk) + Bd * ( d_true(zk) + w )
-% trueModel = MotionModelGP_SingleTrackNominal(d,var_w);
-trueModel = MotionModelGP_SingleTrack(d,var_w);
+trueModel = MotionModelGP_SingleTrack_true( [], var_w);
+% trueModel = MotionModelGP_SingleTrack_nominal(d,var_w);
 
 
 %% Create Estimation Model and Nominal Model
 
 % -------------------------------------------------------------------------
 %  Create nominal model (no disturbance):  
-%       xk+1 = fd_nominal(xk,uk)
+%       xk+1 = fd_nom(xk,uk)
 % -------------------------------------------------------------------------
-nz = MotionModelGP_SingleTrackNominal.nz;
-nd = MotionModelGP_SingleTrackNominal.nd;
 
-mu_d  = @(z) zeros(nd,1);
-var_d = @(z) zeros(nd);
-d     = @(z) deal( mu_d(z), var_d(z) );
-nomModel = MotionModelGP_SingleTrackNominal(d, 0*var_w); 
-% nomModel = MotionModelGP_SingleTrack(d, 0*var_w);
+nomModel = MotionModelGP_SingleTrack_nominal( [], [] ); 
+% nomModel = MotionModelGP_SingleTrack_true( [], [] );
 
 
 % -------------------------------------------------------------------------
 %  Create adaptive dynamics model 
 %  (unmodeled dynamics will be estimated by Gaussian Process GP)
-%       xk+1 = fd_nominal(xk,uk) + Bd * ( d_GP(zk) + w )
+%       xk+1 = fd_nom(xk,uk) + Bd * ( d_GP(zk) + w )
 % -------------------------------------------------------------------------
 
 % GP input dimension
-gp_n = nz;
+gp_n = MotionModelGP_SingleTrack_nominal.nz;
 % GP output dimension
-gp_p = nd;
+gp_p = MotionModelGP_SingleTrack_nominal.nd;
 
 % GP hyperparameters
 var_f   = repmat(0.01,[gp_p,1]);    % output variance
 var_n   = diag(var_w);              % measurement noise variance
-M       = repmat(diag([1e-1,1e-1,1e-1,1e-1,1e-1].^2),[1,1,gp_p]);     % length scale
+M       = repmat(diag([1e0,1e0,1e0,1e0,1e0].^2),[1,1,gp_p]);     % length scale
 maxsize = 300; % maximum number of points in the dictionary
 
 % create GP object
 d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 
 % create nominal model with GP model as d(zk)
-estModel = MotionModelGP_SingleTrackNominal(@d_GP.eval, var_w);
-% estModel = MotionModelGP_SingleTrack(@d_GP.eval, var_w);
+estModel = MotionModelGP_SingleTrack_nominal(@d_GP.eval, var_w);
+% estModel = MotionModelGP_SingleTrack_true(@d_GP.eval, var_w);
 
 
 %% Initialize Controller
@@ -146,12 +134,6 @@ mpc = NMPC(f, h, g, u_lb, u_ub, n, m, ne, fo, fend, N, dt);
 mpc.tol     = 1e-2;
 mpc.maxiter = maxiter;
 
-% TEST NMPC
-% x0 = 10;
-% t0 = 0;
-% r  = @(t)2;    % desired trajectory
-% u0 = mpc.optimize(x0, t0, r );
-
 
 
 %% Prepare simulation
@@ -203,13 +185,13 @@ d_GP.isActive = false;
 %% Start simulation
 
 ki = 1;
-% ki = 15;
-% mpc.uguess = out.u_pred_opt(:,:,ki);
+ki = 476;
+mpc.uguess = out.u_pred_opt(:,:,ki);
 
 % lap = 0;
 
 for k = ki:kmax
-    disp(out.t(k))
+    fprintf('time: %.2f\n',out.t(k))
     
     % ---------------------------------------------------------------------
     % LQR controller
@@ -287,6 +269,8 @@ for k = ki:kmax
     % ---------------------------------------------------------------------
     out.xnom(:,k+1) = nomModel.xkp1(out.xhat(:,k),zeros(nomModel.n),out.u(:,k),dt);
     
+    fprintf('Error:\n')
+    disp(out.xhat(:,k+1) - mu_xkp1) % out.xnom(:,k+1)) 
     
     % ---------------------------------------------------------------------
     % Add data to GP model
@@ -317,49 +301,79 @@ end
 dispLapTimes(laptimes)
 
 
+%%
+
+for k=1:1100
+    % calculate disturbance (error between measured and nominal)
+    d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
+    % select subset of coordinates that will be used in GP prediction
+    zhat = [ estModel.Bz_x * out.xhat(:,k); estModel.Bz_u * out.u(:,k) ];
+    % add data point to the GP dictionary
+    d_GP.add(zhat,d_est');
+end
+d_GP.updateModel();
+
 %% Analyse learning [IN PROGRESS]
 
+% ---------------------------------------------------------------------
 % Check in which region of the tyre dynamics we are working in the
-% simulation
+% ---------------------------------------------------------------------
 
-trueModel.testTyres
+% % % % simulation
+% % % 
+% % % trueModel.testTyres
+% % % 
+% % % l_f  = 0.9;
+% % % l_r  = 1.5;
+% % % V_vx = out.xhat(4,:);
+% % % V_vy = out.xhat(5,:);
+% % % psi_dot = out.xhat(6,:);
+% % % delta = out.u(1,:);
+% % % a_r = atan2(V_vy-l_r.*psi_dot,V_vx);
+% % % a_f = atan2(V_vy+l_f.*psi_dot,V_vx) - [delta 0];
+% % % 
+% % % figure('Color','w'); hold on; grid on;
+% % % plot(rad2deg(a_r))
+% % % plot(rad2deg(a_f))
+% % % ylabel('slip angle')
+% % % xlabel('time step')
 
-l_f  = 0.9;
-l_r  = 1.5;
-V_vx = out.xhat(4,:);
-V_vy = out.xhat(5,:);
-psi_dot = out.xhat(6,:);
-delta = out.u(1,:);
-a_r = atan2(V_vy-l_r.*psi_dot,V_vx);
-a_f = atan2(V_vy+l_f.*psi_dot,V_vx) - [delta 0];
 
-figure('Color','w'); hold on; grid on;
-plot(rad2deg(a_r))
-plot(rad2deg(a_f))
-ylabel('slip angle')
-xlabel('time step')
-
-
-
+% ---------------------------------------------------------------------
 % Check how the GP reduces the prediction error
+% ---------------------------------------------------------------------
 
-figure('Color','w'); hold on; grid on;
+% prediction error without GP
 predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
-plot( predErrorNOgp' )
-title('Prediction error - without GP')
 
-vecnorm(predErrorNOgp')
-
+% prediction error with trained GP
 d_GP.isActive = true;
-
 zhat = [ estModel.Bz_x * out.xhat; estModel.Bz_u * [out.u,zeros(3,1)] ];
 dgp = d_GP.eval(zhat);
+predErrorWITHgp = estModel.Bd\(out.xhat - (out.xnom + estModel.Bd*dgp) );
+
+
+disp('Prediction mean squared error without GP:')
+disp( mean(predErrorNOgp(:,all(~isnan(predErrorNOgp))).^2 ,2) )
+disp('Prediction mean squared error with trained GP:')
+disp( mean(predErrorWITHgp(:,all(~isnan(predErrorWITHgp))).^2 ,2) )
+
+
+
+% Visualize error
+figure('Color','w'); hold on; grid on;
+subplot(1,2,1)
+plot( predErrorNOgp' )
+title('Prediction error - without GP')
+subplot(1,2,2)
+hist(predErrorNOgp')
 
 figure('Color','w'); hold on; grid on;
-predErrorWITHgp = estModel.Bd\(out.xhat - (out.xnom + estModel.Bd*dgp) );
+subplot(1,2,1)
 plot( predErrorWITHgp' )
 title('Prediction error - with GP')
-
+subplot(1,2,2)
+hist(predErrorWITHgp')
 
 
 %% Show animation
@@ -374,7 +388,7 @@ for k=1:kmax
         break;
     end
     % trackAnim.updateScope(k);
-    pause(0.1);
+    pause(0.15);
     drawnow;
 end
 

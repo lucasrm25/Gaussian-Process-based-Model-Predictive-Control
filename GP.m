@@ -116,7 +116,7 @@ classdef GP < handle
             for pi = 1:obj.p
                 D(:,:,pi) = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
                 %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
-                 kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
+                kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
             end
         end
         
@@ -185,9 +185,15 @@ classdef GP < handle
             % dictionary is full
             if obj.N + size(X,2) > obj.Nmax
                 % For now, we just keep the most recent data
-                obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
-                obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
-            
+                % obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
+                % obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
+                
+                D = pdist2(obj.X',X','mahalanobis', eye(5) ).^2;
+                [~,idx] = max(D);
+                
+                obj.X = [obj.X(:,1:obj.N ~= idx), X];     % concatenation in the 2st dim.
+                obj.Y = [obj.Y(1:obj.N ~= idx,:); Y];    % concatenation in the 1st dim.
+                
             % append to dictionary
             else
                 obj.X = [obj.X, X];     % concatenation in the 2st dim.
