@@ -57,10 +57,6 @@ for k=1:length(t)
   drawnow();
   pause(0.1)
   
-  % strop the animation when q is pressed
-  if k==length(t)
-    stop
-  end
   
   % meassure the time and create a fixed time loop
 %   t2=toc;
