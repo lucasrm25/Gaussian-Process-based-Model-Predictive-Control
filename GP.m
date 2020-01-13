@@ -47,10 +47,12 @@ classdef GP < handle
     end
     
     methods
-        function obj = GP(var_f, var_n, M, maxsize)
+        function obj = GP(n, p, var_f, var_n, M, maxsize)
         %------------------------------------------------------------------
         % GP constructor
         % args:
+        %   n:       <1>     input dimension
+        %   p:       <1>     output dimension
         %   var_f:   <p>     signal/output covariance
         %   var_n:   <p>     evaluation noise covariance
         %   M:       <n,n,p> length scale covariance matrix
@@ -62,17 +64,15 @@ classdef GP < handle
             obj.var_n   = var_n;
             obj.M       = M;
             obj.Nmax    = maxsize;
+            obj.n       = n;
+            obj.p       = p;
             
-            % input dimension
-            obj.n = size(M,1);
-            
-            % output dimension
-            obj.p = numel(var_f);
-            
-            assert( size(var_f,1)==size(var_n,1) && ...
-                    size(var_f,1)==size(M,3),...
-                    'Dimension of kernel parameters do not agree !!!');
+            % validade model parameters
+            assert( obj.n == size(M,1),     'Matrix M has wrong dimension. Expected <%d,%d,%d>',obj.n,obj.n,obj.p);
+            assert( obj.p == size(var_f,1), 'Matrix var_f has wrong dimension. Expected <%d>, got <%d>.',obj.p,size(var_f,1));
+            assert( obj.p == size(var_n,1), 'Matrix var_n has wrong dimension. Expected <%d>, got <%d>.',obj.p,size(var_n,1));
         end
+        
         
         function bool = isfull(obj)
         %------------------------------------------------------------------
@@ -81,12 +81,14 @@ classdef GP < handle
             bool = obj.N >= obj.Nmax;
         end
         
+        
         function N = get.N(obj)
         %------------------------------------------------------------------
         % return dictionary size = N
         %------------------------------------------------------------------
             N = size(obj.X,2);
         end
+        
         
         function mean = mu(~,x)
         %------------------------------------------------------------------
@@ -109,12 +111,12 @@ classdef GP < handle
         %   x1: <n,N1>
         %   x2: <n,N2>
         % out:
-        %   kernel: <N1,N2>
+        %   kernel: <N1,N2,p>
         %------------------------------------------------------------------
             for pi = 1:obj.p
                 D(:,:,pi) = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
                 %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
-                 kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
+                kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
             end
         end
         
@@ -151,17 +153,20 @@ classdef GP < handle
             end
         end
         
+        
         function set.X(obj,X)
             obj.X = X;
             % data has been added. GP is outdated. Please call obj.updateModel
             obj.isOutdated = true;
         end
         
+        
         function set.Y(obj,Y)
             obj.Y = Y;
             % data has been added. GP is outdated. Please call obj.updateModel
             obj.isOutdated = true;
         end
+        
         
         function add(obj,X,Y)
         %------------------------------------------------------------------
@@ -180,9 +185,15 @@ classdef GP < handle
             % dictionary is full
             if obj.N + size(X,2) > obj.Nmax
                 % For now, we just keep the most recent data
-                obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
-                obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
-            
+                % obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
+                % obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
+                
+                D = pdist2(obj.X',X','mahalanobis', eye(5) ).^2;
+                [~,idx] = max(D);
+                
+                obj.X = [obj.X(:,1:obj.N ~= idx), X];     % concatenation in the 2st dim.
+                obj.Y = [obj.Y(1:obj.N ~= idx,:); Y];    % concatenation in the 1st dim.
+                
             % append to dictionary
             else
                 obj.X = [obj.X, X];     % concatenation in the 2st dim.
@@ -200,7 +211,7 @@ classdef GP < handle
         %   x: <n,Nx> point coordinates
         % out:
         %   muy:  <p,Nx>      E[Y] = E[gp(x)]
-        %   vary: <p,p,Nx>    Var[Y]  = Var[gp(x)]                              %%%%%% <Nx,Nx,p>
+        %   vary: <p,p,Nx>    Var[Y]  = Var[gp(x)]
         %------------------------------------------------------------------
             Nx = size(x,2);  % size of dataset to be evaluated
         
@@ -366,6 +377,7 @@ classdef GP < handle
             scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
             colormap(gcf,parula);
         end
+        
         
         function plot1d(obj, truthfun, varargin)
         %------------------------------------------------------------------

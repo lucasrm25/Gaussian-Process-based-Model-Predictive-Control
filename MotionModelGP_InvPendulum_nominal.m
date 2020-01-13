@@ -6,11 +6,11 @@
 %------------------------------------------------------------------
 
 
-classdef MotionModelGP_InvertedPendulum < MotionModelGP
+classdef MotionModelGP_InvPendulum_nominal < MotionModelGP
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
-%       where: zk = Bz*xk,
+%       where: zk = [Bz_x*xk ; Bz_u*uk],
 %              d ~ N(mean_d(zk),var_d(zk))
 %              w ~ N(0,sigmaw)
 %
@@ -30,31 +30,41 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
     end
     
     properties(Constant)
+        % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(z)+w)),
+        % where z = [Bz_x*x;Bz_u*u] 
+        Bz_x = [0 0 1 0
+                0 0 0 1] 
+        Bz_u = []; 
         Bd = [0;            % xk+1 = fd(xk,uk) + Bd*d(zk)
               0;
               1;
               0]
-        Bz = [0 0 1 0       % z = Bz*x
-              0 0 0 1]     
-        n = 4               % number of outputs x(t)
-        m = 1               % number of inputs u(t)
+            
+        n  = 4   % number of outputs x(t)
+        m  = 1   % number of inputs u(t)
+        nz = 2   % dimension of z(t)
+        nd = 1   % output dimension of d(z)
     end
     
     
     methods
         
-        function obj = MotionModelGP_InvertedPendulum (Mc, Mp, b, I, l, d, sigmaw)
+        function obj = MotionModelGP_InvPendulum_nominal (Mc, Mp, b, I, l, d, sigmaw)
         %------------------------------------------------------------------
         %   object constructor
         %------------------------------------------------------------------
             % call superclass constructor
-            obj = obj@MotionModelGP(d,sigmaw);
+            obj = obj @ MotionModelGP(d,sigmaw);
             % store parameters
             obj.Mc = Mc;
             obj.Mp = Mp;
             obj.b = b;
             obj.I = I;
             obj.l = l;
+            
+            % add folder CODEGEN to path. Here there will be some functions
+            % generated with the method generate_invertedPendulum_functions()
+            addpath(fullfile(pwd,'CODEGEN'))
         end
         
         function xdot = f (obj, x, u)
@@ -64,7 +74,7 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
         %       xdot: <n,1> time derivative of x given x and u
         %------------------------------------------------------------------
             params = [obj.Mc obj.Mp obj.I obj.g obj.l obj.b]';
-            xdot = CODEGEN_invertedPendulum_f(x, u, params );
+            xdot = invertedPendulum_f(x, u, params );
         end
         
         function gradx = gradx_f(obj, x, u)
@@ -74,7 +84,7 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
         %       gradx: <n,n> gradient of xdot w.r.t. x
         %------------------------------------------------------------------
             params = [obj.Mc obj.Mp obj.I obj.g obj.l obj.b]';
-            gradx = CODEGEN_invertedPendulum_gradx_f(x, u, params );
+            gradx = invertedPendulum_gradx_f(x, u, params );
         end
         
         function gradu = gradu_f(obj, x, u)
@@ -84,7 +94,7 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
         %       gradu: <m,n> gradient of xdot w.r.t. u
         %------------------------------------------------------------------
             params = [obj.Mc obj.Mp obj.I obj.g obj.l obj.b]';
-            gradu = CODEGEN_invertedPendulum_gradu_f(x, u, params );
+            gradu = invertedPendulum_gradu_f(x, u, params );
         end
         
         function [A,B] = linearize (obj)
@@ -123,7 +133,7 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
         %
         %   Example how to run this function:
         %       ip = MotionModelGP_InvertedPendulum(5, 2, 0.1, 0.6, 3, @(z)deal(0,0), 0);
-        %       ip.generate_grad_functions();
+        %       ip.generate_invertedPendulum_functions();
         %------------------------------------------------------------------
             syms g Mc Mp b I l F T s ds dds  th dth ddth real
             T = 0;  % we are not using this input for now
@@ -137,14 +147,25 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
             x = [s, ds, th, dth]';
             xdot = [ds, dds, dth, ddth]';
             params = [Mc Mp I g l b ]';
-
-            matlabFunction( xdot, 'Vars', {x;u;params} ,'File', 'CODEGEN_invertedPendulum_f' )
+            
+            
+            folder = fullfile(pwd,'CODEGEN');
+            if ~exist(folder,'dir')
+                mkdir(folder); 
+            end
+            addpath(folder)
+            
+            
+            matlabFunction( xdot, 'Vars', {x;u;params} ,'File', fullfile('CODEGEN','invertedPendulum_f') );
 
             gradx_f = simplify(jacobian(xdot,x)');
-            matlabFunction( gradx_f, 'Vars', {x;u;params} ,'File', 'CODEGEN_invertedPendulum_gradx_f' )
+            matlabFunction( gradx_f, 'Vars', {x;u;params} ,'File', fullfile('CODEGEN','invertedPendulum_gradx_f') );
 
             gradu_f = simplify(jacobian(xdot,u)');
-            matlabFunction( gradu_f, 'Vars', {x;u;params} ,'File', 'CODEGEN_invertedPendulum_gradu_f' )
+            matlabFunction( gradu_f, 'Vars', {x;u;params} ,'File', fullfile('CODEGEN','invertedPendulum_gradu_f') );
+        
+            disp('FINISHED! functions invertedPendulum_f, invertedPendulum_gradx_f and invertedPendulum_gradu_f generated!!')
+
         end
     end
     

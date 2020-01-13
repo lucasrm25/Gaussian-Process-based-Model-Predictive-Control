@@ -3,9 +3,7 @@
 %   - Lucas Rath (lucasrm25@gmail.com)
 %   - 
 %   -
-%------------------------------------------------------------------
 
-%------------------------------------------------------------------
 %   1D Toy example:
 %
 %       - Simulate the GP learning of the nonlinear part of the plant
@@ -15,12 +13,14 @@
 
 clear all; close all; clc;
 
+
+
 %--------------------------------------------------------------------------
-%   Simulation and controller parameters
+%   Quick Access Simulation and controller parameters
 %------------------------------------------------------------------
 dt = 0.1;       % simulation timestep size
 tf = 7;         % simulation time
-maxiter = 10;   % max NMPC iterations per time step
+maxiter = 15;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 lookahead = dt*N;
@@ -38,41 +38,52 @@ l = 3;
 
 %% True Dynamics Model
 %--------------------------------------------------------------------------
-%   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
+%   xk+1 = fd(xk,uk) + Bd * ( w ),    
 %
-%       where: zk = Bz*xk,
-%              d ~ N(mean_d(zk),var_d(zk))
-%              w ~ N(0,var_w)
+%       where: w ~ N(0,var_w)
 %------------------------------------------------------------------
 
-% define model (mean and variance) for true disturbance
-% mu_d  = @(z) 1 * mvnpdf(z',[0,0], eye(2)*0.1);
-mu_d  = @(z) (0.1 * z(1) - 0.01*z(2) + deg2rad(3))*1;
-var_d = @(z) 0;
-d_true  = @(z) deal(mu_d(z),var_d(z));
-% true measurement noise
+% define noise for true disturbance
 var_w = 1e-8;
+
 % create true dynamics model
-trueModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, d_true, var_w);
+trueModel = MotionModelGP_InvPendulum_deffect(Mc, Mp, b, I, l, [], var_w);
 
 
 %% Create Estimation Model and Nominal Model
 
-% define model (mean and variance) for estimated disturbance
+% -------------------------------------------------------------------------
+%  Create nominal model (no disturbance):  
+%       xk+1 = fd_nom(xk,uk)
+% -------------------------------------------------------------------------
+
+% create nominal dynamics model (no disturbance)
+nomModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, [], []); 
+
+
+% -------------------------------------------------------------------------
+%  Create adaptive dynamics model 
+%  (unmodeled dynamics will be estimated by Gaussian Process GP)
+%       xk+1 = fd_nom(xk,uk) + Bd * ( d_GP(zk) + w )
+% -------------------------------------------------------------------------
+
+% GP input dimension
+gp_n = MotionModelGP_InvPendulum_nominal.nz;
+% GP output dimension
+gp_p = MotionModelGP_InvPendulum_nominal.nd;
+
 % GP hyperparameters
-var_f   = 0.01;                   % output variance
+var_f   = 0.01;                     % output variance
 M       = diag([1e-1,1e-1].^2);     % length scale
 var_n   = var_w;                    % measurement noise variance
 maxsize = 100;                      % maximum number of points in the dictionary
-% create GP object
-d_GP = GP(var_f, var_n, M, maxsize);
 
+% create GP object
+d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
-estModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @d_GP.eval, var_w);
+estModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, @d_GP.eval, var_w);
 
-% create nominal dynamics model (no disturbance)
-nomModel = MotionModelGP_InvertedPendulum(Mc, Mp, b, I, l, @(z)deal(0,0), 0); 
 
 
 %% Controller
@@ -180,17 +191,16 @@ for k = ki:numel(out.t)-1
     out.x(:,k+1) = mvnrnd(mu_xkp1, var_xkp1, 1)';
     
     % ---------------------------------------------------------------------
-    % Safety
-    % ---------------------------------------------------------------------
-    if abs(out.x(3,k+1)) > deg2rad(60)
-        error('Pole is completely unstable. theta = %.f[deg]... aborting',rad2deg(out.x(3,k+1)));
-    end
-    
-    % ---------------------------------------------------------------------
     % measure data
     % ---------------------------------------------------------------------
     out.xhat(:,k+1) = out.x(:,k+1); % perfect observer
     
+    % ---------------------------------------------------------------------
+    % Safety
+    % ---------------------------------------------------------------------
+    if abs(out.xhat(3,k+1)) > deg2rad(60)
+        error('Pole is completely unstable. theta = %.f[deg]... aborting',rad2deg(out.xhat(3,k+1)));
+    end
     
     % ---------------------------------------------------------------------
     % calculate nominal model
@@ -205,7 +215,7 @@ for k = ki:numel(out.t)-1
         % calculate disturbance (error between measured and nominal)
         d_est = estModel.Bd \ (out.xhat(:,k+1) - out.xnom(:,k+1));
         % select subset of coordinates that will be used in GP prediction
-        zhat = estModel.Bz * out.xhat(:,k);
+        zhat = [ estModel.Bz_x * out.xhat(:,k); estModel.Bz_u * out.u(:,k) ];
         % add data point to the GP dictionary
         d_GP.add(zhat,d_est);
     end
@@ -237,21 +247,40 @@ subplot(2,1,2); hold on; grid on;
 plot(out.t(1:end-1), out.u, 'DisplayName', 'u(t)')
 legend;
 
-% true GP function that is ment to be learned
-Bz = trueModel.Bz;
+% true GP function that is meant to be learned
+Bz_x = trueModel.Bz_x;
+Bz_u = trueModel.Bz_u;
 Bd = trueModel.Bd;
+n = trueModel.n;
 
 % define the true expected disturbance model
 % z = [0;0.1];
-% gptrue = @(z) mu_d(z);
-gptrue = @(z) trueModel.Bd'*( trueModel.xkp1(trueModel.Bz'*z,zeros(trueModel.n),0,dt)...
-                             -nomModel.xkp1(trueModel.Bz'*z,zeros(nomModel.n),0,dt)  );
+gptrue = @(z) Bd'*( trueModel.xkp1(Bz_x'*z, zeros(n), 0, dt)...
+                   - nomModel.xkp1(Bz_x'*z, zeros(n), 0, dt)  );
 
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )
        
 
+%% Analyse learning
+
+figure('Color','w'); hold on; grid on;
+predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
+plot( predErrorNOgp' )
+title('Prediction error - without GP')
+
+vecnorm(predErrorNOgp')
 
 
+zhat = estModel.Bz_x * out.xhat;
+dgp = d_GP.eval(zhat);
+
+figure('Color','w'); hold on; grid on;
+predErrorWITHgp = estModel.Bd\(out.xhat - (out.xnom + estModel.Bd*dgp) );
+plot( predErrorWITHgp' )
+title('Prediction error - with GP')
+
+
+vecnorm(predErrorWITHgp')
 
 
