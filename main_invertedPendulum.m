@@ -263,9 +263,7 @@ d_GP.plot2d( gptrue )
 
 %% simulation of inverse pendulum
 
-g = 9.81;
-drawpendulum(out.t,out.x,Mc,Mp,g,l)     
-       
+   
 % simulation of inverse pendulum
 g = 9.81;
 drawpendulum(out.t,out.x,Mc,Mp,g,l)     
