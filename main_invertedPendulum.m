@@ -38,7 +38,7 @@ l = 3;
 
 %% True Dynamics Model
 %--------------------------------------------------------------------------
-%   xk+1 = fd(xk,uk) + Bd * ( w ),    
+%   xk+1 = fd_true(xk,uk) + Bd * ( w ),    
 %
 %       where: w ~ N(0,var_w)
 %------------------------------------------------------------------
@@ -259,6 +259,12 @@ gptrue = @(z) Bd'*( trueModel.xkp1(Bz_x'*z, zeros(n), 0, dt)...
 
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )
+
+
+%% simulation of inverse pendulum
+
+g = 9.81;
+drawpendulum(out.t,out.x,Mc,Mp,g,l)     
        
 % simulation of inverse pendulum
 g = 9.81;
