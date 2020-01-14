@@ -29,29 +29,29 @@ classdef MotionModelGP_InvPendulum_deffect < MotionModelGP_InvPendulum_nominal
         end
         
         
-        function xdot = f (obj, x, u)
-        %------------------------------------------------------------------
-        %   Continuous time dynamics of the inverted pendulum but with some 
-        %   deffect (additional disturbance)
-        %   args:
-        %       x: <n,1>
-        %       u: <m,1>
-        %   out:
-        %       xdot: <n,1> time derivative of x given x and u
-        %------------------------------------------------------------------
-            % get dynamics from nominal model
-            xdot = f @ MotionModelGP_InvPendulum_nominal(obj,x,u);
-            
-            % add deffect
-            xdot(3) = xdot(3) + (0.1 * x(3) - 0.01*x(4) + deg2rad(3)) *10;
-        end
-        
-%         function [xkp1, gradx_xkp1] = fd (obj, xk, uk, dt)
+%         function xdot = f (obj, x, u)
+%         %------------------------------------------------------------------
+%         %   Continuous time dynamics of the inverted pendulum but with some 
+%         %   deffect (additional disturbance)
+%         %   args:
+%         %       x: <n,1>
+%         %       u: <m,1>
+%         %   out:
+%         %       xdot: <n,1> time derivative of x given x and u
+%         %------------------------------------------------------------------
 %             % get dynamics from nominal model
-%             [xkp1, gradx_xkp1] = fd @ MotionModelGP_InvPendulum_nominal(obj, xk, uk, dt);
-%             % deffect
-%             xkp1(3) = xkp1(3) + (0.1 * xk(3) - 0.01*xk(4) + deg2rad(3)) *1;
+%             xdot = f @ MotionModelGP_InvPendulum_nominal(obj,x,u);
+%             
+%             % add deffect
+%             xdot(3) = xdot(3) + (0.1 * x(3) - 0.01*x(4) + deg2rad(3)) *10;
 %         end
+        
+        function [xkp1, gradx_xkp1] = fd (obj, xk, uk, dt)
+            % get dynamics from nominal model
+            [xkp1, gradx_xkp1] = fd @ MotionModelGP_InvPendulum_nominal(obj, xk, uk, dt);
+            % deffect
+            xkp1(2) = xkp1(2) ;%+ (0.1 * xk(2) + 0.1); % - 0.01*xk(4) + deg2rad(3)) *1;
+        end
         
     end
 

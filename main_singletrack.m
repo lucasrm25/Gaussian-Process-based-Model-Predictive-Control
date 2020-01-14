@@ -45,8 +45,8 @@ trueModel = MotionModelGP_SingleTrack_true( [], var_w);
 %       xk+1 = fd_nom(xk,uk)
 % -------------------------------------------------------------------------
 
-nomModel = MotionModelGP_SingleTrack_nominal( [], [] ); 
-% nomModel = MotionModelGP_SingleTrack_true( [], [] );
+%nomModel = MotionModelGP_SingleTrack_nominal( [], [] ); 
+nomModel = MotionModelGP_SingleTrack_true( [], [] );
 
 
 % -------------------------------------------------------------------------
@@ -70,8 +70,8 @@ maxsize = 300; % maximum number of points in the dictionary
 d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 
 % create nominal model with GP model as d(zk)
-estModel = MotionModelGP_SingleTrack_nominal(@d_GP.eval, var_w);
-% estModel = MotionModelGP_SingleTrack_true(@d_GP.eval, var_w);
+%estModel = MotionModelGP_SingleTrack_nominal(@d_GP.eval, var_w);
+estModel = MotionModelGP_SingleTrack_true([], var_w);
 
 
 %% Initialize Controller
@@ -117,8 +117,8 @@ fo   = @(t,mu_x,var_x,u,e,r) costFunction(mu_x, var_x, u, track);            % e
 fend = @(t,mu_x,var_x,e,r)   2 * costFunction(mu_x, var_x, zeros(m,1), track);   % end cost function
 
 % define dynamics
- f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
-%f  = @(mu_x,var_x,u) trueModel.xkp1(mu_x, var_x, u, dt);
+f  = @(mu_x,var_x,u) estModel.xkp1(mu_x, var_x, u, dt);
+
 % define additional constraints
 h  = @(x,u,e) [];
 g  = @(x,u,e) [];
@@ -185,8 +185,8 @@ d_GP.isActive = false;
 %% Start simulation
 
 ki = 1;
-ki = 476;
-mpc.uguess = out.u_pred_opt(:,:,ki);
+% ki = 476;
+% mpc.uguess = out.u_pred_opt(:,:,ki);
 
 % lap = 0;
 

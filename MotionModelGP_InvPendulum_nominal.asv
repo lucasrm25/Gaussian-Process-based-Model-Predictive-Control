@@ -43,7 +43,7 @@ classdef MotionModelGP_InvPendulum_nominal < MotionModelGP
         n  = 4   % number of outputs x(t)
         m  = 1   % number of inputs u(t)
         nz = 2   % dimension of z(t)
-        nd = 2   % output dimension of d(z)
+        nd = 1   % output dimension of d(z)
     end
     
     

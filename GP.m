@@ -188,7 +188,7 @@ classdef GP < handle
                 % obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
                 % obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
                 
-                D = pdist2(obj.X',X','mahalanobis', eye(5) ).^2;
+                D = pdist2(obj.X',X','euclidean').^2;
                 [~,idx] = max(D);
                 
                 obj.X = [obj.X(:,1:obj.N ~= idx), X];     % concatenation in the 2st dim.
@@ -331,7 +331,7 @@ classdef GP < handle
             end 
             
             % plot data points, and +-2*stddev surfaces 
-            figure('Color','w', 'Position', [-1827 27 550 420])
+            figure('Color','w')
             hold on; grid on;
             % surf(X1,X2,Y, 'FaceAlpha',0.3)
             surf(X1,X2,Ymean+2*Ystd ,Ystd, 'FaceAlpha',0.3)
@@ -343,7 +343,7 @@ classdef GP < handle
             view(30,30)
             
             % Comparison between true and prediction mean
-            figure('Color','w', 'Position',[-1269 32 1148 423])
+            figure('Color','w')
             subplot(1,2,1); hold on; grid on;
             surf(X1,X2,Ytrue, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'True function');
             % surf(X1,X2,Ymean, 'FaceAlpha',.5, 'FaceColor','g', 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
@@ -364,7 +364,7 @@ classdef GP < handle
             view(24,12)
             
             % plot bias and variance
-            figure('Color','w', 'Position',[-1260 547 894 264])
+            figure('Color','w')
             subplot(1,2,1); hold on; grid on;
             contourf(X1,X2, abs(Ymean-Ytrue), 50,'LineColor','none')
             title('Absolute Prediction Bias')

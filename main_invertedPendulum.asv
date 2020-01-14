@@ -73,8 +73,8 @@ gp_n = MotionModelGP_InvPendulum_nominal.nz;
 gp_p = MotionModelGP_InvPendulum_nominal.nd;
 
 % GP hyperparameters
-var_f   = [0.01,0.01]';                     % output variance
-M       = repmat(diag([1e0,1e0].^2),[1,1,gp_p]);%diag([1e1,1e1].^2);     % length scale
+var_f   = diag([0.01;                     % output variance
+M       = diag([1e1,1e1].^2);     % length scale
 var_n   = var_w;                    % measurement noise variance
 maxsize = 200;                      % maximum number of points in the dictionary
 
@@ -224,7 +224,7 @@ for k = ki:numel(out.t)-1
         % select subset of coordinates that will be used in GP prediction
         zhat = [ estModel.Bz_x * out.xhat(:,k); estModel.Bz_u * out.u(:,k) ];
         % add data point to the GP dictionary
-        d_GP.add(zhat,d_est');
+        d_GP.add(zhat,d_est);
         d_GP.updateModel();
     end
     
