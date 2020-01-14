@@ -49,7 +49,6 @@ var_w = 1e-8;
 % create true dynamics model
 trueModel = MotionModelGP_InvPendulum_deffect(Mc, Mp, b, I, l, [], var_w);
 
-
 %% Create Estimation Model and Nominal Model
 
 % -------------------------------------------------------------------------
