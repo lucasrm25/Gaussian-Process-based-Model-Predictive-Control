@@ -6,14 +6,16 @@ Supported Matlab Version **>= R2019a**
 
 
 
-## Control of an Inverted Pendulum with broken motor
+## Control of an Inverted Pendulum with deffect motor
 
 To run the Inverted Pendulum please execute
-> ex_invertedPendulum.m
+> main_invertedPendulum.m
 
 
-## Control of a Vehicle on a race track
+## Control of a Race Vehicle with unkown true dynamics
 
 To run the Race Car example execute:
-> ex_singletrack.m
+> main_singletrack.m
+
+![](./simresults/trackAnimVideo-13-Jan-2020.gif)
 

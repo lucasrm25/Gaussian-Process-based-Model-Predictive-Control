@@ -6,7 +6,7 @@
 %------------------------------------------------------------------
 
 
-classdef MotionModelGP_InvertedPendulum < MotionModelGP
+classdef MotionModelGP_InvPendulum_nominal < MotionModelGP
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
@@ -49,12 +49,12 @@ classdef MotionModelGP_InvertedPendulum < MotionModelGP
     
     methods
         
-        function obj = MotionModelGP_InvertedPendulum (Mc, Mp, b, I, l, d, sigmaw)
+        function obj = MotionModelGP_InvPendulum_nominal (Mc, Mp, b, I, l, d, sigmaw)
         %------------------------------------------------------------------
         %   object constructor
         %------------------------------------------------------------------
             % call superclass constructor
-            obj = obj@MotionModelGP(d,sigmaw);
+            obj = obj @ MotionModelGP(d,sigmaw);
             % store parameters
             obj.Mc = Mc;
             obj.Mp = Mp;

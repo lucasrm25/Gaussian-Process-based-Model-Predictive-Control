@@ -69,10 +69,21 @@ classdef (Abstract) MotionModelGP < handle
         %       d: evaluates nonlinear motion model mean and covariance 
         %          function [mean_d, var_d] = d(z),   with z = Bz*x
         %       var_w: <1> measurement noise covariance
+        %   obs: if d or var_w are empty, then this function will set them
+        %        to zero with the correct dimensions
         %------------------------------------------------------------------
             obj.d = d;
+            if isempty(obj.d)
+                mu_d  = @(z) zeros(obj.nd,1);
+                var_d = @(z) zeros(obj.nd);
+                obj.d = @(z) deal( mu_d(z), var_d(z) );
+            end
+            
             obj.var_w = var_w;
-
+            if isempty(obj.var_w)
+                obj.var_w = zeros(obj.nd);
+            end
+            
             %--------------------------------------------------------------
             % assert model
             %--------------------------------------------------------------
@@ -81,8 +92,8 @@ classdef (Abstract) MotionModelGP < handle
             assert(size(obj.Bd,2) == obj.nd, ...
                 sprintf('obj.Bd matrix should have %d columns, but has %d',obj.nd,size(obj.Bd,2)))
             
-            assert( all(size(var_w)==[obj.nd,obj.nd]), ...
-                sprintf('Variable var_w should have dimension %d, but has %d',obj.nd,size(var_w,1)))
+            assert( all(size(obj.var_w)==[obj.nd,obj.nd]), ...
+                sprintf('Variable var_w should have dimension %d, but has %d',obj.nd,size(obj.var_w,1)))
             assert(size(obj.Bd,1) == obj.n, ...
                 sprintf('obj.Bd matrix should have %d rows, but has %d',obj.n,size(obj.Bd,1)))
             assert(size(obj.Bz_x,2) == obj.n || isempty(obj.Bz_x), ...
@@ -92,12 +103,27 @@ classdef (Abstract) MotionModelGP < handle
             
             % validate given disturbance model
             ztest = [obj.Bz_x*zeros(obj.n,1) ; obj.Bz_u*zeros(obj.m,1)];
-            [muy,vary] = d(ztest);
+            [muy,vary] = obj.d(ztest);
             assert( size(muy,1)==obj.nd, ...
                 sprintf('Disturbance model d evaluates to a mean value with wrong dimension. Got %d, expected %d',size(muy,1),obj.nd))
             assert( all(size(vary)==[obj.nd,obj.nd]), ...
                 sprintf('Disturbance model d evaluates to a variance value with wrong dimension. Got %d, expected %d',size(vary,1),obj.nd))
         end
+        
+        
+        function zk = z(obj, xk, uk)
+        %------------------------------------------------------------------
+        % select variables (xk,uk) -> z
+        %------------------------------------------------------------------
+            if ~isempty(obj.Bz_x)
+                z_xk = obj.Bz_x * xk;  else, z_xk=[];
+            end
+            if ~isempty(obj.Bz_u)
+                z_uk = obj.Bz_u * uk; else, z_uk = [];
+            end
+            zk = [ z_xk ; z_uk ];
+        end
+        
         
         function [xkp1, gradx_xkp1] = fd (obj, xk, uk, dt)
         %------------------------------------------------------------------
@@ -150,6 +176,7 @@ classdef (Abstract) MotionModelGP < handle
             gradx_xkp1 = eye(obj.n) + dt * gradx_xdot;
         end
         
+        
         function [mu_xkp1,var_xkp1] = xkp1 (obj, mu_xk, var_xk, uk, dt)
         %------------------------------------------------------------------
         %   State prediction (motion model) using Extended Kalman Filter 
@@ -165,13 +192,7 @@ classdef (Abstract) MotionModelGP < handle
             grad_xkp1 = [gradx_fd; obj.Bd'; obj.Bd'];
             
             % select variables (xk,uk) -> z
-            if ~isempty(obj.Bz_x)
-                z_xk = obj.Bz_x * mu_xk;  else, z_xk=[];
-            end
-            if ~isempty(obj.Bz_u)
-                z_uk = obj.Bz_u * uk; else, z_uk = [];
-            end
-            z = [ z_xk ; z_uk ];
+            z = obj.z(mu_xk,uk);
             
             % evaluate disturbance
             [mu_d, var_d] = obj.d(z);

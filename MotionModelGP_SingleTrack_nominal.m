@@ -5,7 +5,7 @@
 %   -
 %--------------------------------------------------------------------------
 
-classdef MotionModelGP_SingleTrackNominal < MotionModelGP
+classdef MotionModelGP_SingleTrack_nominal < MotionModelGP
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
@@ -29,10 +29,10 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
 %       ]
 %   
 %--------------------------------------------------------------------------
- 
+
     properties
-        M    = 500      % vehicle mass
-        I_z  = 600      % vehicle moment of inertia (yaw axis)
+        M    = 500*1.5      % vehicle mass
+        I_z  = 600*1.5      % vehicle moment of inertia (yaw axis)
         g    = 9.81     % gravitation
         l_f  = 0.9      % distance of the front wheel to the center of mass 
         l_r  = 1.5      % distance of the rear wheel to the center of mass
@@ -45,8 +45,8 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         
         
         % Pacejka lateral dynamics parameters
-        c_f = 14000 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
-        c_r = 14000 % = 2*g*M/deltamax  % rear coornering stiffness
+        c_f = 14000 * 1.3 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
+        c_r = 14000 * 1.3 % = 2*g*M/deltamax  % rear coornering stiffness
     end
     
     properties(Constant)
@@ -67,7 +67,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
     end
     
     methods
-        function obj = MotionModelGP_SingleTrackNominal(d,sigmaw)
+        function obj = MotionModelGP_SingleTrack_nominal(d,sigmaw)
         %------------------------------------------------------------------
         %   object constructor. Create model and report model stability
         %   analysis
@@ -240,7 +240,7 @@ classdef MotionModelGP_SingleTrackNominal < MotionModelGP
         %   diferentiable functions.
         %   
         %   To generate files, simply call:
-        %       nomModel = MotionModelGP_SingleTrackNominal(@(z)deal(zeros(3,1),zeros(3)), zeros(3));
+        %       nomModel = MotionModelGP_SingleTrack_nominal(@(z)deal(zeros(3,1),zeros(3)), zeros(3));
         %       nomModel.generate_grad_functions() 
         %------------------------------------------------------------------
             syms I_x I_y vpsi V_vx V_vy psi_dot track_dist real

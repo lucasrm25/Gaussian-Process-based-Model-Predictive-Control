@@ -223,6 +223,8 @@ classdef SingleTrackAnimation < handle
             % video rec
             videoframes = struct('cdata',[],'colormap',[]);
             obj.initTrackAnimation();
+            xlim manual
+            ylim manual
             for k=1:size(obj.mu_x_pred_opt,3)
                 status = obj.updateTrackAnimation(k);
                 if status == 0

@@ -5,7 +5,7 @@
 %   -
 %--------------------------------------------------------------------------
 
-classdef MotionModelGP_SingleTrack < MotionModelGP
+classdef MotionModelGP_SingleTrack_true < MotionModelGP
 %--------------------------------------------------------------------------
 %   xk+1 = fd(xk,uk) + Bd * ( d(zk) + w ),    
 %
@@ -90,7 +90,7 @@ classdef MotionModelGP_SingleTrack < MotionModelGP
     end
     
     methods
-        function obj = MotionModelGP_SingleTrack(d,sigmaw)
+        function obj = MotionModelGP_SingleTrack_true(d,sigmaw)
         %------------------------------------------------------------------
         %   object constructor. Create model and report model stability
         %   analysis
