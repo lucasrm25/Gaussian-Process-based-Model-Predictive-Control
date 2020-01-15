@@ -33,7 +33,7 @@ Mp = 2;
 b = 0.1;
 I = 0.6;
 l = 3;
-
+g = 9.81;
 
 
 %% True Dynamics Model
@@ -230,10 +230,14 @@ for k = ki:numel(out.t)-1
 end
 
 
+%% Optimize GP hyperparameters ??? (Offline procedure, after simulation)
+
+% d_GP.optimizeHyperParams('ga');
+% d_GP.optimizeHyperParams('fmincon');
+
+
 %% Evaluate results
 close all;
-
-d_GP.isActive = true;
 
 % plot reference and state signal
 figure('Position',[-1836 535 560 420]); 
@@ -258,35 +262,61 @@ gptrue = @(z) Bd'*( trueModel.xkp1(Bz_x'*z, zeros(n), 0, dt)...
                    - nomModel.xkp1(Bz_x'*z, zeros(n), 0, dt)  );
 
 % plot prediction bias and variance
+d_GP.isActive = true;
 d_GP.plot2d( gptrue )
+d_GP.isActive = false;
 
+%% animation of inverse pendulum
 
-%% simulation of inverse pendulum
-
-   
-% simulation of inverse pendulum
-g = 9.81;
+% animation of inverse pendulum
 drawpendulum(out.t,out.x,Mc,Mp,g,l)     
 
+
 %% Analyse learning
+% ---------------------------------------------------------------------
+% Check how the GP reduces the prediction error
+% ---------------------------------------------------------------------
 
-figure('Color','w'); hold on; grid on;
-predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
-plot( predErrorNOgp' )
-title('Prediction error - without GP')
-
-vecnorm(predErrorNOgp')
+% d_GP.optimizeHyperParams('fmincon')
+% d_GP.optimizeHyperParams('ga')
 
 
-zhat = estModel.Bz_x * out.xhat;
+% prediction error without GP
+% predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
+predErrorNOgp = estModel.Bd\(out.xhat(:,1:k) - out.xnom(:,1:k));
+
+
+% prediction error with trained GP
+d_GP.isActive = true;
+zhat = [ estModel.Bz_x * out.xhat(:,1:k-1) ];
+% zhat = estModel.z( out.xhat, [out.u,zeros(3,1)] )
 dgp = d_GP.eval(zhat);
+predErrorWITHgp = estModel.Bd\( out.xhat(:,2:k) - (out.xnom(:,2:k) + estModel.Bd*dgp) );
+d_GP.isActive = false;
+
+
+disp('Prediction mean squared error without GP:')
+disp( mean(predErrorNOgp(:,all(~isnan(predErrorNOgp))).^2 ,2) )
+disp('Prediction mean squared error with trained GP:')
+disp( mean(predErrorWITHgp(:,all(~isnan(predErrorWITHgp))).^2 ,2) )
+
+
+
+% Visualize error
+figure('Color','w'); hold on; grid on;
+subplot(1,2,1)
+plot( predErrorNOgp' )
+subplot(1,2,2)
+hist(predErrorNOgp')
+sgtitle('Prediction error - without GP')
+
 
 figure('Color','w'); hold on; grid on;
-predErrorWITHgp = estModel.Bd\(out.xhat - (out.xnom + estModel.Bd*dgp) );
+subplot(1,2,1)
 plot( predErrorWITHgp' )
-title('Prediction error - with GP')
+subplot(1,2,2)
+hist(predErrorWITHgp')
+sgtitle('Prediction error - with GP')
 
-
-vecnorm(predErrorWITHgp')
 
 

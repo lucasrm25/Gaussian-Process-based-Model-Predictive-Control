@@ -68,14 +68,12 @@ classdef MotionModelGP_SingleTrack_true < MotionModelGP
     properties(Constant)
         % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(z)+w)),
         % where z = [Bz_x*x;Bz_u*u] 
-        Bz_x = [0 0 0  1 0 0  0;
-                0 0 0  0 1 0  0;
-                0 0 0  0 0 1  0] 
+        Bz_x = [zeros(3), eye(3), zeros(3,1)] 
         Bz_u = [1 0 0;
-                0 1 0]
+                0 1 0] 
         Bd = [zeros(3);
               eye(3); 
-              0 0 0];               
+              zeros(1,3)]               
         n  = 7   % number of outputs x(t)
         m  = 3   % number of inputs u(t)
         nz = 5   % dimension of z(t)
@@ -238,6 +236,16 @@ classdef MotionModelGP_SingleTrack_true < MotionModelGP
             C_r = 8;                % shape factor (Pacejka) (rear wheel)
             D_r = 4000;             % peak value (Pacejka) (rear wheel)
             E_r = -0.5;             % curvature factor (Pacejka) (rear wheel)
+            
+            B_f = 10.96;              % stiffnes factor (Pacejka) (front wheel)
+            C_f = 1.3;                % shape factor (Pacejka) (front wheel)
+            D_f = 4560.4;             % peak value (Pacejka) (front wheel)
+            E_f = -0.5;               % curvature factor (Pacejka) (front wheel)
+
+            B_r = 12.67;              % stiffnes factor (Pacejka) (rear wheel)
+            C_r = 1.3;                % shape factor (Pacejka) (rear wheel)
+            D_r = 3947.81;            % peak value (Pacejka) (rear wheel)
+            E_r = -0.5;               % curvature factor (Pacejka) (rear wheel)
             
             a_r = deg2rad(-25:0.1:25);
             a_f = deg2rad(-25:0.1:25);

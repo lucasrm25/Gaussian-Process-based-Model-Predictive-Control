@@ -43,7 +43,7 @@ classdef GP < handle
         % (DEPRECATED) inv_KXX_sn  % <N,N>
         
         isOutdated  = false % <bool> model is outdated if data has been added withouth updating L and alpha matrices
-        isOptimized = false % <bool> true if model had its kernel parameters optimized and no new data has been added
+        % isOptimized = false % <bool> true if model had its kernel parameters optimized and no new data has been added
     end
     
     methods
@@ -68,9 +68,9 @@ classdef GP < handle
             obj.p       = p;
             
             % validade model parameters
-            assert( obj.n == size(M,1),     'Matrix M has wrong dimension. Expected <%d,%d,%d>',obj.n,obj.n,obj.p);
-            assert( obj.p == size(var_f,1), 'Matrix var_f has wrong dimension. Expected <%d>, got <%d>.',obj.p,size(var_f,1));
-            assert( obj.p == size(var_n,1), 'Matrix var_n has wrong dimension. Expected <%d>, got <%d>.',obj.p,size(var_n,1));
+            assert( obj.n == size(M,1),     'Matrix M has wrong dimension or parameters n/p are wrong. Expected dim(M)=<n,n,p>=<%d,%d,%d>',obj.n,obj.n,obj.p);
+            assert( obj.p == size(var_f,1), 'Matrix var_f has wrong dimension or parameter p is wrong. Expected dim(var_f)=<p>=<%d>, got <%d>.',obj.p,size(var_f,1));
+            assert( obj.p == size(var_n,1), 'Matrix var_n has wrong dimension or parameter p is wrong. Expected dim(var_n)=<p>=<%d>, got <%d>.',obj.p,size(var_n,1));
         end
         
         
@@ -133,7 +133,7 @@ classdef GP < handle
                 % for each output dimension
                 obj.alpha = zeros(obj.N,obj.p);
                 obj.L = zeros(obj.N,obj.N);
-                K=obj.K(obj.X,obj.X);
+                K = obj.K(obj.X,obj.X);
                 for pi=1:obj.p
                     obj.L(:,:,pi) = chol(K(:,:,pi)+ obj.var_n(pi) * I ,'lower');
                     % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
@@ -176,55 +176,96 @@ classdef GP < handle
         %   X: <n,N>
         %   Y: <N,p>
         %------------------------------------------------------------------
+            OPTION = 'A'; % {'A','B'}
+        
             assert(size(Y,2) == obj.p, ...
                 sprintf('Y should have %d columns, but has %d. Dimension does not agree with the specified kernel parameters',obj.p,size(Y,2)));
             assert(size(X,1) == obj.n, ...
                 sprintf('X should have %d rows, but has %d. Dimension does not agree with the specified kernel parameters',obj.n,size(X,1)));
             
+            Ntoadd = size(X,2);
+            Nextra = obj.N + Ntoadd - obj.Nmax;
+
+            % if there is space enough to append the new data points, then
+            if Nextra <= 0 
+                obj.X = [obj.X, X];
+                obj.Y = [obj.Y; Y];
+                obj.updateModel();
             
-            % dictionary is full
-            if obj.N + size(X,2) > obj.Nmax
-                % For now, we just keep the most recent data
-                % obj.X = [obj.X(:,2:end), X];     % concatenation in the 2st dim.
-                % obj.Y = [obj.Y(2:end,:); Y];    % concatenation in the 1st dim.
+            % data overflow: dictionary will be full. we need to select
+            % relevant points
+            else 
                 
-                D = pdist2(obj.X',X','mahalanobis', eye(5) ).^2;
-                [~,idx] = max(D);
+                Nthatfit = obj.Nmax - obj.N;
                 
-                obj.X = [obj.X(:,1:obj.N ~= idx), X];     % concatenation in the 2st dim.
-                obj.Y = [obj.Y(1:obj.N ~= idx,:); Y];    % concatenation in the 1st dim.
+                % make dictionary full
+                obj.X = [obj.X, X(:,1:Nthatfit) ];
+                obj.Y = [obj.Y; Y(1:Nthatfit,:) ];
+                obj.updateModel();
                 
-            % append to dictionary
-            else
-                obj.X = [obj.X, X];     % concatenation in the 2st dim.
-                obj.Y = [obj.Y; Y];     % concatenation in the 1st dim.
+                % points left to be added
+                X = X(:,Nthatfit+1:end);
+                Y = Y(Nthatfit+1:end,:);
+                
+                % OPTION A) 
+                % The closest (euclidian dist.) points will be iteratively removed
+                if strcmp(OPTION,'A')
+                    for i=1:Nextra
+                        D = pdist2(obj.X',X(:,i)','euclidean').^2;
+                        [~,idx_rm] = min(D);
+                        idx_keep = 1:obj.N ~= idx_rm;
+
+                        obj.X = [obj.X(:,idx_keep), X(:,i)];  % concatenation in the 2st dim.
+                        obj.Y = [obj.Y(idx_keep,:); Y(i,:)];    % concatenation in the 1st dim.
+                    end
+                    
+                % OPTION B)
+                % the point with lowest variance will be removed        
+                else
+                    X_all = [obj.X,X];
+                    Y_all = [obj.Y;Y];
+                    [~, var_y] = obj.eval( X_all, 'activate');
+                    [~,idx_keep] = maxk(sum(reshape(var_y, obj.p^2, obj.N+Nextra )),obj.Nmax);
+
+                    obj.X = X_all(:,idx_keep);
+                    obj.Y = Y_all(idx_keep,:);
+                end
             end
         end
         
         
-        function [mu_y, var_y] = eval(obj,x)
+        function [mu_y, var_y] = eval(obj, x, varargin)
         %------------------------------------------------------------------
         % Evaluate GP at the points x
         % This is a fast implementation of [Rasmussen, pg19]
         %
         % args:
         %   x: <n,Nx> point coordinates
+        % varargin: 
+        %   'activate': force calculation of mean and variance even if GP is inactive
         % out:
         %   muy:  <p,Nx>      E[Y] = E[gp(x)]
         %   vary: <p,p,Nx>    Var[Y]  = Var[gp(x)]
         %------------------------------------------------------------------
+            assert(size(x,1)==obj.n, sprintf('Input vector has %d columns but should have %d !!!',size(x,1),obj.n));
+            
+            % calculate mean and variance even if GP is inactive
+            forceActive = length(varargin)>1 && strcmp(varargin{1},'activate');
+            
             Nx = size(x,2);  % size of dataset to be evaluated
         
-            % if there is no data in the dictionary, return GP prior
-            if obj.N == 0 || ~obj.isActive
+            % if there is no data in the dictionary or GP is not active, return zeros
+            if obj.N == 0 || (~obj.isActive && ~forceActive)
                 mu_y  = repmat(obj.mu(x),[1,obj.p])';
                 var_y = zeros(obj.p,obj.p,Nx);
                 return;
             end
             
-            assert(size(x,1)==obj.n, sprintf('Input vector has %d columns but should have %d !!!',size(x,1),obj.n));
-            assert(~isempty(obj.alpha), 'Please call updateModel() at least once before evaluating!!!')
-        
+            % in case the matrices alpha and L are empty we need to update the model
+            if isempty(obj.alpha) || isempty(obj.L)
+                obj.updateModel();
+            end
+            
             % Calculate posterior mean mu_y for each output dimension
             KxX = obj.K(x,obj.X);
             mu_y = zeros(obj.p,Nx);
@@ -251,31 +292,102 @@ classdef GP < handle
             % --------------------- (DEPRECATED) ------------------------- 
         end
         
-        % function eval_gradx(obj)
-        %     KxX = obj.K(x,obj.X);
-        %     muy  = obj.mu(x) + KxX * obj.inv_KXX_sn * (obj.Y-obj.mu(obj.X));
-        %     vary = obj.K(x,x) - KxX * obj.inv_KXX_sn * KxX';
-        % end
         
-        
-        function optimizeHyperParams(obj)
+        function optimizeHyperParams(obj, method)
         %------------------------------------------------------------------
         % Optimize kernel hyper-parameters based on the current dictionary
         %------------------------------------------------------------------
-            error('not yet implemented!!!');
-            if ~obj.isOptimized
-                for ip = 1:obj.p
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    % TODO:
-                    %       - Implement ML/MAP optimization of hyper parameters
-                    %       - See Rasmussen's book Sec. 5.4.1
-                    %
-                    %       - Each output dimension is a separate GP and must 
-                    %       be optimized separately.
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            
+            warning('off', 'MATLAB:nearlySingularMatrix')
+            warning('off', 'MATLAB:singularMatrix')
+        
+            % error('not yet implemented!!!');
+            for ip = 1:obj.p
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % TODO:
+                %       - Implement ML/MAP optimization of hyper parameters
+                %       - See Rasmussen's book Sec. 5.4.1
+                %
+                %       - Each output dimension is a separate GP and must 
+                %       be optimized separately.
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % d_GP.optimizeHyperParams
+                % obj.optimizeHyperParams_costfun( [obj.var_f; diag(obj.M)])
+
+                nvars = 1 + obj.n;
+                IntCon = [];
+                fun = @(vars) optimizeHyperParams_costfun(obj,ip,vars);
+                A = [];
+                b = [];
+                Aeq = [];
+                beq = [];
+                lb = [ 1e-4 ; ones(obj.n,1)*1e-4 ];
+                ub = [ 1e+4 ; ones(obj.n,1)*1e+4 ];
+                nonlcon = [];
+
+                if strcmp(method, 'ga')
+                    options = optimoptions('ga',...
+                                           'ConstraintTolerance',1e-6,...
+                                           'PlotFcn', @gaplotbestf,...
+                                           'Display','iter',...
+                                           'UseParallel',false);
+                    opt_vars = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
+                elseif strcmp(method,'fmincon')
+                    x0 = [obj.var_f(ip); diag(obj.M(:,:,ip))]; 
+                    options = optimoptions('fmincon', ...
+                                           'PlotFcn','optimplotfval',...
+                                           'Display','iter');
+                    [opt_vars,~] = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon,options);
+                else
+                    error('Method %s not implemented, please choose an existing method',method);
                 end
-                obj.isOptimized = true;
+
+                obj.var_f(ip) = opt_vars(1);
+                obj.M(:,:,ip) = diag( opt_vars(2:end) );
+
+
+                % update matrices alpha and L
+                obj.isOutdated = true;
+                obj.updateModel();
             end
+            
+            warning('on', 'MATLAB:nearlySingularMatrix')
+            warning('on', 'MATLAB:singularMatrix')
+        end
+        
+        function cost = optimizeHyperParams_costfun(obj,outdim,vars)
+            var_f = vars(1);
+            M = diag(vars(2:end));
+            Y = obj.Y(:,outdim);
+            var_n = obj.var_n(outdim);
+            
+            K  = var_f * exp( -0.5 * pdist2(obj.X',obj.X','mahalanobis',M).^2 );
+            Ky = K + var_n*eye(obj.N);
+            
+            cost = -0.5* Y' * Ky * Y -0.5* logdet(Ky) - obj.n/2 * log(2*pi);
+        end
+        
+        function cost = optimizeHyperParams_gradfun(obj,outdim,vars)
+            
+            var_f = vars(1);
+            M = diag(vars(2:end));
+                
+            K = var_f * exp( -0.5 * pdist2(obj.X',obj.X','mahalanobis',M).^2 );
+            
+            alpha = K \ obj.Y(:,outdim);
+            
+            dK_var_f = K*2/sqrt(var_f);
+            
+            dK_l = zeros(obj.N,obj.N);
+            for i=1:obj.N
+                for j=1:obj.N
+                    ksi = obj.X(:,i) - obj.X(:,j);
+                    % dK_l(i,j) = sum( K(i,j)*0.5*inv(M)*ksi*ksi'*inv(M) * log(diag(M)) );
+                    dK_l(i,j) = sum( K(i,j)*0.5*M\ksi*ksi'/M * log(diag(M)) );
+                end
+            end            
+            % cost = 0.5 * trace( (alpha*alpha' - inv(K)) * ( dK_var_f + dK_l ) );
+            cost = 0.5 * trace( alpha*alpha'*(dK_var_f+dK_l) - K\(dK_var_f+dK_l) );
         end
         
         

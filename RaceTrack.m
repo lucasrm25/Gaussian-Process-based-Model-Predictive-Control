@@ -120,13 +120,19 @@ classdef RaceTrack < handle
             R_c   = obj.w/2;
         end
         
-        function dist = getTrackDistance(obj,pos_vehicle)
+        function dist = getTrackDistance(obj, pos_vehicle, varargin)
         %------------------------------------------------------------------
         %   Given the vehicle position, calculates the traveled distance 
         %   of the vehicle 'dist' along the centerline of the track
         %------------------------------------------------------------------
-            [~,I] = pdist2(obj.track_c',pos_vehicle','euclidean','Smallest',1);
-            I = mod(I-1, length(obj.dist))+1;
+            if length(varargin)==1
+                olddist = varargin{1};
+                idxsearchspace = find( obj.dist > olddist-10 & obj.dist < olddist+20 );
+            else
+                idxsearchspace = 1:length(obj.dist);
+            end
+            [~,I] = pdist2(obj.track_c(:,idxsearchspace)',pos_vehicle','euclidean','Smallest',1);
+            I = mod(I+idxsearchspace(1)-1, length(obj.dist))+1;
             dist = obj.dist(I);
         end
         

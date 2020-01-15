@@ -31,8 +31,8 @@ classdef MotionModelGP_SingleTrack_nominal < MotionModelGP
 %--------------------------------------------------------------------------
 
     properties
-        M    = 500*1.5      % vehicle mass
-        I_z  = 600*1.5      % vehicle moment of inertia (yaw axis)
+        M    = 500 *1.5      % vehicle mass
+        I_z  = 600 *1.5      % vehicle moment of inertia (yaw axis)
         g    = 9.81     % gravitation
         l_f  = 0.9      % distance of the front wheel to the center of mass 
         l_r  = 1.5      % distance of the rear wheel to the center of mass
@@ -45,21 +45,19 @@ classdef MotionModelGP_SingleTrack_nominal < MotionModelGP
         
         
         % Pacejka lateral dynamics parameters
-        c_f = 14000 * 1.3 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
-        c_r = 14000 * 1.3 % = 2*g*M/deltamax  % rear coornering stiffness
+        c_f = 14000 * 2.5 % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
+        c_r = 14000 * 2.5 % = 2*g*M/deltamax  % rear coornering stiffness
     end
     
     properties(Constant)
         % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(z)+w)),
         % where z = [Bz_x*x;Bz_u*u] 
-        Bz_x = [0 0 0  1 0 0  0;
-                0 0 0  0 1 0  0;
-                0 0 0  0 0 1  0] 
+        Bz_x = [zeros(3), eye(3), zeros(3,1)] 
         Bz_u = [1 0 0;
                 0 1 0] 
         Bd = [zeros(3);
               eye(3); 
-              0 0 0];               
+              zeros(1,3)]
         n  = 7   % number of outputs x(t)
         m  = 3   % number of inputs u(t)
         nz = 5   % dimension of z(t)
@@ -75,7 +73,7 @@ classdef MotionModelGP_SingleTrack_nominal < MotionModelGP
             % call superclass constructor
             obj = obj@MotionModelGP(d,sigmaw);
             % report single track dynamics analysis
-            obj.analyseSingleTrack();
+            % obj.analyseSingleTrack();
             
             % add folder CODEGEN to path. Here there will be some functions
             % generated with the method generate_grad_functions()
