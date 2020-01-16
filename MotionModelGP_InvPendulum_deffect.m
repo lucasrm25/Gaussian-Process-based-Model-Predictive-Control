@@ -44,6 +44,8 @@ classdef MotionModelGP_InvPendulum_deffect < MotionModelGP_InvPendulum_nominal
             
             % add deffect
             xdot(3) = xdot(3) + (0.1 * x(3) - 0.01*x(4) + deg2rad(3)) *10;
+            
+            % xdot(2) = xdot(2) + ( -0.1 * x(1) + deg2rad(3));
         end
         
 %         function [xkp1, gradx_xkp1] = fd (obj, xk, uk, dt)

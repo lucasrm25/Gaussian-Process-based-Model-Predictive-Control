@@ -23,6 +23,10 @@ tf = 7;         % simulation time
 maxiter = 15;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
+
+useParallel = false;
+
+
 lookahead = dt*N;
 fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
 
@@ -33,12 +37,12 @@ Mp = 2;
 b = 0.1;
 I = 0.6;
 l = 3;
-
+g = 9.81;
 
 
 %% True Dynamics Model
 %--------------------------------------------------------------------------
-%   xk+1 = fd(xk,uk) + Bd * ( w ),    
+%   xk+1 = fd_true(xk,uk) + Bd * ( w ),    
 %
 %       where: w ~ N(0,var_w)
 %------------------------------------------------------------------
@@ -48,7 +52,6 @@ var_w = 1e-8;
 
 % create true dynamics model
 trueModel = MotionModelGP_InvPendulum_deffect(Mc, Mp, b, I, l, [], var_w);
-
 
 %% Create Estimation Model and Nominal Model
 
@@ -128,13 +131,6 @@ mpc.tol     = 1e-3;
 mpc.maxiter = maxiter;
 % -------------------------------------------------------------------------
 
-% TEST NMPC
-x0 = [0 0 0.1 0]';
-t0 = 0;
-r  = @(t) [0 0 0]';    % desired trajectory
-[u_opt, e_opt] = mpc.optimize(x0, t0, r );
-
-
 
 %% Simulate
 
@@ -180,7 +176,7 @@ for k = ki:numel(out.t)-1
     % ---------------------------------------------------------------------
     % NPMC controller
     % ---------------------------------------------------------------------
-    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r);
+    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r, useParallel);
     out.u(:,k) = u_opt(:,1);
     
     
@@ -231,10 +227,29 @@ for k = ki:numel(out.t)-1
 end
 
 
+
+
+return
+
+
+
+
+%% Optimize GP hyperparameters ??? (Offline procedure, after simulation)
+
+d_GP.M = M
+d_GP.var_f = var_f;
+d_GP.var_n = var_n;
+
+% d_GP.optimizeHyperParams('ga');
+d_GP.optimizeHyperParams('fmincon');
+
+d_GP.M
+d_GP.var_f
+d_GP.var_n
+
+
 %% Evaluate results
 close all;
-
-d_GP.isActive = true;
 
 % plot reference and state signal
 figure('Position',[-1836 535 560 420]); 
@@ -260,27 +275,57 @@ gptrue = @(z) Bd'*( trueModel.xkp1(Bz_x'*z, zeros(n), 0, dt)...
 
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )
-       
+
+%% animation of inverse pendulum
+
+% animation of inverse pendulum
+drawpendulum(out.t,out.x,Mc,Mp,g,l)     
+
 
 %% Analyse learning
+% ---------------------------------------------------------------------
+% Check how the GP reduces the prediction error
+% ---------------------------------------------------------------------
 
+% d_GP.optimizeHyperParams('fmincon')
+% d_GP.optimizeHyperParams('ga')
+
+
+k = find(~isnan(out.xhat(1,:)), 1, 'last' ) - 1;
+
+% prediction error without GP
+% predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
+predErrorNOgp = estModel.Bd\(out.xhat(:,1:k-1) - out.xnom(:,1:k-1));
+
+
+% prediction error with trained GP
+zhat = estModel.z( out.xhat(:,1:k-1), out.u(:,1:k-1) )
+dgp = d_GP.eval(zhat,true);
+predErrorWITHgp = estModel.Bd\( out.xhat(:,2:k) - (out.xnom(:,2:k) + estModel.Bd*dgp) );
+
+
+disp('Prediction mean squared error without GP:')
+disp( mean(predErrorNOgp(:,all(~isnan(predErrorNOgp))).^2 ,2) )
+disp('Prediction mean squared error with trained GP:')
+disp( mean(predErrorWITHgp(:,all(~isnan(predErrorWITHgp))).^2 ,2) )
+
+
+
+% Visualize error
 figure('Color','w'); hold on; grid on;
-predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
+subplot(1,2,1)
 plot( predErrorNOgp' )
-title('Prediction error - without GP')
+subplot(1,2,2)
+hist(predErrorNOgp')
+sgtitle('Prediction error - without GP')
 
-vecnorm(predErrorNOgp')
-
-
-zhat = estModel.Bz_x * out.xhat;
-dgp = d_GP.eval(zhat);
 
 figure('Color','w'); hold on; grid on;
-predErrorWITHgp = estModel.Bd\(out.xhat - (out.xnom + estModel.Bd*dgp) );
+subplot(1,2,1)
 plot( predErrorWITHgp' )
-title('Prediction error - with GP')
+subplot(1,2,2)
+hist(predErrorWITHgp')
+sgtitle('Prediction error - with GP')
 
-
-vecnorm(predErrorWITHgp')
 
 
