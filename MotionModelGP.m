@@ -38,6 +38,10 @@ classdef (Abstract) MotionModelGP < handle
         var_w  % measurement noise covariance matrix. w ~ N(0,var_w)
     end
     
+    properties (SetAccess=public)
+        % is_d_active = false
+    end
+    
     methods (Abstract)
         xdot = f (obj, x, u)
         %------------------------------------------------------------------
@@ -196,7 +200,7 @@ classdef (Abstract) MotionModelGP < handle
             
             % evaluate disturbance
             [mu_d, var_d] = obj.d(z);
-            
+                
             % A) Mean Equivalent Approximation:
             var_x_d_w = blkdiag(var_xk, var_d, obj.var_w);
             

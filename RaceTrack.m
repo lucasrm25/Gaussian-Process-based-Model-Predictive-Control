@@ -182,7 +182,7 @@ classdef RaceTrack < handle
             % calculate normalized offroad_error (desired is to be < 0)
             offroad_error = norm(T_error)/R_c - 1;
             
-            % calculate orientation error (\in [0 1])
+            % calculate orientation error (\in [0 1]) - cosinus distance
             orientation_error = 1 - abs([cos(psi_c); sin(psi_c)]' * [cos(psi_vehicle); sin(psi_vehicle)]);  
         end
         

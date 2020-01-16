@@ -15,13 +15,13 @@ clear all; close all; clc;
 %------------------------------------------------------------------
 dt = 0.15;       % simulation timestep size
 tf = 15*12;       % simulation time
-maxiter = 30;   % max NMPC iterations per time step
+maxiter = 40;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 loadPreTrainedGP = true;
 GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-WORKED-optimized.mat');
 useGP = true;
-trainGPonline = false;
+trainGPonline = true;
 
 
 % display info
@@ -185,13 +185,13 @@ fprintf('\nGP active? %s\n\n',string(useGP))
 %% Start simulation
 
 ki = 1;
-% ki = 530;
+% ki = 310;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
 
 
 % mpc.maxiter = 100;
 % mpc.optimize(out.xhat(:,1), out.t(1), 0);
-% mpc.maxiter = maxiter;
+% mpc.maxiter = 40maxiter;
 
 for k = ki:kmax
     disp('------------------------------------------------------')
@@ -291,8 +291,9 @@ for k = ki:kmax
         
         fprintf('Prediction Error norm WITHOUT GP: %f\n',norm(d_est));
         disp(d_est)
-        fprintf('Prediction Error norm WITH    GP: %f\n',norm(d_est-d_GP.eval(zhat,'activate')));
-        disp(d_est-d_GP.eval(zhat,'activate'))
+        fprintf('Prediction Error norm WITH    GP: %f\n',norm(d_est-d_GP.eval(zhat,true)));
+        % fprintf('Prediction Error norm WITH    GP: %f\n',norm(d_est-estModel.d(zhat,true)));
+        disp(d_est-d_GP.eval(zhat,true))
     end
     
     % if length(laptimes) >= 6
@@ -334,7 +335,7 @@ d_GP.optimizeHyperParams('fmincon')
 
 d_GP.M
 d_GP.var_f
-
+d_GP.var_n
 
 
 %% Analyse learning
@@ -342,12 +343,11 @@ d_GP.var_f
 % Check how the GP reduces the prediction error
 % ---------------------------------------------------------------------
 
-k = find(~isnan(out.xhat(1,:)), 1, 'last' ) - 20;
-
-
 % d_GP.optimizeHyperParams('fmincon')
 % d_GP.optimizeHyperParams('ga')
 
+
+k = find(~isnan(out.xhat(1,:)), 1, 'last' ) - 20;
 
 % prediction error without GP
 % predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
@@ -356,8 +356,7 @@ predErrorNOgp = estModel.Bd\(out.xhat(:,1:k-1) - out.xnom(:,1:k-1));
 
 % prediction error with trained GP
 zhat  = estModel.z( out.xhat(:,1:k-1), out.u(:,1:k-1) );
-% zhat = estModel.z( out.xhat, [out.u,zeros(3,1)] )
-dgp = d_GP.eval(zhat,'activate');
+dgp = d_GP.eval(zhat,true);
 predErrorWITHgp = estModel.Bd\( out.xhat(:,2:k) - (out.xnom(:,2:k) + estModel.Bd*dgp) );
 
 
@@ -440,7 +439,7 @@ function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
     q_l   = 50;     % penalization of lag error
-    q_c   = 20;     % penalization of contouring error
+    q_c   = 40;%20     % penalization of contouring error
     q_o   = 5;      % penalization for orientation error
     q_d   = -3;     % reward high track centerline velocites
     q_r   = 100;    % penalization when vehicle is outside track

@@ -230,10 +230,25 @@ for k = ki:numel(out.t)-1
 end
 
 
+
+
+return
+
+
+
+
 %% Optimize GP hyperparameters ??? (Offline procedure, after simulation)
 
+d_GP.M = M
+d_GP.var_f = var_f;
+d_GP.var_n = var_n;
+
 % d_GP.optimizeHyperParams('ga');
-% d_GP.optimizeHyperParams('fmincon');
+d_GP.optimizeHyperParams('fmincon');
+
+d_GP.M
+d_GP.var_f
+d_GP.var_n
 
 
 %% Evaluate results
@@ -262,9 +277,7 @@ gptrue = @(z) Bd'*( trueModel.xkp1(Bz_x'*z, zeros(n), 0, dt)...
                    - nomModel.xkp1(Bz_x'*z, zeros(n), 0, dt)  );
 
 % plot prediction bias and variance
-d_GP.isActive = true;
 d_GP.plot2d( gptrue )
-d_GP.isActive = false;
 
 %% animation of inverse pendulum
 
@@ -281,18 +294,17 @@ drawpendulum(out.t,out.x,Mc,Mp,g,l)
 % d_GP.optimizeHyperParams('ga')
 
 
+k = find(~isnan(out.xhat(1,:)), 1, 'last' ) - 1;
+
 % prediction error without GP
 % predErrorNOgp = estModel.Bd\(out.xhat - out.xnom);
-predErrorNOgp = estModel.Bd\(out.xhat(:,1:k) - out.xnom(:,1:k));
+predErrorNOgp = estModel.Bd\(out.xhat(:,1:k-1) - out.xnom(:,1:k-1));
 
 
 % prediction error with trained GP
-d_GP.isActive = true;
-zhat = [ estModel.Bz_x * out.xhat(:,1:k-1) ];
-% zhat = estModel.z( out.xhat, [out.u,zeros(3,1)] )
-dgp = d_GP.eval(zhat);
+zhat = estModel.z( out.xhat(:,1:k-1), out.u(:,1:k-1) )
+dgp = d_GP.eval(zhat,true);
 predErrorWITHgp = estModel.Bd\( out.xhat(:,2:k) - (out.xnom(:,2:k) + estModel.Bd*dgp) );
-d_GP.isActive = false;
 
 
 disp('Prediction mean squared error without GP:')
