@@ -336,9 +336,9 @@ classdef GP < handle
                 Aeq = [];
                 beq = [];
                 
-                ub = [ 1e+2 * ones(obj.n,1);
-                       1e+2;
-                       1e+2 ];
+                ub = [ 1e+3 * ones(obj.n,1);
+                       1e+3;
+                       1e+3 ];
                 lb = [ 1e-8 * ones(obj.n,1); 
                        0*1e-8; 
                        0*1e-8 ];

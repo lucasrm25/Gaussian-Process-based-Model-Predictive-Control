@@ -222,7 +222,6 @@ classdef MotionModelGP_SingleTrack_true < MotionModelGP
         end
         
         function testTyres(obj)
-            %%
             c_f = 14000; % = 1*g*M/deltamax  % front coornering stiffness (C*delta=Fy~M*a)
             c_r = 14000; % = 2*g*M/deltamax  % rear coornering stiffness
             

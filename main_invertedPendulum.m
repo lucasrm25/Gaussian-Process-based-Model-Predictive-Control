@@ -23,6 +23,10 @@ tf = 7;         % simulation time
 maxiter = 15;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
+
+useParallel = false;
+
+
 lookahead = dt*N;
 fprintf('\nPrediction lookahead: %.1f [s]\n',lookahead);
 
@@ -127,13 +131,6 @@ mpc.tol     = 1e-3;
 mpc.maxiter = maxiter;
 % -------------------------------------------------------------------------
 
-% TEST NMPC
-x0 = [0 0 0.1 0]';
-t0 = 0;
-r  = @(t) [0 0 0]';    % desired trajectory
-[u_opt, e_opt] = mpc.optimize(x0, t0, r );
-
-
 
 %% Simulate
 
@@ -179,7 +176,7 @@ for k = ki:numel(out.t)-1
     % ---------------------------------------------------------------------
     % NPMC controller
     % ---------------------------------------------------------------------
-    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r);
+    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), r, useParallel);
     out.u(:,k) = u_opt(:,1);
     
     

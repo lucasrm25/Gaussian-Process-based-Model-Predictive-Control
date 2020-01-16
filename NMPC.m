@@ -120,7 +120,7 @@ classdef NMPC < handle
         end
         
         
-        function [u_opt, e_opt] = optimize(obj, x0, t0, r)
+        function [u_opt, e_opt] = optimize(obj, x0, t0, r, UseParallel)
         %------------------------------------------------------------------
         % Calculate first uptimal control input
         %------------------------------------------------------------------
@@ -144,7 +144,7 @@ classdef NMPC < handle
                                    'Display','iter',...
                                    'Algorithm', 'interior-point',... % 'interior-point',... % 'sqp','interior-point'
                                    'SpecifyConstraintGradient',false,...
-                                   'UseParallel',false,... %'ConstraintTolerance',obj.tol,...
+                                   'UseParallel',UseParallel,... %'ConstraintTolerance',obj.tol,...
                                    'MaxIterations',obj.maxiter);
             
             % solve optimization problem

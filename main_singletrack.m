@@ -4,7 +4,7 @@
 %   - 
 %   -
 
-%   Control of a Race Car in a Race Track using Gaussian Process Optimal Control:
+%   Control of a Race Car in a Race Track using Gaussian Process Model Predictive Control:
 %------------------------------------------------------------------
 
 clear all; close all; clc;
@@ -15,13 +15,14 @@ clear all; close all; clc;
 %------------------------------------------------------------------
 dt = 0.15;       % simulation timestep size
 tf = 15*12;       % simulation time
-maxiter = 40;   % max NMPC iterations per time step
+maxiter = 30;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
-loadPreTrainedGP = true;
-GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-WORKED-optimized.mat');
-useGP = true;
+loadPreTrainedGP = false;
+GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-with-GP-optimized.mat');
+useGP = false;
 trainGPonline = true;
+useParallel = true;
 
 
 % display info
@@ -58,12 +59,12 @@ nomModel = MotionModelGP_SingleTrack_nominal( [], [] );
 
 nomModel.analyseSingleTrack();
 
+
 % -------------------------------------------------------------------------
 %  Create adaptive dynamics model 
 %  (unmodeled dynamics will be estimated by Gaussian Process GP)
 %       xk+1 = fd_nom(xk,uk) + Bd * ( d_GP(zk) + w )
 % -------------------------------------------------------------------------
-
 
 if ~loadPreTrainedGP
     % GP input dimension
@@ -80,7 +81,7 @@ if ~loadPreTrainedGP
     % create GP object
     d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 else
-    load(fullfile(pwd,'/simresults/20-01-15-out-GP-WORKED-optimized.mat'),'d_GP');
+    load(fullfile(pwd,'/simresults/20-01-15-out-GP-WORKED-optimized.mat')); %,'d_GP'
     fprintf('\nGP model loaded succesfuly\n\n')
 end
 
@@ -136,7 +137,6 @@ mpc.maxiter = maxiter;
 
 
 %% Prepare simulation
-
 % ---------------------------------------------------------------------
 % Prepare simulation (initialize vectors, initial conditions and setup
 % animation
@@ -182,16 +182,14 @@ d_GP.isActive = useGP;
 fprintf('\nGP active? %s\n\n',string(useGP))
 
 
+
+
 %% Start simulation
 
 ki = 1;
 % ki = 310;
 % mpc.uguess = out.u_pred_opt(:,:,ki);
 
-
-% mpc.maxiter = 100;
-% mpc.optimize(out.xhat(:,1), out.t(1), 0);
-% mpc.maxiter = 40maxiter;
 
 for k = ki:kmax
     disp('------------------------------------------------------')
@@ -206,7 +204,7 @@ for k = ki:kmax
     % NPMC controller
     % ---------------------------------------------------------------------
     % calculate optimal input
-    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), 0);
+    [u_opt, e_opt] = mpc.optimize(out.xhat(:,k), out.t(k), 0, useParallel);
     out.u(:,k) = u_opt(:,1);
     sprintf('\nSteering angle: %d\nTorque gain: %.1f\nTrack vel: %.1f\n',rad2deg(out.u(1,k)),out.u(2,k),out.u(3,k))
 
@@ -249,9 +247,9 @@ for k = ki:kmax
     % ---------------------------------------------------------------------
     % Lap timer
     % ---------------------------------------------------------------------
-    [laptimes, idxnewlaps] = getLapTimes(out.xhat(end,:),dt);
+    [laptimes, idxnewlaps] = RaceTrack.getLapTimes(out.xhat(end,:),dt);
     if any(k==idxnewlaps)
-        dispLapTimes(laptimes);
+        RaceTrack.dispLapTimes(laptimes);
     end
     
     
@@ -306,14 +304,14 @@ end
 
 % Display Lap times
 
-[laptimes, idxnewlaps] = getLapTimes(out.xhat(end,:),dt);
-dispLapTimes(laptimes)
+[laptimes, idxnewlaps] = RaceTrack.getLapTimes(out.xhat(end,:),dt);
+RaceTrack.dispLapTimes(laptimes)
+
+
+
 
 return
-
-
-
-
+% STOP here. Next sections are intended to be executed separately
 
 
 
@@ -385,7 +383,7 @@ sgtitle('Prediction error - with GP')
 
 
 % ---------------------------------------------------------------------
-% Check in which region of the tyre dynamics we are working in the
+% Check in which region of the tyre dynamics we are working
 % ---------------------------------------------------------------------
 
 % % % % simulation
@@ -413,7 +411,7 @@ sgtitle('Prediction error - with GP')
 close all;
 
 % start animation
-trackAnim = SingleTrackAnimation(track,out.mu_x_pred_opt,out.var_x_pred_opt, out.u_pred_opt,out.x_ref);
+trackAnim = SingleTrackAnimation(track, out.mu_x_pred_opt, out.var_x_pred_opt, out.u_pred_opt, out.x_ref);
 trackAnim.initTrackAnimation();
 % trackAnim.initScope();
 for k=1:kmax
@@ -425,6 +423,7 @@ for k=1:kmax
     drawnow;
 end
 
+
 %% Record video
 
 FrameRate = 7;
@@ -433,13 +432,13 @@ videoFormat = 'Motion JPEG AVI';
 trackAnim.recordvideo(videoName, videoFormat, FrameRate);
 
 
-%% Help functions
+%% Cost function for the MPC controller
 
 function cost = costFunction(mu_x, var_x, u, track)
 
     % Track oriented penalization
     q_l   = 50;     % penalization of lag error
-    q_c   = 40;%20     % penalization of contouring error
+    q_c   = 20;     % penalization of contouring error
     q_o   = 5;      % penalization for orientation error
     q_d   = -3;     % reward high track centerline velocites
     q_r   = 100;    % penalization when vehicle is outside track
@@ -531,35 +530,4 @@ function cost = costFunction(mu_x, var_x, u, track)
            cost_inputs + ...
            cost_vel + ...
            cost_psidot;
-end
-
-
-function [laptimes, idxnewlaps] = getLapTimes( trackDist, dt)
-    % calc lap times
-    idxnewlaps = find( conv(trackDist, [1 -1]) < -10 );
-    laptimes = conv(idxnewlaps, [1,-1], 'valid') * dt;
-end
-
-function dispLapTimes(laptimes)
-    % calc best lap time
-    [bestlaptime,idxbestlap] = min(laptimes);
-
-    fprintf('\n--------------- LAP RECORD -------------------\n');
-    fprintf('------ (Best Lap: %.2d    laptime: %4.2f) ------\n\n',idxbestlap,bestlaptime);
-    for i=1:numel(laptimes)
-        if i==idxbestlap
-            fprintf(2,'  (best lap)->  ')
-        else
-            fprintf('\t\t');
-        end
-            fprintf('Lap %.2d    laptime: %4.2fs',i,laptimes(i));
-            fprintf(2,'   (+%.3fs)\n',laptimes(i)-bestlaptime)
-
-    end
-    fprintf('--------------- LAP RECORD -------------------\n');
-
-    % figure('Color','w','Position',[441 389 736 221]); hold on; grid on;
-    % plot(laptimes,'-o')
-    % xlabel('Lap')
-    % ylabel('Lap time [s]')
 end

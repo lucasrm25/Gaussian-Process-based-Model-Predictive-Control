@@ -216,13 +216,56 @@ classdef RaceTrack < handle
        
     methods(Static)
         
+        function [laptimes, idxnewlaps] = getLapTimes( trackDist, dt)
+        %------------------------------------------------------------------
+        % Calculate laptimes.
+        % args:
+        %   trackdist: a vector of centerline track distances. The vector
+        %              must have been reset to zero whenever one lap is
+        %              completed, i.e. 0 < trackdist(i)< trackLength, forall i
+        %   dt: simulation time step
+        %------------------------------------------------------------------
+            % calc lap times
+            idxnewlaps = find( conv(trackDist, [1 -1]) < -10 );
+            laptimes = conv(idxnewlaps, [1,-1], 'valid') * dt;
+        end
+
+        function dispLapTimes(laptimes)
+        %------------------------------------------------------------------
+        % Display laptimes.
+        % args:
+        %   laptimes: vector of lap times
+        %------------------------------------------------------------------
+            % calc best lap time
+            [bestlaptime,idxbestlap] = min(laptimes);
+
+            fprintf('\n--------------- LAP RECORD -------------------\n');
+            fprintf('------ (Best Lap: %.2d    laptime: %4.2f) ------\n\n',idxbestlap,bestlaptime);
+            for i=1:numel(laptimes)
+                if i==idxbestlap
+                    fprintf(2,'  (best lap)->  ')
+                else
+                    fprintf('\t\t');
+                end
+                    fprintf('Lap %.2d    laptime: %4.2fs',i,laptimes(i));
+                    fprintf(2,'   (+%.3fs)\n',laptimes(i)-bestlaptime)
+
+            end
+            fprintf('--------------- LAP RECORD -------------------\n');
+
+            % figure('Color','w','Position',[441 389 736 221]); hold on; grid on;
+            % plot(laptimes,'-o')
+            % xlabel('Lap')
+            % ylabel('Lap time [s]')
+        end
+        
+        
+        function [trackdata, x0, th0, w] = loadTrack_01()
         %------------------------------------------------------------------
         %  Racetrack examples, to be used with class constructor. Ex:
         %       [trackdata, x0, th0, w] = RaceTrack.loadTrack_01()
         %       trackobject = RaceTrack(trackdata, x0, th0, w)
         %------------------------------------------------------------------
-        
-        function [trackdata, x0, th0, w] = loadTrack_01()
             x0  = [0;0];
             th0 = 0;
             w = 6;
@@ -252,6 +295,11 @@ classdef RaceTrack < handle
         end
         
         function [trackdata, x0, th0, w] = loadTrack_02()
+        %------------------------------------------------------------------
+        %  Racetrack examples, to be used with class constructor. Ex:
+        %       [trackdata, x0, th0, w] = RaceTrack.loadTrack_01()
+        %       trackobject = RaceTrack(trackdata, x0, th0, w)
+        %------------------------------------------------------------------
             x0  = [0;0];
             th0 = 0;
             w = 6;
