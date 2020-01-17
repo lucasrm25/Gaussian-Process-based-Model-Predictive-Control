@@ -24,12 +24,12 @@ maxiter = 15;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 
-loadPreTrainedGP = true;
+loadPreTrainedGP = false;
 GPfile = fullfile(pwd,'/simresults/20-01-17-out-GP-inverted-pendulum.mat');
-useGP = true;
-trainGPonline = false;
+useGP = false;
+trainGPonline = true;
 useParallel = false;
-optimizeHyperparameters = false;
+optimizeHyperparameters = true;
 
 
 lookahead = dt*N;
@@ -58,10 +58,10 @@ clearvars d_GP
 %------------------------------------------------------------------
 
 % define noise for true disturbance
-var_w = diag([0 0]);
+var_w = diag([0,0]);
 
 % create true dynamics model
-trueModel = MotionModelGP_InvPendulum_deffect(Mc*0.9, Mp, b*2 , I*0.5, l*0.5, [], var_w);
+trueModel = MotionModelGP_InvPendulum_deffect(Mc*0.9, Mp, b*5 , I*0.5, l*0.5, [], var_w);
 
 %% Create Estimation Model and Nominal Model
 
@@ -72,7 +72,7 @@ trueModel = MotionModelGP_InvPendulum_deffect(Mc*0.9, Mp, b*2 , I*0.5, l*0.5, []
 
 % create nominal dynamics model (no disturbance)
 nomModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, [], []); 
-%nomModel = trueModel;
+nomModel = trueModel;
 
 % -------------------------------------------------------------------------
 %  Create adaptive dynamics model 
@@ -86,9 +86,9 @@ gp_n = MotionModelGP_InvPendulum_nominal.nz;
 gp_p = MotionModelGP_InvPendulum_nominal.nd;
 
 % GP hyperparameters
-var_f   = repmat(0.01,[gp_p,1]);                     % output variance
+var_f   = [0.01,0.01]';                     % output variance
 M       = repmat(diag([1e0,1e0].^2),[1,1,gp_p]);     % length scale
-var_n   = repmat(1e-8,[gp_p,1]);                   % measurement noise variance
+var_n   = [1e-8,1e-8]';                   % measurement noise variance
 maxsize = 100;                      % maximum number of points in the dictionary
 
 % create GP object
@@ -100,7 +100,7 @@ end
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
 estModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, @d_GP.eval, var_w);
-%estModel = trueModel;
+% estModel = trueModel;
 
 
 %% Controller

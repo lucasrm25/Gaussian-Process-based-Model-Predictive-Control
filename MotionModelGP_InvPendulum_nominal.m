@@ -31,19 +31,20 @@ classdef MotionModelGP_InvPendulum_nominal < MotionModelGP
     
     properties(Constant)
         % keep in mind the dimensions:  xk+1 = fd(xk,uk) + Bd*(d(z)+w)),
-        % where z = [Bz_x*x;Bz_u*u] 
-        Bz_x = [0 0 1 0
+        % where z = [Bz_x*x;Bz_u*u] and x = [s, ds, th, dth]' 
+        
+        Bz_x = [0 1 0 0
                 0 0 0 1] 
         Bz_u = []; 
-        Bd = [0;            % xk+1 = fd(xk,uk) + Bd*d(zk)
-              0;
-              1;
-              0]
+        Bd = [0 0 ;            % xk+1 = fd(xk,uk) + Bd*d(zk)
+              1 0;
+              0 0;
+              0 1]
             
         n  = 4   % number of outputs x(t)
         m  = 1   % number of inputs u(t)
         nz = 2   % dimension of z(t)
-        nd = 1   % output dimension of d(z)
+        nd = 2   % output dimension of d(z)
     end
     
     
