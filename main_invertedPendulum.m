@@ -24,6 +24,10 @@ maxiter = 15;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 
+loadPreTrainedGP = false;
+GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-with-GP-optimized.mat');
+useGP = false;
+trainGPonline = true;
 useParallel = false;
 
 
@@ -69,7 +73,7 @@ nomModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, [], []);
 %  (unmodeled dynamics will be estimated by Gaussian Process GP)
 %       xk+1 = fd_nom(xk,uk) + Bd * ( d_GP(zk) + w )
 % -------------------------------------------------------------------------
-
+if ~loadPreTrainedGP
 % GP input dimension
 gp_n = MotionModelGP_InvPendulum_nominal.nz;
 % GP output dimension
@@ -83,6 +87,10 @@ maxsize = 100;                      % maximum number of points in the dictionary
 
 % create GP object
 d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
+else
+    %load(fullfile(pwd,'/simresults/20-01-15-out-GP-WORKED-optimized.mat')); %,'d_GP'
+    fprintf('\nGP model loaded succesfuly\n\n')
+end
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
 estModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, @d_GP.eval, var_w);
@@ -153,7 +161,9 @@ out.u    = nan(m,length(out.t)-1);
 out.r    = nan(nr,length(out.t)-1);
 
 
-d_GP.isActive = false;
+% deactivate GP evaluation in the prediction
+d_GP.isActive = useGP;
+fprintf('\nGP active? %s\n\n',string(useGP))
 
 
 ki = 1;
@@ -214,22 +224,20 @@ for k = ki:numel(out.t)-1
         zhat = [ estModel.Bz_x * out.xhat(:,k); estModel.Bz_u * out.u(:,k) ];
         % add data point to the GP dictionary
         d_GP.add(zhat,d_est);
-    end
-    
-    if d_GP.N > 20 && out.t(k) > 3
-        d_GP.updateModel();
-        d_GP.isActive = true;
-    end
+        if trainGPonline
+                d_GP.add(zhat,d_est');
+                d_GP.updateModel();
+        end
     
     % check if these values are the same:
     % d_est == mu_d(zhat) == [mud,~]=trueModel.d(zhat)
-    
+    end
 end
 
 
 
 
-return
+% return
 
 
 
@@ -252,7 +260,7 @@ d_GP.var_n
 close all;
 
 % plot reference and state signal
-figure('Position',[-1836 535 560 420]); 
+figure; 
 subplot(2,1,1); hold on; grid on;
 plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
 plot(out.t, out.x(3,:), 'DisplayName', 'x(t) [rad]')
