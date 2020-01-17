@@ -157,7 +157,7 @@ out.u    = nan(m,length(out.t)-1);
 out.r    = nan(nr,length(out.t)-1);
 
 
-%d_GP.isActive = false;
+d_GP.isActive = false;
 
 
 ki = 1;
