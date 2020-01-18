@@ -27,7 +27,7 @@ N = 10;         % NMPC prediction horizon
 loadPreTrainedGP = true;
 GPfile = fullfile(pwd,'/simresults/20-01-17-out-GP-inverted-pendulum.mat');
 useGP = true;
-trainGPonline = false;
+trainGPonline = true;
 useParallel = false;
 optimizeHyperparameters = false;
 
@@ -58,10 +58,10 @@ clearvars d_GP
 %------------------------------------------------------------------
 
 % define noise for true disturbance
-var_w = diag([0 0]);
+var_w = diag([0]);
 
 % create true dynamics model
-trueModel = MotionModelGP_InvPendulum_deffect(Mc*0.9, Mp, b*2 , I*0.5, l*0.5, [], var_w);
+trueModel = MotionModelGP_InvPendulum_deffect(Mc, Mp, b , I, l, [], var_w);
 
 %% Create Estimation Model and Nominal Model
 
@@ -87,7 +87,7 @@ gp_p = MotionModelGP_InvPendulum_nominal.nd;
 
 % GP hyperparameters
 var_f   = repmat(0.01,[gp_p,1]);                     % output variance
-M       = repmat(diag([1e0,1e0].^2),[1,1,gp_p]);     % length scale
+M       = repmat(diag(repmat(1e0,[1,gp_n]).^2),[1,1,gp_p]);     % length scale
 var_n   = repmat(1e-8,[gp_p,1]);                   % measurement noise variance
 maxsize = 100;                      % maximum number of points in the dictionary
 
@@ -258,7 +258,7 @@ d_GP.M = M
 d_GP.var_f = var_f;
 d_GP.var_n = var_n;
 
-% d_GP.optimizeHyperParams('ga');
+%d_GP.optimizeHyperParams('ga');
 d_GP.optimizeHyperParams('fmincon');
 
 d_GP.M

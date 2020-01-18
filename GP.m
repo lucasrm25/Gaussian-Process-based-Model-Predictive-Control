@@ -503,6 +503,104 @@ classdef GP < handle
             colormap(gcf,parula);
         end
         
+         function plotNd(obj, truthfun, varargin)
+        %------------------------------------------------------------------
+        % Make analysis of the GP quality (only for the first output dimension.
+        % This function can only be called when the GP input is 2D
+        %
+        % args:
+        %   truthfun: anonymous function @(x) which returns the true function
+        %   varargin{1} = rangeX1: 
+        %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
+        %                           will be evaluated and ploted
+        %------------------------------------------------------------------
+            % output dimension to be analyzed
+            pi = 1;
+        
+            assert(obj.N>0, 'Dataset is empty. Aborting...')
+            % we can not plot more than in 3D
+            assert(obj.n==2, 'This function can only be used when dim(X)=2. Aborting...');
+            
+            % Generate grid where the mean and variance will be calculated
+            if numel(varargin) ~= 2
+                factor = 0.3;
+                rangeX1 = [ min(obj.X(1,:)) - factor*range(obj.X(1,:)), ...
+                            max(obj.X(1,:)) + factor*range(obj.X(1,:))  ];
+                rangeX2 = [ min(obj.X(2,:)) - factor*range(obj.X(2,:)), ...
+                            max(obj.X(2,:)) + factor*range(obj.X(2,:))  ];
+            else
+                rangeX1 = varargin{1};
+                rangeX2 = varargin{2};
+            end
+
+            % generate grid
+            [X1,X2] = meshgrid(linspace(rangeX1(1),rangeX1(2),100),...
+                               linspace(rangeX2(1),rangeX2(2),100));
+            Ytrue = zeros('like',X1);
+            Ystd  = zeros('like',X1);
+            Ymean = zeros('like',X1);
+            for i=1:size(X1,1)
+                for j=1:size(X1,2)
+                    % evaluate true function
+                    mutrue = truthfun([X1(i,j);X2(i,j)]);
+                    Ytrue(i,j) = mutrue(pi); % select desired output dim
+                    % evaluate GP model
+                    [mu,var] = obj.eval([X1(i,j);X2(i,j)],true);
+                    if var < 0
+                        error('GP obtained a negative variance... aborting');
+                    end
+                    Ystd(i,j)  = sqrt(var);
+                    Ymean(i,j) = mu(:,pi);    % select desired output dim
+                end
+            end 
+            
+            % plot data points, and +-2*stddev surfaces 
+            figure('Color','w')
+            hold on; grid on;
+            % surf(X1,X2,Y, 'FaceAlpha',0.3)
+            surf(X1,X2,Ymean+2*Ystd ,Ystd, 'FaceAlpha',0.3)
+            surf(X1,X2,Ymean-2*Ystd,Ystd, 'FaceAlpha',0.3)
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red')
+            title('mean\pm2*stddev Prediction Curves')
+            shading interp;
+            colormap(gcf,jet);
+            view(30,30)
+            
+            % Comparison between true and prediction mean
+            figure('Color','w')
+            subplot(1,2,1); hold on; grid on;
+            surf(X1,X2,Ytrue, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'True function');
+            % surf(X1,X2,Ymean, 'FaceAlpha',.5, 'FaceColor','g', 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+            zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
+            legend;
+            xlabel('X1'); ylabel('X2');
+            title('True Function')
+            view(24,12)
+            subplot(1,2,2); hold on; grid on;
+            % surf(X1,X2,Y, 'FaceAlpha',.5, 'FaceColor','b', 'EdgeColor', 'none', 'DisplayName', 'True function');
+            surf(X1,X2,Ymean, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+            zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
+            legend;
+            xlabel('X1'); ylabel('X2');
+            title('Prediction Mean')
+            view(24,12)
+            
+            % plot bias and variance
+            figure('Color','w')
+            subplot(1,2,1); hold on; grid on;
+            contourf(X1,X2, abs(Ymean-Ytrue), 50,'LineColor','none')
+            title('Absolute Prediction Bias')
+            colorbar;
+            scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
+            subplot(1,2,2); hold on; grid on;
+            contourf(X1,X2, Ystd.^2, 50 ,'LineColor','none')
+            title('Prediction Variance')
+            colorbar;
+            scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
+            colormap(gcf,parula);
+         end
         
         function plot1d(obj, truthfun, varargin)
         %------------------------------------------------------------------
