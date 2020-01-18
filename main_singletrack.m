@@ -19,7 +19,8 @@ maxiter = 30;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 loadPreTrainedGP = false;
-GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-with-GP-optimized.mat');
+GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-without-GP.mat');
+% GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-with-GP-optimized.mat');
 useGP = false;
 trainGPonline = true;
 useParallel = true;
@@ -81,7 +82,7 @@ if ~loadPreTrainedGP
     % create GP object
     d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 else
-    load(fullfile(pwd,'/simresults/20-01-15-out-GP-WORKED-optimized.mat')); %,'d_GP'
+    load(GPfile); %,'d_GP'
     fprintf('\nGP model loaded succesfuly\n\n')
 end
 

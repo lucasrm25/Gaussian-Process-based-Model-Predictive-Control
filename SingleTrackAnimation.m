@@ -1,8 +1,18 @@
+%------------------------------------------------------------------
+% Programed by: 
+%   - Lucas Rath (lucasrm25@gmail.com)
+%   - 
+%   -
+
+%   Generate Animation for the main_singletrack.m script
+%------------------------------------------------------------------
+
+
 classdef SingleTrackAnimation < handle
     
     properties
         % object that contains track coordinates
-        racetrack @RaceTrack
+        racetrack @ RaceTrack
         
         % variables that contain history of vehicle states and inputs to be ploted
         mu_x_pred_opt
@@ -50,7 +60,7 @@ classdef SingleTrackAnimation < handle
         %   updateTrackAnimation(k) to move forward with the animation.
         % -----------------------------------------------------------------
             obj.h_fig = figure('Color','w','Position',[468 128 872 633]);
-            title('Stochastic Gaussian-Process MPC')
+            title('Adaptive Gaussian-Process MPC')
             hold on;
             grid on;
             axis equal;
@@ -115,6 +125,10 @@ classdef SingleTrackAnimation < handle
             c = colorbar;
             c.Label.String = 'Vehicle predicted velocity [m/s]';
             caxis([5 25])
+            
+            % lock up axis limits
+            xlim('manual')
+            ylim('manual')
             drawnow
         end
         
