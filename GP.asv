@@ -538,17 +538,16 @@ Ymean = zeros(length(X1),'like',X1);
                 end
             end 
             
-            f = figure('Color','w','visible','off','units','normalized','outerposition',[0 0 1 1]); hold on; grid on;
+            f = figure('Color','w','visible','off'); hold on; grid on;
             % surf(X1,X2,Y, 'FaceAlpha',.5, 'FaceColor','b', 'EdgeColor', 'none', 'DisplayName', 'True function');
             surf(X1,X2,Ymean, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
-            if ~isempty(obj.X)
+            if length(
             scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
-            end
             zlim([-0.01,0.1 ]);
             legend;
-            xlabel('$\theta$','Interpreter','latex'); ylabel('$\dot{\theta}$','Interpreter','latex'); ylabel('$\mu(d)$','Interpreter','latex')
+            xlabel('X1'); ylabel('X2');
             title('Prediction Mean')
-            view(272,55)
+            view(260,55)
         end
             
         function plot1d(obj, truthfun, varargin)

@@ -240,10 +240,10 @@ for k = ki:numel(out.t)-1
 end
 % record video
 % videoframes = struct('cdata',[],'colormap',[]);
-videoName = fullfile('simresults',sprintf('invertedPendulum_GP_opt_Video-%s',date));
+videoName = fullfile('simresults',sprintf('invertedPendulum_GP_Video-%s',date));
 videoFormat = 'Motion JPEG AVI';
 writerObj = VideoWriter(videoName,videoFormat);
-writerObj.FrameRate = 3;
+writerObj.FrameRate = 1;
 open(writerObj);
 % Write out all the frames.
 numberOfFrames = length(videoframes);
@@ -254,9 +254,8 @@ close(writerObj);
 disp('Video saved successfully')
 
 return
-d_GP.plotGP()
-figure
-imshow(videoframes(2).cdata)
+
+
 
 %% Optimize GP hyperparameters ??? (Offline procedure, after simulation)
 
