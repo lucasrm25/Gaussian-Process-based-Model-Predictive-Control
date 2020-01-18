@@ -86,8 +86,8 @@ d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
 estModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, @d_GP.eval, var_w);
-
-
+%estModel = trueModel;
+%estModel = nomModel;
 
 %% Controller
 
@@ -162,6 +162,8 @@ ki = 1;
 % ki = 40;
 % mpc.uguess = out.u(:,ki);
 
+X = [];
+Y = [];
  
 for k = ki:numel(out.t)-1
     disp(out.t(k))
@@ -219,7 +221,7 @@ for k = ki:numel(out.t)-1
         d_GP.add(zhat,d_est);
     end
     
-    if d_GP.N > 20 && out.t(k) > 3
+    if d_GP.N > 0 && out.t(k) > 0
         d_GP.updateModel();
         d_GP.isActive = true;
     end
@@ -227,40 +229,15 @@ for k = ki:numel(out.t)-1
 
 end
 
-% generate video
-d_GP_video = GP(d_GP.n, d_GP.p, d_GP.var_f, d_GP.var_n, d_GP.M, d_GP.Nmax);
-h_fig = d_GP_video.plotGP();
-videoframes(1) = getframe(h_fig);
-for k = ki:numel(out.t)-1
-    d_GP_video.add(d_GP.X(:,k), d_GP.Y(k,:))
-    h_fig = d_GP_video.plotGP();
-    % check if these values are the same:
-    % d_est == mu_d(zhat) == [mud,~]=trueModel.d(zhat)
-    videoframes(k+1) = getframe(h_fig);
-end
-% record video
-% videoframes = struct('cdata',[],'colormap',[]);
-videoName = fullfile('simresults',sprintf('invertedPendulum_GP_opt_Video-%s',date));
-videoFormat = 'Motion JPEG AVI';
-writerObj = VideoWriter(videoName,videoFormat);
-writerObj.FrameRate = 3;
-open(writerObj);
-% Write out all the frames.
-numberOfFrames = length(videoframes);
-for k=1:numberOfFrames 
-writeVideo(writerObj, videoframes(k));
-end
-close(writerObj);
-disp('Video saved successfully')
 
 return
-d_GP.plotGP()
-figure
-imshow(videoframes(2).cdata)
+
 
 
 %% Animation GP
-GPAnimation = InvertedPendulumGPAnimation(d_GP, -0.1, 0.3, -1.6, 0.3);
+out_true = load(fullfile(pwd,'/simresults/20-01-18-out-true.mat'))
+out_nom = load(fullfile(pwd,'/simresults/20-01-18-GP-out-nom.mat'))
+GPAnimation = InvertedPendulumGPAnimation(d_GP, -0.1, 0.3, -1.6, 0.3, out, out_true, out_nom);
 GPAnimation.initInvertedPendulumGPAnimation()
 for k=1:numel(out.t)-1
     if ~ GPAnimation.updateInvertedPendulumGPAnimation(k)
@@ -270,6 +247,7 @@ for k=1:numel(out.t)-1
 %     pause(0.15);
     drawnow;
 end
+
 
 %% Record video
 
