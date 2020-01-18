@@ -162,7 +162,7 @@ ki = 1;
 % ki = 40;
 % mpc.uguess = out.u(:,ki);
 
-
+ 
 for k = ki:numel(out.t)-1
     disp(out.t(k))
     
@@ -257,6 +257,26 @@ return
 d_GP.plotGP()
 figure
 imshow(videoframes(2).cdata)
+
+
+%% Animation GP
+GPAnimation = InvertedPendulumGPAnimation(d_GP, -0.1, 0.3, -1.6, 0.3);
+GPAnimation.initInvertedPendulumGPAnimation()
+for k=1:numel(out.t)-1
+    if ~ GPAnimation.updateInvertedPendulumGPAnimation(k)
+        break;
+    end
+    %GPAnimation.updateScope(k);
+%     pause(0.15);
+    drawnow;
+end
+
+%% Record video
+
+FrameRate = 2;
+videoName = fullfile('simresults',sprintf('InvertedPendulumAnimVideo-%s',date));
+videoFormat = 'Motion JPEG AVI';
+GPAnimation.recordvideo(videoName, videoFormat, FrameRate);
 
 %% Optimize GP hyperparameters ??? (Offline procedure, after simulation)
 
