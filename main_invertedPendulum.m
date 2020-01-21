@@ -221,7 +221,7 @@ for k = ki:numel(out.t)-1
         d_GP.add(zhat,d_est);
     end
     
-    if d_GP.N > 0 && out.t(k) > 0
+    if d_GP.N > 20 && out.t(k) > 3
         d_GP.updateModel();
         d_GP.isActive = true;
     end

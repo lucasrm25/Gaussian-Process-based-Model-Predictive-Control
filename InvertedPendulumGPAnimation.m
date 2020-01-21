@@ -16,7 +16,11 @@ classdef InvertedPendulumGPAnimation < handle
         f
         f_d
         f_sample_points
+        f_last_sample
         f_angle
+        f_mu
+        f_variance1
+        f_variance2
         
         % mesh parameters
         X1
@@ -30,7 +34,14 @@ classdef InvertedPendulumGPAnimation < handle
         out_true
         out_nom
         time
+        time2
+        time3
+        time4
         angle
+        mu
+        muminusv
+        muplusv
+        
         
         k   % current time step
         
@@ -75,12 +86,12 @@ classdef InvertedPendulumGPAnimation < handle
             plot3(NaN,NaN,NaN)
             xlim([min(rangeX1),max(rangeX1)]);
             ylim([min(rangeX2),max(rangeX2)]);
-            zlim([-0.01 0.1]);
+            zlim([-0.01 0.15]);
             hold on
             grid on
             xlabel('$\theta$','Interpreter','latex'); ylabel('$\dot{\theta}$','Interpreter','latex'); zlabel('$\mu(d)$','Interpreter','latex')
             title('Prediction Mean')
-            view(190,65)
+            view(240,25)
 
             
              % -------------------------------------------------------------
@@ -101,6 +112,8 @@ classdef InvertedPendulumGPAnimation < handle
                 end
             end 
             
+            %[mu_d,var_d] = obj.d_GP_video.eval([obj.out.xnom(3,k); obj.out.xnom(4,k)]);
+            
             % plot d_GP
             obj.f_d = surf(obj.X1,obj.X2,obj.Ymean, 'FaceAlpha',.8,...
                 'EdgeColor', 'none', 'DisplayName', 'Prediction mean',...
@@ -111,10 +124,15 @@ classdef InvertedPendulumGPAnimation < handle
             
             % plot sample points
             obj.f_sample_points = scatter3(NaN,NaN,NaN,...
-                     'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points',...
+                     'filled','MarkerFaceColor','black', 'DisplayName', 'Sample points',...
                      'XDataSource', 'obj.d_GP_video.X(1,:)',...
                      'YDataSource', 'obj.d_GP_video.X(2,:)',...
                      'ZDataSource', 'obj.d_GP_video.Y(:,pi)')
+            
+           obj.f_last_sample = scatter3(NaN,NaN,NaN,...
+                     'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+           
+                    
             
             % set legend    
             legend([obj.f_d  obj.f_sample_points])
@@ -140,13 +158,43 @@ classdef InvertedPendulumGPAnimation < handle
                      'YDataSource', 'obj.angle')
             xlabel('time $t$ [s]','Interpreter','latex');
             ylabel('$\theta$ [rad]','Interpreter','latex');
-                     
             legend
-  
-                     
-      
-           
             
+            obj.mu = obj.out.xnom(3,1);
+            obj.time2 = 0;
+            
+            % varianz
+            subplot(2,3,6)
+            plot(obj.out.t(1:end-1),obj.out.r(1,:),'DisplayName', 'reference')
+            hold on
+            axis tight
+            xlim([0,max(obj.out.t)]);
+            ylim([0,0.14]);
+            obj.f_mu = plot(NaN, NaN,...
+                             'DisplayName', '\theta',...
+                             'XDataSource', 'obj.time2',...
+                             'YDataSource', 'obj.mu')
+                         
+            obj.muminusv = obj.out.xnom(3,1);
+            obj.time3 = 0;
+            
+            hold on                
+            obj.f_variance1 = plot(NaN, NaN,...
+                             'DisplayName', '\theta',...
+                             'XDataSource', 'obj.time3',...
+                             'YDataSource', 'obj.muminusv')
+                             
+           obj.muplusv = obj.out.xnom(3,1);
+           obj.time4 = 0;
+            
+           hold on              
+           obj.f_variance2 = plot(NaN, NaN,...
+                             'DisplayName', '\theta',...
+                             'XDataSource', 'obj.time4',...
+                             'YDataSource', 'obj.muplusv')
+                            
+            
+  
             % lock up axis limits
             xlim('manual')
             ylim('manual')
@@ -169,9 +217,9 @@ classdef InvertedPendulumGPAnimation < handle
             end
              
             % add new data points to GP
-            obj.d_GP_video.add(obj.d_GP.X(:,k), obj.d_GP.Y(k,:));
-            %d_est = [0 0 1 0]' \ (obj.out.xhat(:,k+1) - obj.out.xnom(:,k+1));
-            %obj.d_GP_video.add([obj.out.xhat(3,k);obj.out.xhat(4,k)], d_est);
+            %obj.d_GP_video.add(obj.d_GP.X(:,k), obj.d_GP.Y(k,:));
+            d_est = [0 0 1 0]' \ (obj.out.xhat(:,k+1) - obj.out.xnom(:,k+1));
+            obj.d_GP_video.add([obj.out.xhat(3,k);obj.out.xhat(4,k)], d_est);
             
             
             for i=1:size(obj.X1,1)
@@ -185,16 +233,26 @@ classdef InvertedPendulumGPAnimation < handle
                     obj.Ymean(i,j) = mu(:,pi);    % select desired output dim
                 end
             end 
-           
+            
+            if k>1
+            [mu_d,var_d] = obj.d_GP_video.eval([obj.out.xhat(3,k-1); obj.out.xhat(4,k-1)]);
+            end
+            
            % update
+           % subplot 1
            obj.f_sample_points.XData = obj.d_GP_video.X(1,:);
            obj.f_sample_points.YData = obj.d_GP_video.X(2,:);
            obj.f_sample_points.ZData = obj.d_GP_video.Y(:,pi);
+           
+           obj.f_last_sample.XData = obj.d_GP_video.X(1,end);
+           obj.f_last_sample.YData = obj.d_GP_video.X(2,end);
+           obj.f_last_sample.ZData = obj.d_GP_video.Y(end,pi);
            
            obj.f_d.XData = obj.X1;
            obj.f_d.YData = obj.X2;
            obj.f_d.ZData = obj.Ymean;
            
+           % subplot 2
            obj.f_angle.XData = obj.d_GP_video.X(1,:);
            obj.f_angle.YData = obj.d_GP_video.X(2,:);
            
@@ -202,7 +260,38 @@ classdef InvertedPendulumGPAnimation < handle
            obj.angle(k) = obj.out.xhat(3,k);
            obj.f_angle.XData = obj.time;
            obj.f_angle.YData = obj.angle;
-         
+           
+           % subplot 3
+           obj.time2(k) = obj.out.t(k);
+           obj.f_mu.XData = obj.time2;
+           if k>1
+           obj.mu(k) = mu_d; %obj.out.xnom(3,k) + mu_d;
+           obj.f_mu.YData = obj.mu;
+           else
+           obj.mu(k) = 0; %obj.out.xnom(3,k) ;
+           obj.f_mu.YData = obj.mu;    
+           end
+           
+           obj.time3(k) = obj.out.t(k);
+           obj.f_variance1.XData = obj.time3;
+           if k>1
+           obj.muminusv(k) = mu_d - 50*sqrt(var_d);%obj.out.xnom(3,k) + mu_d - 2*sqrt(var_d);
+           obj.f_variance1.YData = obj.muminusv;
+           else
+           obj.muminusv(k) = 0 %obj.out.xnom(3,k);
+           obj.f_variance1.YData = obj.muminusv; 
+           end
+           
+           
+           obj.time4(k) = obj.out.t(k);
+           obj.f_variance2.XData = obj.time4;
+           if k>1
+           obj.muplusv(k) = mu_d + 50*sqrt(var_d);%obj.out.xnom(3,k) + mu_d + 2*sqrt(var_d);
+           obj.f_variance2.YData = obj.muplusv;
+           else
+           obj.muplusv(k) = 0 ;%obj.out.xnom(3,k);
+           obj.f_variance2.YData = obj.muplusv; 
+           end
            
            
 %             obj.f
