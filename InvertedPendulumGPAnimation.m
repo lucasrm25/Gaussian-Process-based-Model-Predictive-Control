@@ -21,6 +21,9 @@ classdef InvertedPendulumGPAnimation < handle
         f_mu
         f_variance1
         f_variance2
+        f_std_minus
+        f_std_plus
+        f_std_data
         
         % mesh parameters
         X1
@@ -41,6 +44,8 @@ classdef InvertedPendulumGPAnimation < handle
         mu
         muminusv
         muplusv
+        std_minus 
+        std_plus 
         
         
         k   % current time step
@@ -165,33 +170,45 @@ classdef InvertedPendulumGPAnimation < handle
             
             % varianz
             subplot(2,3,6)
-            plot(obj.out.t(1:end-1),obj.out.r(1,:),'DisplayName', 'reference')
+            plot3(NaN,NaN,NaN)
+            xlim([min(rangeX1),max(rangeX1)]);
+            ylim([min(rangeX2),max(rangeX2)]);
+            zlim([-0.3,0.3]);
+            xlabel('$\theta$','Interpreter','latex'); ylabel('$\dot{\theta}$','Interpreter','latex'); zlabel('$\mu(d)$','Interpreter','latex')
+            title('mean\pm2*stddev Prediction Curves')
+            %
             hold on
-            axis tight
-            xlim([0,max(obj.out.t)]);
-            ylim([0,0.14]);
-            obj.f_mu = plot(NaN, NaN,...
-                             'DisplayName', '\theta',...
-                             'XDataSource', 'obj.time2',...
-                             'YDataSource', 'obj.mu')
-                         
-            obj.muminusv = obj.out.xnom(3,1);
-            obj.time3 = 0;
+            grid on         
+            view(0,90)
             
-            hold on                
-            obj.f_variance1 = plot(NaN, NaN,...
-                             'DisplayName', '\theta',...
-                             'XDataSource', 'obj.time3',...
-                             'YDataSource', 'obj.muminusv')
-                             
-           obj.muplusv = obj.out.xnom(3,1);
-           obj.time4 = 0;
+            % plot data points, and +-2*stddev surfaces 
+            obj.f_std_plus = surf(obj.X1,obj.X2,obj.Ymean+2*obj.Ystd ,obj.Ystd, 'FaceAlpha',.3,...
+                'EdgeColor', 'none', 'DisplayName', 'Prediction mean',...
+                'XDataSource', 'obj.X1',...
+                'YDataSource', 'obj.X2',...
+                'ZDataSource', 'obj.std_plus',...
+                'CDataSource', 'obj.Ystd');
+            colormap(gca,jet);
+            shading interp;
+            hold on
+               
+
+             obj.f_std_minus = surf(obj.X1,obj.X2,obj.Ymean-2*obj.Ystd ,obj.Ystd, 'FaceAlpha',.3,...
+                'EdgeColor', 'none', 'DisplayName', 'Prediction mean',...
+                'XDataSource', 'obj.X1',...
+                'YDataSource', 'obj.X2',...
+                'ZDataSource', 'obj.Ymean-2*obj.Ystd',...
+                'CDataSource', 'obj.Ystd');
+            shading interp;
+            colormap(gca,jet);
             
-           hold on              
-           obj.f_variance2 = plot(NaN, NaN,...
-                             'DisplayName', '\theta',...
-                             'XDataSource', 'obj.time4',...
-                             'YDataSource', 'obj.muplusv')
+            obj.f_std_data = scatter3(NaN,NaN,NaN,...
+                     'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points',...
+                      'XDataSource', 'obj.d_GP_video.X(1,:)',...
+                     'YDataSource', 'obj.d_GP_video.X(2,:)',...
+                     'ZDataSource', 'obj.d_GP_video.Y(:,pi)')
+            
+           
                             
             
   
@@ -262,37 +279,21 @@ classdef InvertedPendulumGPAnimation < handle
            obj.f_angle.YData = obj.angle;
            
            % subplot 3
-           obj.time2(k) = obj.out.t(k);
-           obj.f_mu.XData = obj.time2;
-           if k>1
-           obj.mu(k) = mu_d; %obj.out.xnom(3,k) + mu_d;
-           obj.f_mu.YData = obj.mu;
-           else
-           obj.mu(k) = 0; %obj.out.xnom(3,k) ;
-           obj.f_mu.YData = obj.mu;    
-           end
-           
-           obj.time3(k) = obj.out.t(k);
-           obj.f_variance1.XData = obj.time3;
-           if k>1
-           obj.muminusv(k) = mu_d - 50*sqrt(var_d);%obj.out.xnom(3,k) + mu_d - 2*sqrt(var_d);
-           obj.f_variance1.YData = obj.muminusv;
-           else
-           obj.muminusv(k) = 0 %obj.out.xnom(3,k);
-           obj.f_variance1.YData = obj.muminusv; 
-           end
-           
-           
-           obj.time4(k) = obj.out.t(k);
-           obj.f_variance2.XData = obj.time4;
-           if k>1
-           obj.muplusv(k) = mu_d + 50*sqrt(var_d);%obj.out.xnom(3,k) + mu_d + 2*sqrt(var_d);
-           obj.f_variance2.YData = obj.muplusv;
-           else
-           obj.muplusv(k) = 0 ;%obj.out.xnom(3,k);
-           obj.f_variance2.YData = obj.muplusv; 
-           end
-           
+          obj.f_std_data.XData = obj.d_GP_video.X(1,:);
+          obj.f_std_data.YData = obj.d_GP_video.X(2,:); 
+          obj.f_std_data.ZData = obj.d_GP_video.Y(:,pi);
+          
+          obj.std_plus = obj.Ymean+2*obj.Ystd;
+          obj.f_std_plus.XData = obj.X1;
+          obj.f_std_plus.YData = obj.X2;
+          obj.f_std_plus.ZData = obj.std_plus;
+          obj.f_std_plus.CData = obj.Ystd;
+          
+          obj.std_minus = obj.Ymean-2*obj.Ystd;
+          obj.f_std_minus.XData = obj.X1;
+          obj.f_std_minus.YData = obj.X2;
+          obj.f_std_minus.ZData = obj.std_minus;
+          obj.f_std_minus.CData = obj.Ystd;
            
 %             obj.f
 %             surf(obj.X1,obj.X2,obj.Ymean, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
