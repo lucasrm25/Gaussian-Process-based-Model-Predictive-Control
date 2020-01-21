@@ -86,7 +86,7 @@ d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
 estModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, @d_GP.eval, var_w);
-%estModel = trueModel;
+estModel = trueModel;
 %estModel = nomModel;
 
 %% Controller
@@ -221,7 +221,7 @@ for k = ki:numel(out.t)-1
         d_GP.add(zhat,d_est);
     end
     
-    if d_GP.N > 20 && out.t(k) > 3
+    if d_GP.N > 1 && out.t(k) > 0
         d_GP.updateModel();
         d_GP.isActive = true;
     end
@@ -236,7 +236,8 @@ return
 
 %% Animation GP
 out_true = load(fullfile(pwd,'/simresults/20-01-18-out-true.mat'))
-out_nom = load(fullfile(pwd,'/simresults/20-01-18-GP-out-nom.mat'))
+%out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom.mat'))
+out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom-hp-optimized.mat'))
 GPAnimation = InvertedPendulumGPAnimation(d_GP, -0.1, 0.3, -1.6, 0.3, out, out_true, out_nom);
 GPAnimation.initInvertedPendulumGPAnimation()
 for k=1:numel(out.t)-1

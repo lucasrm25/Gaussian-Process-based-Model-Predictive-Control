@@ -24,6 +24,7 @@ classdef InvertedPendulumGPAnimation < handle
         f_std_minus
         f_std_plus
         f_std_data
+        f_last_sample2
         
         % mesh parameters
         X1
@@ -69,8 +70,9 @@ classdef InvertedPendulumGPAnimation < handle
         %   Generate grid where the mean and variance will be calculated
         % -----------------------------------------------------------------
              % generate double of d_GP
-             obj.d_GP_video = GP(obj.d_GP.n, obj.d_GP.p, obj.d_GP.var_f, obj.d_GP.var_n, obj.d_GP.M, obj.d_GP.Nmax);
-            %obj.d_GP_video = obj.out_nom.d_GP;
+             %obj.d_GP_video = GP(obj.d_GP.n, obj.d_GP.p, obj.d_GP.var_f, obj.d_GP.var_n, obj.d_GP.M, obj.d_GP.Nmax);
+             obj.out_nom.d_GP.isActive = 1;
+             obj.d_GP_video = obj.out_nom.d_GP;
 
              factor = 0.3;
              rangeX1 = [obj.x1min - factor*range([obj.x1min obj.x1max]), ...
@@ -96,7 +98,7 @@ classdef InvertedPendulumGPAnimation < handle
             grid on
             xlabel('$\theta$','Interpreter','latex'); ylabel('$\dot{\theta}$','Interpreter','latex'); zlabel('$\mu(d)$','Interpreter','latex')
             title('Prediction Mean')
-            view(240,25)
+            view(280,25)
 
             
              % -------------------------------------------------------------
@@ -125,32 +127,33 @@ classdef InvertedPendulumGPAnimation < handle
                 'XDataSource', 'obj.X1',...
                 'YDataSource', 'obj.X2',...
                 'ZDataSource', 'obj.Ymean');
+            shading interp;
             hold on
             
             % plot sample points
-            obj.f_sample_points = scatter3(NaN,NaN,NaN,...
+            obj.f_sample_points = scatter3(obj.d_GP_video.X(1,:),obj.d_GP_video.X(2,:),obj.d_GP_video.Y(:,pi),...
                      'filled','MarkerFaceColor','black', 'DisplayName', 'Sample points',...
                      'XDataSource', 'obj.d_GP_video.X(1,:)',...
                      'YDataSource', 'obj.d_GP_video.X(2,:)',...
                      'ZDataSource', 'obj.d_GP_video.Y(:,pi)')
             
-           obj.f_last_sample = scatter3(NaN,NaN,NaN,...
-                     'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+           obj.f_last_sample = scatter3(NaN,NaN,NaN,50,...
+                     'filled','MarkerFaceColor','red', 'DisplayName', 'Newest sample point')
            
                     
             
             % set legend    
-            legend([obj.f_d  obj.f_sample_points])
+            legend([obj.f_d  obj.f_sample_points obj.f_last_sample])
             
             % plot angle
-            subplot(2,3,3)
-            plot(obj.out_true.out.t(:),obj.out_true.out.xhat(3,:),'DisplayName', 'true model')
+            subplot(2,3,6)
+            %plot(obj.out_true.out.t(:),obj.out_true.out.xhat(3,:),'DisplayName', 'true model')
             hold on
-            plot(obj.out_nom.out.t(:),obj.out_nom.out.xhat(3,:),'DisplayName', 'nominal model')
+            %plot(obj.out_nom.out.t(:),obj.out_nom.out.xhat(3,:),'DisplayName', 'nominal model')
             hold on
             plot(obj.out.t(1:end-1),obj.out.r(1,:),'DisplayName', 'reference')
             xlim([0,max(obj.out.t)]);
-            ylim([min(obj.out.xhat(3,:)),max(obj.out.xhat(3,:))]);
+            ylim([min(obj.out.xhat(3,:))-0.01,max(obj.out.xhat(3,:))+0.01]);
             title('Angle \theta')
             hold on
             grid on
@@ -169,18 +172,23 @@ classdef InvertedPendulumGPAnimation < handle
             obj.time2 = 0;
             
             % varianz
-            subplot(2,3,6)
+            subplot(2,3,3)
             plot3(NaN,NaN,NaN)
             xlim([min(rangeX1),max(rangeX1)]);
             ylim([min(rangeX2),max(rangeX2)]);
             zlim([-0.3,0.3]);
             xlabel('$\theta$','Interpreter','latex'); ylabel('$\dot{\theta}$','Interpreter','latex'); zlabel('$\mu(d)$','Interpreter','latex')
-            title('mean\pm2*stddev Prediction Curves')
+            title('$\mu(d) \pm 2$ stddev(d)','Interpreter','latex');
             %
             hold on
             grid on         
             view(0,90)
             
+            
+   
+                 
+                 
+                 
             % plot data points, and +-2*stddev surfaces 
             obj.f_std_plus = surf(obj.X1,obj.X2,obj.Ymean+2*obj.Ystd ,obj.Ystd, 'FaceAlpha',.3,...
                 'EdgeColor', 'none', 'DisplayName', 'Prediction mean',...
@@ -189,10 +197,10 @@ classdef InvertedPendulumGPAnimation < handle
                 'ZDataSource', 'obj.std_plus',...
                 'CDataSource', 'obj.Ystd');
             colormap(gca,jet);
+            c = colorbar();
+            % Make the colorbar transparent
             shading interp;
-            hold on
-               
-
+            
              obj.f_std_minus = surf(obj.X1,obj.X2,obj.Ymean-2*obj.Ystd ,obj.Ystd, 'FaceAlpha',.3,...
                 'EdgeColor', 'none', 'DisplayName', 'Prediction mean',...
                 'XDataSource', 'obj.X1',...
@@ -202,14 +210,23 @@ classdef InvertedPendulumGPAnimation < handle
             shading interp;
             colormap(gca,jet);
             
-            obj.f_std_data = scatter3(NaN,NaN,NaN,...
-                     'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points',...
+         
+                        obj.f_std_data = scatter3(obj.d_GP_video.X(1,:),obj.d_GP_video.X(2,:),obj.d_GP_video.Y(:,pi),...
+                     'filled','MarkerFaceColor','black', 'DisplayName', 'Sample points',...
                       'XDataSource', 'obj.d_GP_video.X(1,:)',...
                      'YDataSource', 'obj.d_GP_video.X(2,:)',...
                      'ZDataSource', 'obj.d_GP_video.Y(:,pi)')
-            
-           
+                 
+                 
+              obj.f_last_sample2 = scatter3(NaN,NaN,NaN,...
+                     'filled','MarkerFaceColor','red', 'DisplayName', 'Newest sample point',...
+                      'XDataSource', 'obj.d_GP_video.X(1,end)',...
+                     'YDataSource', 'obj.d_GP_video.X(2,end)',...
+                     'ZDataSource', 'obj.d_GP_video.Y(end,pi)')
+              
+         
                             
+             
             
   
             % lock up axis limits
@@ -257,9 +274,9 @@ classdef InvertedPendulumGPAnimation < handle
             
            % update
            % subplot 1
-           obj.f_sample_points.XData = obj.d_GP_video.X(1,:);
-           obj.f_sample_points.YData = obj.d_GP_video.X(2,:);
-           obj.f_sample_points.ZData = obj.d_GP_video.Y(:,pi);
+           obj.f_sample_points.XData = obj.d_GP_video.X(1,1:end-1);
+           obj.f_sample_points.YData = obj.d_GP_video.X(2,1:end-1);
+           obj.f_sample_points.ZData = obj.d_GP_video.Y(1:end-1,pi);
            
            obj.f_last_sample.XData = obj.d_GP_video.X(1,end);
            obj.f_last_sample.YData = obj.d_GP_video.X(2,end);
@@ -279,9 +296,7 @@ classdef InvertedPendulumGPAnimation < handle
            obj.f_angle.YData = obj.angle;
            
            % subplot 3
-          obj.f_std_data.XData = obj.d_GP_video.X(1,:);
-          obj.f_std_data.YData = obj.d_GP_video.X(2,:); 
-          obj.f_std_data.ZData = obj.d_GP_video.Y(:,pi);
+          
           
           obj.std_plus = obj.Ymean+2*obj.Ystd;
           obj.f_std_plus.XData = obj.X1;
@@ -294,6 +309,14 @@ classdef InvertedPendulumGPAnimation < handle
           obj.f_std_minus.YData = obj.X2;
           obj.f_std_minus.ZData = obj.std_minus;
           obj.f_std_minus.CData = obj.Ystd;
+          
+          obj.f_std_data.XData = obj.d_GP_video.X(1,1:end-1);
+          obj.f_std_data.YData = obj.d_GP_video.X(2,1:end-1); 
+          obj.f_std_data.ZData = obj.d_GP_video.Y(1:end-1,pi);
+          
+          obj.f_last_sample2.XData = obj.d_GP_video.X(1,end);
+          obj.f_last_sample2.YData = obj.d_GP_video.X(2,end);
+          obj.f_last_sample2.ZData = 0.2;
            
 %             obj.f
 %             surf(obj.X1,obj.X2,obj.Ymean, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
@@ -318,7 +341,7 @@ classdef InvertedPendulumGPAnimation < handle
             obj.initInvertedPendulumGPAnimation();
             xlim manual
             ylim manual
-            for k=1:obj.d_GP.N % only holds for N<Nmax
+            for k=1:70 % only holds for N<Nmax
                 status = obj.updateInvertedPendulumGPAnimation(k);
                 if status == 0
                     break;
