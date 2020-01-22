@@ -424,7 +424,7 @@ classdef GP < handle
             
             % Generate grid where the mean and variance will be calculated
             if numel(varargin) ~= 2
-                factor = 0.3;
+                factor = 0.3;%0.3;
                 rangeX1 = [ min(obj.X(1,:)) - factor*range(obj.X(1,:)), ...
                             max(obj.X(1,:)) + factor*range(obj.X(1,:))  ];
                 rangeX2 = [ min(obj.X(2,:)) - factor*range(obj.X(2,:)), ...
@@ -463,6 +463,7 @@ classdef GP < handle
             surf(X1,X2,Ymean-2*Ystd,Ystd, 'FaceAlpha',0.3)
             scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red')
             title('mean\pm2*stddev Prediction Curves')
+            xlabel('X1'); ylabel('X2');
             shading interp;
             colormap(gcf,jet);
             view(30,30)
@@ -475,8 +476,8 @@ classdef GP < handle
             scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
             zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
             legend;
-            xlabel('X1'); ylabel('X2');
             title('True Function')
+            xlabel('X1'); ylabel('X2');
             view(24,12)
             subplot(1,2,2); hold on; grid on;
             % surf(X1,X2,Y, 'FaceAlpha',.5, 'FaceColor','b', 'EdgeColor', 'none', 'DisplayName', 'True function');
@@ -484,8 +485,8 @@ classdef GP < handle
             scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
             zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
             legend;
-            xlabel('X1'); ylabel('X2');
             title('Prediction Mean')
+            xlabel('X1'); ylabel('X2');
             view(24,12)
             
             % plot bias and variance
@@ -493,11 +494,13 @@ classdef GP < handle
             subplot(1,2,1); hold on; grid on;
             contourf(X1,X2, abs(Ymean-Ytrue), 50,'LineColor','none')
             title('Absolute Prediction Bias')
+            xlabel('X1'); ylabel('X2');
             colorbar;
             scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
             subplot(1,2,2); hold on; grid on;
             contourf(X1,X2, Ystd.^2, 50 ,'LineColor','none')
             title('Prediction Variance')
+            xlabel('X1'); ylabel('X2');
             colorbar;
             scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
             colormap(gcf,parula);
@@ -524,35 +527,3 @@ classdef GP < handle
         end
     end
 end
-
-
-
-
-
-
-
-
-
-
-% function cost = optimizeHyperParams_gradfun(obj,outdim,vars)
-% 
-%     var_f = vars(1);
-%     M = diag(vars(2:end));
-% 
-%     K = var_f * exp( -0.5 * pdist2(obj.X',obj.X','mahalanobis',M).^2 );
-% 
-%     alpha = K \ obj.Y(:,outdim);
-% 
-%     dK_var_f = K*2/sqrt(var_f);
-% 
-%     dK_l = zeros(obj.N,obj.N);
-%     for i=1:obj.N
-%         for j=1:obj.N
-%             ksi = obj.X(:,i) - obj.X(:,j);
-%             % dK_l(i,j) = sum( K(i,j)*0.5*inv(M)*ksi*ksi'*inv(M) * log(diag(M)) );
-%             dK_l(i,j) = sum( K(i,j)*0.5*M\ksi*ksi'/M * log(diag(M)) );
-%         end
-%     end            
-%     % cost = 0.5 * trace( (alpha*alpha' - inv(K)) * ( dK_var_f + dK_l ) );
-%     cost = 0.5 * trace( alpha*alpha'*(dK_var_f+dK_l) - K\(dK_var_f+dK_l) );
-% end

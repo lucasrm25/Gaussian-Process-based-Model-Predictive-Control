@@ -2,7 +2,7 @@
 Project for the course "Statistical Learning and Stochastic Control" at University of Stuttgart
 
 
-For detailed information about the project, please refer to the [Report]().
+For detailed information about the project, please refer to the [Presentation](./Presentation.pdf) and [Report](./Report.pdf).
 
 Supported Matlab Version **>= R2019a**
 
