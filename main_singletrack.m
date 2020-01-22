@@ -19,7 +19,8 @@ maxiter = 30;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
 loadPreTrainedGP = false;
-GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-with-GP-optimized.mat');
+GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-without-GP.mat');
+% GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-with-GP-optimized.mat');
 useGP = false;
 trainGPonline = true;
 useParallel = true;
@@ -81,7 +82,7 @@ if ~loadPreTrainedGP
     % create GP object
     d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 else
-    load(fullfile(pwd,'/simresults/20-01-15-out-GP-WORKED-optimized.mat')); %,'d_GP'
+    load(GPfile); %,'d_GP'
     fprintf('\nGP model loaded succesfuly\n\n')
 end
 
@@ -123,10 +124,10 @@ fend = @(t,mu_x,var_x,e,r)   2 * costFunction(mu_x, var_x, zeros(m,1), track);  
 h  = @(x,u,e) [];
 g  = @(x,u,e) [];
 u_lb = [-deg2rad(20);  % >= steering angle
-         -1;           % >= wheel torque gain
+         -1;           % >= gas pedal
          5];           % >= centerline track velocity
 u_ub = [deg2rad(20);   % <= steering angle
-        1;             % <= wheel torque gain
+        1;             % <= gas pedal
         30];           % <= centerline track velocity 
 
 % Initialize NMPC object;
@@ -497,7 +498,7 @@ function cost = costFunction(mu_x, var_x, u, track)
     % y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x));
     % figure; hold on; grid on;
     % plot(x,y)
-    cost_outside = q_r * offroad_error^2;
+    % cost_outside = q_r * offroad_error^2;
     
     % ---------------------------------------------------------------------
     % reward high velocities

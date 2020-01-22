@@ -252,15 +252,18 @@ d_GP.var_n
 close all;
 
 % plot reference and state signal
-figure('Position',[-1836 535 560 420]); 
+figure('Color','w','Position',[-1836 535 560 420]); 
 subplot(2,1,1); hold on; grid on;
-plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
+% plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
 plot(out.t, out.x(3,:), 'DisplayName', 'x(t) [rad]')
-ylabel('[rad]');
-legend;
+ylabel('Pole angle \theta [rad]');
+xlabel('time [s]')
+
 subplot(2,1,2); hold on; grid on;
 plot(out.t(1:end-1), out.u, 'DisplayName', 'u(t)')
-legend;
+ylabel('Force on the carriage F [N]');
+xlabel('time [s]')
+% legend;
 
 % true GP function that is meant to be learned
 Bz_x = trueModel.Bz_x;
