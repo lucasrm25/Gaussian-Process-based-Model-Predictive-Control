@@ -490,15 +490,14 @@ function cost = costFunction(mu_x, var_x, u, track)
 
     % % CHECK SMOOTH TRANSITION
     % x = -0.5:0.01:0.5
-    % % Smooth >=0 boolean function
-    % alpha = 40; % the larger the sharper the clip function
-    % y = (1+exp(-alpha*(x+0.05))).^-1 + exp(x);
+    % % Relaxied barrier function for (x<=lambda)
     % gamma = 10000;
     % lambda = -0.2;
-    % y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x));
+    % y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x)); % y = -log(lambda-x)
     % figure; hold on; grid on;
     % plot(x,y)
-    % cost_outside = q_r * offroad_error^2;
+    
+    cost_outside = q_r * offroad_error^2;
     
     % ---------------------------------------------------------------------
     % reward high velocities
