@@ -487,16 +487,6 @@ function cost = costFunction(mu_x, var_x, u, track)
     gamma = 1000;
     lambda = -0.1;
     offroad_error = 5*(sqrt((4+gamma*(lambda-offroad_error).^2)/gamma) - (lambda-offroad_error));
-
-    % % CHECK SMOOTH TRANSITION
-    % x = -0.5:0.01:0.5
-    % % Relaxied barrier function for (x<=lambda)
-    % gamma = 10000;
-    % lambda = -0.2;
-    % y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x)); % y = -log(lambda-x)
-    % figure; hold on; grid on;
-    % plot(x,y)
-    
     cost_outside = q_r * offroad_error^2;
     
     % ---------------------------------------------------------------------

@@ -34,3 +34,30 @@ cellfun( @(h) delete(h), trackAnim.h_var_x_pred_opt )
 legend('off')
 title('')
 fp.savefig(imgname,'format','epsc')
+
+
+
+
+
+%% CHECK RELAXED BARRIER FUNCTION PLOT
+
+
+x = -0.5:0.001:0.5;
+% Relaxied barrier function for (x<=lambda)
+gamma = 10000;
+lambda = -0.2;
+y = 0.5*(sqrt((4+gamma*(lambda-x).^2)/gamma) - (lambda-x)); 
+figure('Color','w'); hold on; %grid on;
+plot(x,y,'LineWidth',2)
+ylim([0,0.1])
+xlim([-0.4,0])
+set(gca,'YTickLabel',[]);
+set(gca,'XTickLabel',[]);
+%%%%
+lambda = -0.2;
+x = -0.6:0.001:(lambda-eps);
+y = 0.1*-log(lambda-x);
+figure('Color','w'); hold on; %grid on;
+plot(x,y,'LineWidth',2)
+xlim([-0.6,0])
+
