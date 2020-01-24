@@ -236,10 +236,7 @@ return
 
 %% Optimize GP hyperparameters ??? (Offline procedure, after simulation)
 
-d_GP.M = M
-d_GP.var_f = var_f;
-d_GP.var_n = var_n;
-
+d_GP.setHyperParameters( M, var_f, var_n )
 % d_GP.optimizeHyperParams('ga');
 d_GP.optimizeHyperParams('fmincon');
 
