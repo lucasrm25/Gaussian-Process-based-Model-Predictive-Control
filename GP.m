@@ -18,15 +18,15 @@ classdef GP < handle
     %------------------------------------------------------------------
     
     properties
-        % kernel parameters (one for each output dimension)
-        var_f % <p>     signal/output covariance
-        var_n % <p>     evaluation noise covariance
-        M     % <n,n,p> length scale covariance
-        
         isActive = true
     end
     
     properties(SetAccess=private)
+        % kernel parameters (one for each output dimension)
+        M     % <n,n,p> length scale covariance
+        var_f % <p>     signal/output covariance
+        var_n % <p>     evaluation noise covariance
+        
         % dictionary: [X,Y]
         X     % <n,N> input dataset
         Y     % <N,p> output dataset
@@ -62,15 +62,8 @@ classdef GP < handle
             obj.p       = p;
             obj.X       = [];
             obj.Y       = [];
-            obj.var_f   = var_f;
-            obj.var_n   = var_n;
-            obj.M       = M;
-            obj.Nmax    = maxsize;
-            
-            % validade model parameters
-            assert( n == size(M,1),     'Matrix M has wrong dimension or parameters n/p are wrong. Expected dim(M)=<n,n,p>=<%d,%d,%d>',n,n,p);
-            assert( p == size(var_f,1), 'Matrix var_f has wrong dimension or parameter p is wrong. Expected dim(var_f)=<p>=<%d>, got <%d>.',p,size(var_f,1));
-            assert( p == size(var_n,1), 'Matrix var_n has wrong dimension or parameter p is wrong. Expected dim(var_n)=<p>=<%d>, got <%d>.',p,size(var_n,1));
+            obj.Nmax    = maxsize;    
+            obj.setHyperParameters( M, var_f, var_n )
         end
         
         
@@ -88,36 +81,18 @@ classdef GP < handle
             N = size(obj.X,2);
         end
         
-        % function set.M(obj,M)
-        %     assert( obj.n == size(M,1),     'Matrix M has wrong dimension or parameters n/p are wrong. Expected dim(M)=<n,n,p>=<%d,%d,%d>',obj.n,obj.n,obj.p);
-        %     obj.M = M;
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.var_f(obj,var_f)
-        %     assert( obj.p == size(var_f,1), 'Matrix var_f has wrong dimension or parameter p is wrong. Expected dim(var_f)=<p>=<%d>, got <%d>.',obj.p,size(var_f,1));
-        %     obj.var_f = var_f;
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.var_n(obj,var_n)
-        %     assert( obj.p == size(var_n,1), 'Matrix var_n has wrong dimension or parameter p is wrong. Expected dim(var_n)=<p>=<%d>, got <%d>.',obj.p,size(var_n,1));
-        %     obj.var_n = var_n;
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.X(obj,X)
-        %     obj.X = X;
-        %     % data has been added. GP is outdated. Please call obj.updateModel
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.Y(obj,Y)
-        %     obj.Y = Y;
-        %     % data has been added. GP is outdated. Please call obj.updateModel
-        %     obj.isOutdated = true;
-        % end
-        
+        function setHyperParameters(obj, M, var_f, var_n)
+        %------------------------------------------------------------------
+        % set new values to the hyperparameter
+        %------------------------------------------------------------------    
+            assert( obj.n == size(M,1),     'Matrix M has wrong dimension or parameters n/p are wrong. Expected dim(M)=<n,n,p>=<%d,%d,%d>',obj.n,obj.n,obj.p);
+            assert( obj.p == size(var_f,1), 'Matrix var_f has wrong dimension or parameter p is wrong. Expected dim(var_f)=<p>=<%d>, got <%d>.',obj.p,size(var_f,1));
+            assert( obj.p == size(var_n,1), 'Matrix var_n has wrong dimension or parameter p is wrong. Expected dim(var_n)=<p>=<%d>, got <%d>.',obj.p,size(var_n,1));
+            obj.M     = M;
+            obj.var_f = var_f;
+            obj.var_n = var_n;
+            obj.updateModel();
+        end
         
         function mean = mu(~,x)
         %------------------------------------------------------------------
@@ -131,7 +106,7 @@ classdef GP < handle
         end
         
         
-        function kernel = K(obj,x1,x2)
+        function kernel = K(obj, x1, x2)
         %------------------------------------------------------------------
         % SEQ kernel function: cov[f(x1),f(x2)]
         %     k(x1,x2) = var_f * exp( 0.5 * ||x1-x2||^2_M )
@@ -142,10 +117,11 @@ classdef GP < handle
         % out:
         %   kernel: <N1,N2,p>
         %------------------------------------------------------------------
+            kernel = zeros(size(x1,2),size(x2,2),obj.p);
             for pi = 1:obj.p
-                D(:,:,pi) = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
+                D = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
                 %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
-                kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
+                kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D );
             end
         end
         
@@ -155,6 +131,10 @@ classdef GP < handle
         % Update precomputed matrices L and alpha, that will be used when
         % evaluating new points. See [Rasmussen, pg19].
         % -----------------------------------------------------------------
+            % nothing to update... return
+            if obj.N == 0
+                return;
+            end
             % store cholesky L and alpha matrices
             I = eye(obj.N);
 
@@ -165,7 +145,6 @@ classdef GP < handle
             for pi=1:obj.p
                 obj.L(:,:,pi) = chol(K(:,:,pi)+ obj.var_n(pi) * I ,'lower');
                 % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
-
                 obj.alpha(:,pi) = obj.L(:,:,pi)'\(obj.L(:,:,pi)\(obj.Y(:,pi)-obj.mu(obj.X)));
             end
 
@@ -178,7 +157,7 @@ classdef GP < handle
         end
         
         
-        function add(obj,X,Y)
+        function add(obj, X, Y)
         %------------------------------------------------------------------
         % Add new data points [X,Y] to the dictionary
         %
@@ -186,7 +165,7 @@ classdef GP < handle
         %   X: <n,N>
         %   Y: <N,p>
         %------------------------------------------------------------------
-            OPTION = 'A'; % {'A','B'}
+            OPTION = 'B'; % {'A','B'}
         
             assert(size(Y,2) == obj.p, ...
                 sprintf('Y should have %d columns, but has %d. Dimension does not agree with the specified kernel parameters',obj.p,size(Y,2)));
@@ -204,7 +183,6 @@ classdef GP < handle
             % data overflow: dictionary will be full. we need to select
             % relevant points
             else 
-                
                 Nthatfit = obj.Nmax - obj.N;
                 
                 % make dictionary full
@@ -230,14 +208,17 @@ classdef GP < handle
                     
                 % OPTION B)
                 % the point with lowest variance will be removed        
-                else
+                elseif strcmp(OPTION,'B')
                     X_all = [obj.X,X];
                     Y_all = [obj.Y;Y];
+                    
                     [~, var_y] = obj.eval( X_all, true);
                     [~,idx_keep] = maxk(sum(reshape(var_y, obj.p^2, obj.N+Nextra )),obj.Nmax);
 
                     obj.X = X_all(:,idx_keep);
                     obj.Y = Y_all(idx_keep,:);
+                else
+                    error('Option not implemented');
                 end
             end
             % update pre-computed matrices
@@ -321,7 +302,12 @@ classdef GP < handle
                 
                 % set optimization problem
                 nvars = obj.n + 1 + 1;  % M, var_f, var_n
-                fun = @(vars) loglikelihood(obj,ip,vars);
+                %fun = @(vars) loglikelihood(obj,ip,vars);
+                
+                fun = @(vars) loglikelihood(obj,ip,...                  % output dim
+                                            diag(10.^vars(1:end-2)),... % M
+                                            10.^vars(end-1),...         % var_f
+                                            10.^vars(end));             % var_n
                 
                 ub = [ 1e+5 * ones(obj.n,1);
                        1e+5;
@@ -366,23 +352,17 @@ classdef GP < handle
             warning('on', 'MATLAB:singularMatrix')
         end
         
-        function logL = loglikelihood(obj,outdim,vars)
+        function logL = loglikelihood(obj, outdim, M, var_f, var_n)
         %------------------------------------------------------------------
-        % calculate the log likelihood: p(Y|X,theta),
-        %      where theta are the hyperparameters and (X,Y) the dictionary
-        %------------------------------------------------------------------
-            % variables in log10 space
-            M     = diag(10.^vars(1:end-2));
-            var_f = 10.^vars(end-1);
-            var_n = 10.^vars(end);
-                        
+        % calculate the log likelihood: log(p(Y|X,theta)),
+        %      where theta are the hyperparameters and (X,Y) the training data
+        %------------------------------------------------------------------         
             Y = obj.Y(:,outdim);
             K  = var_f * exp( -0.5 * pdist2(obj.X',obj.X','mahalanobis',M).^2 );
             Ky = K + var_n*eye(obj.N);
-            
+            % calculate log(p(Y|X,theta))
             logL = -(-0.5*Y'/Ky*Y -0.5*logdet(Ky) -obj.n/2*log(2*pi));
         end
-        
         
         function plot2d(obj, truefun, varargin)
         %------------------------------------------------------------------
@@ -455,10 +435,10 @@ classdef GP < handle
             figure('Color','w', 'Position', [-1827 27 550 420])
             %figure('Color','white','Position',[513  440  560  420]);
             hold on; grid on;
-            s1 = surf(X1, X2, Ymean,'edgecolor',0.8*[1 1 1], 'EdgeAlpha', 0.3 ,'FaceColor', [153, 51, 255]/255)
+            s1 = surf(X1, X2, Ymean,'edgecolor',0.8*[1 1 1], 'EdgeAlpha', 0.3 ,'FaceColor', [153, 51, 255]/255);
             s2 = surf(X1, X2, Ymean+sigmalevel*Ystd, Ystd, 'FaceAlpha',0.2,'EdgeAlpha',0.2, 'EdgeColor',0.4*[1 1 1]); %, 'FaceColor',0*[1 1 1])
             s3 = surf(X1, X2, Ymean-sigmalevel*Ystd, Ystd,  'FaceAlpha',0.2,'EdgeAlpha',0.2, 'EdgeColor',0.4*[1 1 1]); %, 'FaceColor',0*[1 1 1]) 
-            p1 = scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,outdim),'filled','MarkerFaceColor','red')
+            p1 = scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,outdim),'filled','MarkerFaceColor','red');
             title('mean\pm2*stddev Prediction Curves')
             xlabel('X1'); ylabel('X2');
             view(70,10)
@@ -510,16 +490,12 @@ classdef GP < handle
         % This function can only be called when the GP input is 1D
         %
         % args:
-        %   truthfun: anonymous function @(x) which returns the true function
-        %   varargin{1} = rangeX1: 
-        %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
-        %                           will be evaluated and ploted
+        %   see inputParser parameters
         %------------------------------------------------------------------
         
             assert(obj.N>0, 'Dataset is empty. Aborting...')
             % we can not plot more than in 3D
             assert(obj.n==1, 'This function can only be used when dim(X)=1. Aborting...');
-            
             
             %--------------------------------------------------------------
             % parse inputs
@@ -554,6 +530,10 @@ classdef GP < handle
             Ytrue = truthfun(X);
             Ymean = mu';
             Ystd  = sqrt(squeeze(var));
+            
+            % prior
+            %Ymean = 0*mu';
+            %Ystd  = sqrt(diag(obj.K(X,X)));
             
             %--------------------------------------------------------------
             % Generate plots

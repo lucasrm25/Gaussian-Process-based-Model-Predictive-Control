@@ -26,52 +26,42 @@ gp.add(X,Y);
 close all;
 
 % test 1
-gp.M = 1e-2;
-gp.var_f = 2;
-gp.var_n = var_w;
-gp.updateModel();
+gp.setHyperParameters(1e-2, 2, var_w)
 gp.plot1d(truefun)
 xlim([-6 5]); ylim([-4 4]);
 
 % test 2
-gp.M = 50;
-gp.var_f = 100;
-gp.var_n = var_w;
-gp.updateModel();
+gp.setHyperParameters(50, 100, var_w)
 gp.plot1d(truefun)
 xlim([-6 5]); ylim([-4 4]);
 
 % test 3
-gp.M = 1e-3;
-gp.var_f = 1e-2;
-gp.var_n = var_w;
-gp.updateModel();
+gp.setHyperParameters(1e-3, 1e-2, var_w)
 gp.plot1d(truefun)
 xlim([-6 5]); ylim([-4 4]);
 
 % test 4
-gp.M = 50;
-gp.var_f = 1e7;
-gp.var_n = var_w;
-gp.updateModel();
+gp.setHyperParameters(50, 1e7, var_w)
 gp.plot1d(truefun)
 xlim([-6 5]); ylim([-4 4]);
 
 % test 4
-gp.M = 100^2;
-gp.var_f = 100^2;
-gp.var_n = 1^2;
-gp.updateModel();
+gp.setHyperParameters(100^2, 100^2, 1^2)
 gp.plot1d(truefun)
 xlim([-6 5]); ylim([-4 4]);
 
 %% optimize and plot
 
-gp.M = 0.1^2;
-gp.var_f = 0.1^2;
-gp.var_n = 1e-8;
-
+gp.setHyperParameters(0.1^2, 0.1^2, 1e-8)
 % gp.optimizeHyperParams('ga');
 gp.optimizeHyperParams('fmincon');
+
+close all
 gp.plot1d(truefun)
 xlim([-6 5]); ylim([-4 4]);
+
+%%
+close all
+gp.setHyperParameters(1.5^2, 2^2, 4.0228e-09)
+gp.plot1d(truefun)
+xlim([-6 5]); ylim([-5 5]);
