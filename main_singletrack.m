@@ -18,7 +18,7 @@ tf = 15*12;       % simulation time
 maxiter = 30;   % max NMPC iterations per time step
 N = 10;         % NMPC prediction horizon
 
-loadPreTrainedGP = false;
+loadPreTrainedGP = true;
 GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-without-GP.mat');
 % GPfile = fullfile(pwd,'/simresults/20-01-15-out-GP-with-GP-optimized.mat');
 useGP = false;
