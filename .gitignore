@@ -1,4 +1,5 @@
 *.m~
+*.asv
 *.slxc
 *slprj/*
 *.mat
