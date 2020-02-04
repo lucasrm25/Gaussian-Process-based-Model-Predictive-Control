@@ -1,4 +1,5 @@
 *.m~
+*.asv
 *.slxc
 *slprj/*
 *.mat
@@ -7,5 +8,7 @@
 *.png
 *.jpg
 *.eps
+*Dateien_Projektwettbewerb/*
+*GPRegression/*
 
 simresults/

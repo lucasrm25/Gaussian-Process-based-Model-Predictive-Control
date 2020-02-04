@@ -30,7 +30,7 @@ classdef MotionModelGP_SingleTrack_nominal < MotionModelGP
 %   
 %--------------------------------------------------------------------------
 
-    properties
+    properties(Constant)
         M    = 500 *1.5      % vehicle mass
         I_z  = 600 *1.5      % vehicle moment of inertia (yaw axis)
         g    = 9.81     % gravitation
