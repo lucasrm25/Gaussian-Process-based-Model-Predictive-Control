@@ -5,7 +5,7 @@
 %   -
 %------------------------------------------------------------------
 
-classdef GP < handle
+classdef GP2 < handle
     %------------------------------------------------------------------
     % Gaussian Process model fitting with SEQ kernel function
     %
@@ -18,15 +18,15 @@ classdef GP < handle
     %------------------------------------------------------------------
     
     properties
-        % kernel parameters (one for each output dimension)
-        var_f % <p>     signal/output covariance
-        var_n % <p>     evaluation noise covariance
-        M     % <n,n,p> length scale covariance
-        
         isActive = true
     end
     
     properties(SetAccess=private)
+        % kernel parameters (one for each output dimension)
+        M     % <n,n,p> length scale covariance
+        var_f % <p>     signal/output covariance
+        var_n % <p>     evaluation noise covariance
+        
         % dictionary: [X,Y]
         X     % <n,N> input dataset
         Y     % <N,p> output dataset
@@ -47,7 +47,7 @@ classdef GP < handle
     end
     
     methods
-        function obj = GP(n, p, var_f, var_n, M, maxsize)
+        function obj = GP2(n, p, var_f, var_n, M, maxsize)
         %------------------------------------------------------------------
         % GP constructor
         % args:
@@ -62,15 +62,8 @@ classdef GP < handle
             obj.p       = p;
             obj.X       = [];
             obj.Y       = [];
-            obj.var_f   = var_f;
-            obj.var_n   = var_n;
-            obj.M       = M;
-            obj.Nmax    = maxsize;
-            
-            % validade model parameters
-            assert( n == size(M,1),     'Matrix M has wrong dimension or parameters n/p are wrong. Expected dim(M)=<n,n,p>=<%d,%d,%d>',n,n,p);
-            assert( p == size(var_f,1), 'Matrix var_f has wrong dimension or parameter p is wrong. Expected dim(var_f)=<p>=<%d>, got <%d>.',p,size(var_f,1));
-            assert( p == size(var_n,1), 'Matrix var_n has wrong dimension or parameter p is wrong. Expected dim(var_n)=<p>=<%d>, got <%d>.',p,size(var_n,1));
+            obj.Nmax    = maxsize;    
+            obj.setHyperParameters( M, var_f, var_n )
         end
         
         
@@ -88,36 +81,18 @@ classdef GP < handle
             N = size(obj.X,2);
         end
         
-        % function set.M(obj,M)
-        %     assert( obj.n == size(M,1),     'Matrix M has wrong dimension or parameters n/p are wrong. Expected dim(M)=<n,n,p>=<%d,%d,%d>',obj.n,obj.n,obj.p);
-        %     obj.M = M;
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.var_f(obj,var_f)
-        %     assert( obj.p == size(var_f,1), 'Matrix var_f has wrong dimension or parameter p is wrong. Expected dim(var_f)=<p>=<%d>, got <%d>.',obj.p,size(var_f,1));
-        %     obj.var_f = var_f;
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.var_n(obj,var_n)
-        %     assert( obj.p == size(var_n,1), 'Matrix var_n has wrong dimension or parameter p is wrong. Expected dim(var_n)=<p>=<%d>, got <%d>.',obj.p,size(var_n,1));
-        %     obj.var_n = var_n;
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.X(obj,X)
-        %     obj.X = X;
-        %     % data has been added. GP is outdated. Please call obj.updateModel
-        %     obj.isOutdated = true;
-        % end
-        % 
-        % function set.Y(obj,Y)
-        %     obj.Y = Y;
-        %     % data has been added. GP is outdated. Please call obj.updateModel
-        %     obj.isOutdated = true;
-        % end
-        
+        function setHyperParameters(obj, M, var_f, var_n)
+        %------------------------------------------------------------------
+        % set new values to the hyperparameter
+        %------------------------------------------------------------------    
+            assert( obj.n == size(M,1),     'Matrix M has wrong dimension or parameters n/p are wrong. Expected dim(M)=<n,n,p>=<%d,%d,%d>',obj.n,obj.n,obj.p);
+            assert( obj.p == size(var_f,1), 'Matrix var_f has wrong dimension or parameter p is wrong. Expected dim(var_f)=<p>=<%d>, got <%d>.',obj.p,size(var_f,1));
+            assert( obj.p == size(var_n,1), 'Matrix var_n has wrong dimension or parameter p is wrong. Expected dim(var_n)=<p>=<%d>, got <%d>.',obj.p,size(var_n,1));
+            obj.M     = M;
+            obj.var_f = var_f;
+            obj.var_n = var_n;
+            obj.updateModel();
+        end
         
         function mean = mu(~,x)
         %------------------------------------------------------------------
@@ -131,7 +106,7 @@ classdef GP < handle
         end
         
         
-        function kernel = K(obj,x1,x2)
+        function kernel = K(obj, x1, x2)
         %------------------------------------------------------------------
         % SEQ kernel function: cov[f(x1),f(x2)]
         %     k(x1,x2) = var_f * exp( 0.5 * ||x1-x2||^2_M )
@@ -142,10 +117,11 @@ classdef GP < handle
         % out:
         %   kernel: <N1,N2,p>
         %------------------------------------------------------------------
+            kernel = zeros(size(x1,2),size(x2,2),obj.p);
             for pi = 1:obj.p
-                D(:,:,pi) = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
+                D = pdist2(x1',x2','mahalanobis',obj.M(:,:,pi)).^2;
                 %D = pdist2(x1',x2','seuclidean',diag((obj.M).^0.5)).^2;
-                kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D(:,:,pi) );
+                kernel(:,:,pi) = obj.var_f(pi) * exp( -0.5 * D );
             end
         end
         
@@ -155,6 +131,10 @@ classdef GP < handle
         % Update precomputed matrices L and alpha, that will be used when
         % evaluating new points. See [Rasmussen, pg19].
         % -----------------------------------------------------------------
+            % nothing to update... return
+            if obj.N == 0
+                return;
+            end
             % store cholesky L and alpha matrices
             I = eye(obj.N);
 
@@ -165,7 +145,6 @@ classdef GP < handle
             for pi=1:obj.p
                 obj.L(:,:,pi) = chol(K(:,:,pi)+ obj.var_n(pi) * I ,'lower');
                 % sanity check: norm( L*L' - (obj.K(obj.X,obj.X) + obj.var_n*I) ) < 1e-12
-
                 obj.alpha(:,pi) = obj.L(:,:,pi)'\(obj.L(:,:,pi)\(obj.Y(:,pi)-obj.mu(obj.X)));
             end
 
@@ -178,7 +157,7 @@ classdef GP < handle
         end
         
         
-        function add(obj,X,Y)
+        function add(obj, X, Y)
         %------------------------------------------------------------------
         % Add new data points [X,Y] to the dictionary
         %
@@ -186,7 +165,7 @@ classdef GP < handle
         %   X: <n,N>
         %   Y: <N,p>
         %------------------------------------------------------------------
-            OPTION = 'A'; % {'A','B'}
+            OPTION = 'B'; % {'A','B'}
         
             assert(size(Y,2) == obj.p, ...
                 sprintf('Y should have %d columns, but has %d. Dimension does not agree with the specified kernel parameters',obj.p,size(Y,2)));
@@ -204,7 +183,6 @@ classdef GP < handle
             % data overflow: dictionary will be full. we need to select
             % relevant points
             else 
-                
                 Nthatfit = obj.Nmax - obj.N;
                 
                 % make dictionary full
@@ -230,14 +208,17 @@ classdef GP < handle
                     
                 % OPTION B)
                 % the point with lowest variance will be removed        
-                else
+                elseif strcmp(OPTION,'B')
                     X_all = [obj.X,X];
                     Y_all = [obj.Y;Y];
+                    
                     [~, var_y] = obj.eval( X_all, true);
                     [~,idx_keep] = maxk(sum(reshape(var_y, obj.p^2, obj.N+Nextra )),obj.Nmax);
 
                     obj.X = X_all(:,idx_keep);
                     obj.Y = Y_all(idx_keep,:);
+                else
+                    error('Option not implemented');
                 end
             end
             % update pre-computed matrices
@@ -308,6 +289,7 @@ classdef GP < handle
         function optimizeHyperParams(obj, method)
         %------------------------------------------------------------------
         % Optimize kernel hyper-parameters based on the current dictionary
+        %   Method: maximum log likelihood (See Rasmussen's book Sec. 5.4.1)
         %------------------------------------------------------------------
             
             warning('off', 'MATLAB:nearlySingularMatrix')
@@ -317,33 +299,23 @@ classdef GP < handle
         
             % error('not yet implemented!!!');
             for ip = 1:obj.p
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % TODO:
-                %       - Implement ML/MAP optimization of hyper parameters
-                %       - See Rasmussen's book Sec. 5.4.1
-                %
-                %       - Each output dimension is a separate GP and must 
-                %       be optimized separately.
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 
                 % set optimization problem
                 nvars = obj.n + 1 + 1;  % M, var_f, var_n
-                IntCon = [];
-                fun = @(vars) loglikelihood(obj,ip,vars);
-                nonlcon = [];
-                A = [];
-                b = [];
-                Aeq = [];
-                beq = [];
+                %fun = @(vars) loglikelihood(obj,ip,vars);
                 
-                ub = [ 1e+3 * ones(obj.n,1);
-                       1e+3;
-                       1e+3 ];
+                fun = @(vars) loglikelihood(obj,ip,...                  % output dim
+                                            diag(10.^vars(1:end-2)),... % M
+                                            10.^vars(end-1),...         % var_f
+                                            10.^vars(end));             % var_n
+                
+                ub = [ 1e+5 * ones(obj.n,1);
+                       1e+5;
+                       1e+5 ];
                 lb = [ 1e-8 * ones(obj.n,1); 
                        0*1e-8; 
-                       0*1e-8 ];
+                       1e-10 ];
                 x0 = [ diag(obj.M(:,:,ip)); obj.var_f(ip); obj.var_n(ip); ];
-                
                 
                 % convert to log10 space
                 ub = log10(ub);
@@ -357,12 +329,12 @@ classdef GP < handle
                                            'PlotFcn', @gaplotbestf,...
                                            'Display','iter',...
                                            'UseParallel',false);
-                    opt_vars = ga(fun,nvars,A,b,Aeq,beq,lb,ub,nonlcon,IntCon,options);
+                    opt_vars = ga(fun,nvars,[],[],[],[],lb,ub,[],[],options);
                 elseif strcmp(method,'fmincon')
                     options = optimoptions('fmincon', ...
                                            'PlotFcn','optimplotfval',...
                                            'Display','iter');
-                    [opt_vars,~] = fmincon(fun,x0,A,b,Aeq,beq,lb,ub,nonlcon,options);
+                    [opt_vars,~] = fmincon(fun,x0,[],[],[],[],lb,ub,[],options);
                 else
                     error('Method %s not implemented, please choose an existing method',method);
                 end
@@ -380,31 +352,19 @@ classdef GP < handle
             warning('on', 'MATLAB:singularMatrix')
         end
         
-        function logL = loglikelihood(obj,outdim,vars)
+        function logL = loglikelihood(obj, outdim, M, var_f, var_n)
         %------------------------------------------------------------------
-        % calculate the log likelihood: p(Y|X,theta)
-        %
-        %   , where theta are the hyperparameters and (X,Y) the dictionary
-        %------------------------------------------------------------------
-            
-            % M     = diag(vars(1:end-2));
-            % var_f = vars(end-1);
-            % var_n = vars(end);
-            
-            % variables in log10 space
-            M     = diag(10.^vars(1:end-2));
-            var_f = 10.^vars(end-1);
-            var_n = 10.^vars(end); % var_n = obj.var_n(outdim);
-                        
+        % calculate the log likelihood: log(p(Y|X,theta)),
+        %      where theta are the hyperparameters and (X,Y) the training data
+        %------------------------------------------------------------------         
             Y = obj.Y(:,outdim);
             K  = var_f * exp( -0.5 * pdist2(obj.X',obj.X','mahalanobis',M).^2 );
             Ky = K + var_n*eye(obj.N);
-            
+            % calculate log(p(Y|X,theta))
             logL = -(-0.5*Y'/Ky*Y -0.5*logdet(Ky) -obj.n/2*log(2*pi));
         end
         
-        
-        function plot2d(obj, truthfun, varargin)
+        function plot2d(obj, truefun, varargin)
         %------------------------------------------------------------------
         % Make analysis of the GP quality (only for the first output dimension.
         % This function can only be called when the GP input is 2D
@@ -415,190 +375,180 @@ classdef GP < handle
         %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
         %                           will be evaluated and ploted
         %------------------------------------------------------------------
-            % output dimension to be analyzed
-            pi = 1;
-        
+            
             assert(obj.N>0, 'Dataset is empty. Aborting...')
-            % we can not plot more than in 3D
             assert(obj.n==2, 'This function can only be used when dim(X)=2. Aborting...');
             
-            % Generate grid where the mean and variance will be calculated
-            if numel(varargin) ~= 2
-                factor = 0.3;
-                rangeX1 = [ min(obj.X(1,:)) - factor*range(obj.X(1,:)), ...
-                            max(obj.X(1,:)) + factor*range(obj.X(1,:))  ];
-                rangeX2 = [ min(obj.X(2,:)) - factor*range(obj.X(2,:)), ...
-                            max(obj.X(2,:)) + factor*range(obj.X(2,:))  ];
-            else
-                rangeX1 = varargin{1};
-                rangeX2 = varargin{2};
-            end
-
+            %--------------------------------------------------------------
+            % parse inputs
+            %--------------------------------------------------------------
+            p = inputParser;
+            
+            addParameter(p,'factor',0.3); 
+            addParameter(p,'outdim',1);
+            addParameter(p,'npoints',50);
+            addParameter(p,'sigmalevel',2);
+            parse(p,varargin{:});
+            
+            factor = p.Results.factor;
+            outdim = p.Results.outdim;
+            npoints = p.Results.npoints;
+            sigmalevel = p.Results.sigmalevel;
+            
+            addParameter(p,'rangeX1', minmax(obj.X(1,:)) + [-1 1]*factor*range(obj.X(1,:)) );
+            addParameter(p,'rangeX2', minmax(obj.X(2,:)) + [-1 1]*factor*range(obj.X(2,:)) );
+            parse(p,varargin{:});
+            
+            rangeX1 = p.Results.rangeX1;
+            rangeX2 = p.Results.rangeX2;
+            
+            %--------------------------------------------------------------
+            % Evaluate Ytrue, Ymean and Ystd
+            %--------------------------------------------------------------
+            
             % generate grid
-            [X1,X2] = meshgrid(linspace(rangeX1(1),rangeX1(2),100),...
-                               linspace(rangeX2(1),rangeX2(2),100));
+            [X1,X2] = meshgrid(linspace(rangeX1(1),rangeX1(2),npoints),...
+                               linspace(rangeX2(1),rangeX2(2),npoints));
             Ytrue = zeros('like',X1);
             Ystd  = zeros('like',X1);
             Ymean = zeros('like',X1);
             for i=1:size(X1,1)
                 for j=1:size(X1,2)
                     % evaluate true function
-                    mutrue = truthfun([X1(i,j);X2(i,j)]);
-                    Ytrue(i,j) = mutrue(pi); % select desired output dim
+                    mutrue = truefun([X1(i,j);X2(i,j)]);
+                    Ytrue(i,j) = mutrue(outdim); % select desired output dim
                     % evaluate GP model
                     [mu,var] = obj.eval([X1(i,j);X2(i,j)],true);
                     if var < 0
                         error('GP obtained a negative variance... aborting');
                     end
                     Ystd(i,j)  = sqrt(var);
-                    Ymean(i,j) = mu(:,pi);    % select desired output dim
+                    Ymean(i,j) = mu(:,outdim);    % select desired output dim
                 end
             end 
             
+            %--------------------------------------------------------------
+            % Generate plots
+            %--------------------------------------------------------------
+            
             % plot data points, and +-2*stddev surfaces 
             figure('Color','w', 'Position', [-1827 27 550 420])
+            %figure('Color','white','Position',[513  440  560  420]);
             hold on; grid on;
-            % surf(X1,X2,Y, 'FaceAlpha',0.3)
-            surf(X1,X2,Ymean+2*Ystd ,Ystd, 'FaceAlpha',0.3)
-            surf(X1,X2,Ymean-2*Ystd,Ystd, 'FaceAlpha',0.3)
-            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red')
+            s1 = surf(X1, X2, Ymean,'edgecolor',0.8*[1 1 1], 'EdgeAlpha', 0.3 ,'FaceColor', [153, 51, 255]/255);
+            s2 = surf(X1, X2, Ymean+sigmalevel*Ystd, Ystd, 'FaceAlpha',0.2,'EdgeAlpha',0.2, 'EdgeColor',0.4*[1 1 1]); %, 'FaceColor',0*[1 1 1])
+            s3 = surf(X1, X2, Ymean-sigmalevel*Ystd, Ystd,  'FaceAlpha',0.2,'EdgeAlpha',0.2, 'EdgeColor',0.4*[1 1 1]); %, 'FaceColor',0*[1 1 1]) 
+            p1 = scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,outdim),'filled','MarkerFaceColor','red');
             title('mean\pm2*stddev Prediction Curves')
-            shading interp;
+            xlabel('X1'); ylabel('X2');
+            view(70,10)
             colormap(gcf,jet);
-            view(30,30)
+            
             
             % Comparison between true and prediction mean
             figure('Color','w', 'Position',[-1269 32 1148 423])
             subplot(1,2,1); hold on; grid on;
             surf(X1,X2,Ytrue, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'True function');
             % surf(X1,X2,Ymean, 'FaceAlpha',.5, 'FaceColor','g', 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
-            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
-            zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,outdim),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+            zlim( minmax(obj.Y(:,outdim)') +[-1 1]*range(obj.Y(:,outdim)) );
             legend;
-            xlabel('X1'); ylabel('X2');
             title('True Function')
-            view(24,12)
+            xlabel('X1'); ylabel('X2');
+            view(-60,17)
             subplot(1,2,2); hold on; grid on;
             % surf(X1,X2,Y, 'FaceAlpha',.5, 'FaceColor','b', 'EdgeColor', 'none', 'DisplayName', 'True function');
             surf(X1,X2,Ymean, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
-            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
-            zlim([ min(obj.Y(:,pi))-range(obj.Y(:,pi)),max(obj.Y(:,pi))+range(obj.Y(:,pi)) ]);
+            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,outdim),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
+            zlim( minmax(obj.Y(:,outdim)') +[-1 1]*range(obj.Y(:,outdim)) );
             legend;
-            xlabel('X1'); ylabel('X2');
             title('Prediction Mean')
-            view(24,12)
+            xlabel('X1'); ylabel('X2');
+            view(-60,17)
             
             % plot bias and variance
             figure('Color','w', 'Position',[-1260 547 894 264])
             subplot(1,2,1); hold on; grid on;
             contourf(X1,X2, abs(Ymean-Ytrue), 50,'LineColor','none')
             title('Absolute Prediction Bias')
+            xlabel('X1'); ylabel('X2');
             colorbar;
             scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
             subplot(1,2,2); hold on; grid on;
             contourf(X1,X2, Ystd.^2, 50 ,'LineColor','none')
             title('Prediction Variance')
+            xlabel('X1'); ylabel('X2');
             colorbar;
             scatter(obj.X(1,:),obj.X(2,:),'filled','MarkerFaceColor','red')
             colormap(gcf,parula);
         end
         
-        function f = plotGP(obj)
-            pi = 1;
-            
-             % Generate grid where the mean and variance will be calculated
-       x1min = -0.1;
-       x1max = 0.3;
-       x2min = -1.6;
-       x2max = 0.4;
-    factor = 0.3;
-    rangeX1 = [x1min - factor*range([x1min x1max]), ...
-               x1max + factor*range([x1min x1max])  ];
-    rangeX2 = [x2min - factor*range([x2min x2max]), ...
-               x2max + factor*range([x2min x2max])  ];
-
-
-
-% generate grid
-[X1,X2] = meshgrid(linspace(rangeX1(1),rangeX1(2),100),...
-                   linspace(rangeX2(1),rangeX2(2),100));
-Ytrue = zeros(length(X1),'like',X1);
-Ystd  = zeros(length(X1),'like',X1);
-Ymean = zeros(length(X1),'like',X1);
-           
-            for i=1:size(X1,1)
-                for j=1:size(X1,2)
-                    % evaluate GP model
-                    [mu,var] = obj.eval([X1(i,j);X2(i,j)]);
-                    if var < 0
-                        error('GP obtained a negative variance... aborting');
-                    end
-                    Ystd(i,j)  = sqrt(var);
-                    Ymean(i,j) = mu(:,pi);    % select desired output dim
-                end
-            end 
-            
-            f = figure('Color','w','visible','off'); hold on; grid on;
-            % surf(X1,X2,Y, 'FaceAlpha',.5, 'FaceColor','b', 'EdgeColor', 'none', 'DisplayName', 'True function');
-            surf(X1,X2,Ymean, 'FaceAlpha',.8, 'EdgeColor', 'none', 'DisplayName', 'Prediction mean');
-            if length(
-            scatter3(obj.X(1,:),obj.X(2,:),obj.Y(:,pi),'filled','MarkerFaceColor','red', 'DisplayName', 'Sample points')
-            zlim([-0.01,0.1 ]);
-            legend;
-            xlabel('X1'); ylabel('X2');
-            title('Prediction Mean')
-            view(260,55)
-        end
-            
+        
         function plot1d(obj, truthfun, varargin)
         %------------------------------------------------------------------
         % Make analysis of the GP quality (only for the first output dimension.
         % This function can only be called when the GP input is 1D
         %
         % args:
-        %   truthfun: anonymous function @(x) which returns the true function
-        %   varargin{1} = rangeX1: 
-        %   varargin{2} = rangeX2:  <1,2> range of X1 and X2 where the data 
-        %                           will be evaluated and ploted
+        %   see inputParser parameters
         %------------------------------------------------------------------
         
             assert(obj.N>0, 'Dataset is empty. Aborting...')
             % we can not plot more than in 3D
             assert(obj.n==1, 'This function can only be used when dim(X)=1. Aborting...');
             
-            error('Not implemented error')
+            %--------------------------------------------------------------
+            % parse inputs
+            %--------------------------------------------------------------
+            p = inputParser;
+            
+            addParameter(p,'factor',0.3); 
+            addParameter(p,'outdim',1);
+            addParameter(p,'npoints',300);
+            addParameter(p,'sigmalevel',2);
+            parse(p,varargin{:});
+            
+            factor = p.Results.factor;
+            outdim = p.Results.outdim;
+            npoints = p.Results.npoints;
+            sigmalevel = p.Results.sigmalevel;
+            
+            addParameter(p,'rangeX', minmax(obj.X) + [-1 1]*factor*range(obj.X) );
+            parse(p,varargin{:});
+            
+            rangeX = p.Results.rangeX;
+            
+            
+            %--------------------------------------------------------------
+            % Evaluate Ytrue, Ymean and Ystd
+            %--------------------------------------------------------------
+            
+            % generate grid
+            X = linspace(rangeX(1),rangeX(2),npoints);
+            % evaluate and calculate prediction mean+-2*std
+            [mu,var] = obj.eval(X,true);
+            Ytrue = truthfun(X);
+            Ymean = mu';
+            Ystd  = sqrt(squeeze(var));
+            
+            % prior
+            %Ymean = 0*mu';
+            %Ystd  = sqrt(diag(obj.K(X,X)));
+            
+            %--------------------------------------------------------------
+            % Generate plots
+            %--------------------------------------------------------------
+            
+            figure('Color','w'); hold on; grid on;
+            p0 = plot(X,Ytrue,      'LineWidth',2);
+            p1 = plot(X,Ymean,      'LineWidth',0.5,'Color', [77, 0, 153]/255);
+            p2 = plot(X,Ymean+sigmalevel*Ystd, 'LineWidth',0.5,'Color', [77, 0, 153]/255);
+            p3 = plot(X,Ymean-sigmalevel*Ystd, 'LineWidth',0.5,'Color', [77, 0, 153]/255);
+            p4 = patch([X fliplr(X)], [Ymean'+sigmalevel*Ystd' fliplr(Ymean'-sigmalevel*Ystd')], [153, 51, 255]/255, ...
+                        'FaceAlpha',0.2, 'EdgeColor','none');
+            p5 = scatter( obj.X, obj.Y, 'MarkerFaceColor','r','MarkerEdgeColor','r');
+            % title('mean \pm 2*std curves');
+            xlabel('X'); ylabel('Y');
         end
     end
 end
-
-
-
-
-
-
-
-
-
-
-% function cost = optimizeHyperParams_gradfun(obj,outdim,vars)
-% 
-%     var_f = vars(1);
-%     M = diag(vars(2:end));
-% 
-%     K = var_f * exp( -0.5 * pdist2(obj.X',obj.X','mahalanobis',M).^2 );
-% 
-%     alpha = K \ obj.Y(:,outdim);
-% 
-%     dK_var_f = K*2/sqrt(var_f);
-% 
-%     dK_l = zeros(obj.N,obj.N);
-%     for i=1:obj.N
-%         for j=1:obj.N
-%             ksi = obj.X(:,i) - obj.X(:,j);
-%             % dK_l(i,j) = sum( K(i,j)*0.5*inv(M)*ksi*ksi'*inv(M) * log(diag(M)) );
-%             dK_l(i,j) = sum( K(i,j)*0.5*M\ksi*ksi'/M * log(diag(M)) );
-%         end
-%     end            
-%     % cost = 0.5 * trace( (alpha*alpha' - inv(K)) * ( dK_var_f + dK_l ) );
-%     cost = 0.5 * trace( alpha*alpha'*(dK_var_f+dK_l) - K\(dK_var_f+dK_l) );
-% end

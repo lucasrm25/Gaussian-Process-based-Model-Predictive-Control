@@ -86,7 +86,7 @@ d_GP = GP(gp_n, gp_p, var_f, var_n, M, maxsize);
 
 % create estimation dynamics model (disturbance is the Gaussian Process GP)
 estModel = MotionModelGP_InvPendulum_nominal(Mc, Mp, b, I, l, @d_GP.eval, var_w);
-estModel = trueModel;
+%estModel = trueModel;
 %estModel = nomModel;
 
 %% Controller
@@ -221,7 +221,7 @@ for k = ki:numel(out.t)-1
         d_GP.add(zhat,d_est);
     end
     
-    if d_GP.N > 1 && out.t(k) > 0
+    if d_GP.N > 1 && out.t(k) >0
         d_GP.updateModel();
         d_GP.isActive = true;
     end
@@ -238,6 +238,8 @@ return
 out_true = load(fullfile(pwd,'/simresults/20-01-18-out-true.mat'))
 %out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom.mat'))
 out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom-hp-optimized.mat'))
+%--------------------------------------------------------------------------------
+% out_nom = load(fullfile(pwd,'/simresults/20-01-25-GP-out-GP3s.mat'))
 GPAnimation = InvertedPendulumGPAnimation(d_GP, -0.1, 0.3, -1.6, 0.3, out, out_true, out_nom);
 GPAnimation.initInvertedPendulumGPAnimation()
 for k=1:numel(out.t)-1
@@ -275,15 +277,32 @@ d_GP.var_n
 close all;
 
 % plot reference and state signal
-figure('Position',[-1836 535 560 420]); 
+figure; 
 subplot(2,1,1); hold on; grid on;
-plot(out.t(1:end-1), out.r, 'DisplayName', 'r(t)')
+plot(out.t(1:end-1), out.r(1,:),'k', 'DisplayName', 'r(t)')
 plot(out.t, out.x(3,:), 'DisplayName', 'x(t) [rad]')
-ylabel('[rad]');
+xlabel('Time [s]')
+ylabel('Pole angle \theta [rad]');
 legend;
 subplot(2,1,2); hold on; grid on;
 plot(out.t(1:end-1), out.u, 'DisplayName', 'u(t)')
+xlabel('Time [s]')
+ylabel('Force F on the carriage [N]');
 legend;
+
+out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom.mat'))
+out_true = load(fullfile(pwd,'/simresults/20-01-18-out-true.mat'))
+figure; 
+hold on; grid on;
+plot(out.t(1:end-1), out.r(1,:),'k','Linewidth',4, 'DisplayName', 'Reference')
+plot(out_true.out.t, out_true.out.x(3,:), 'color',[ 0.4660  0.6740 0.1880],'Linewidth',4, 'DisplayName', 'Standard MPC (True Model)')
+plot(out_nom.out.t, out_nom.out.x(3,:),'color',[  0.6350  0.0780  0.1840], 'Linewidth',4, 'DisplayName', 'Standard MPC (Nominal Model)')
+plot(out.t, out.x(3,:), 'color',[  0    0.4470    0.7410],'Linewidth',4, 'DisplayName', 'GP-based MPC (activated after 3s)')
+xlabel('Time [s]')
+ylabel('Pole angle \theta [rad]');
+legend('Location','east');
+set(gca,'FontSize',21)
+
 
 % true GP function that is meant to be learned
 Bz_x = trueModel.Bz_x;
@@ -299,12 +318,40 @@ gptrue = @(z) Bd'*( trueModel.xkp1(Bz_x'*z, zeros(n), 0, dt)...
 % plot prediction bias and variance
 d_GP.plot2d( gptrue )
 
+%% Evaluate all results (nom, true, GP, GP-optimized)
+% out_true = load(fullfile(pwd,'/simresults/20-01-18-out-true.mat'))
+% out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom.mat'))
+% out_GP = load(fullfile(pwd,'/simresults/20-01-25-GP-out-est-GP0s.mat'))
+% out_GP_hp = load(fullfile(pwd,'/simresults/20-01-25-GP-out-est-hp-opt-GP0s.mat'))
+
+out_true = load(fullfile(pwd,'/simresults/20-01-18-out-true.mat'))
+out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom.mat'))
+% out_true = load(fullfile(pwd,'/simresults/Feb/new_true.mat'))
+% out_nom = load(fullfile(pwd,'/simresults/Feb/new_nom.mat'))
+out_GP = load(fullfile(pwd,'/simresults/Feb/GP-out-0s-offline-and-online.mat'))
+out_GP_hp = load(fullfile(pwd,'/simresults/Feb/GP-out-0s-offline-and-online-opt.mat'))
+
+figure; 
+hold on; grid on;
+%plot(out.t(1:end-1), out.r(1,:),'k','Linewidth',4, 'DisplayName', 'Reference')
+plot(out_true.out.t, out_true.out.x(3,:),'color',[ 0.4660  0.6740 0.1880],'Linewidth',4, 'DisplayName', 'Standard MPC (True Model)')
+plot(out_nom.out.t, out_nom.out.x(3,:),'color',[  0.6350  0.0780  0.1840], 'Linewidth',4,'DisplayName', 'Standard MPC (Nominal Model)')
+plot(out_GP.out.t, out_GP.out.x(3,:),'color',[  0    0.4470    0.7410], 'Linewidth',4, 'DisplayName', 'GP-based MPC')
+plot(out_GP_hp.out.t, out_GP_hp.out.x(3,:),'color',[0.9290    0.6940    0.1250], 'Linewidth',4, 'DisplayName', 'GP-based MPC (HP optimized)')
+xlabel('Time [s]')
+ylabel('Pole angle \theta [rad]');
+legend('Location','east');
+set(gca,'FontSize',28)
+
 
 
 %% animation of inverse pendulum
 
 % animation of inverse pendulum
-drawpendulum(out.t,out.x,Mc,Mp,g,l)     
+
+load(fullfile(pwd,'/simresults/Feb/GP-out-0s-offline-and-online-opt.mat'))
+out_nom = load(fullfile(pwd,'/simresults/20-01-21-GP-out-nom.mat'))
+drawpendulum(out.t,out.x,out_nom.out.t,out_nom.out.x,Mc,Mp,g,l)     
 
 
 %% Analyse learning

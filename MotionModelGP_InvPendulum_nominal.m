@@ -132,7 +132,7 @@ classdef MotionModelGP_InvPendulum_nominal < MotionModelGP
         %
         %
         %   Example how to run this function:
-        %       ip = MotionModelGP_InvertedPendulum(5, 2, 0.1, 0.6, 3, @(z)deal(0,0), 0);
+        %       ip = MotionModelGP_InvPendulum_nominal(5, 2, 0.1, 0.6, 3, @(z)deal(0,0), 0);
         %       ip.generate_invertedPendulum_functions();
         %------------------------------------------------------------------
             syms g Mc Mp b I l F T s ds dds  th dth ddth real
