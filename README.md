@@ -36,7 +36,7 @@ and it is trained (hyperparameter optimization) by maximizing the log Likelihood
 ### Results
 
 
-| NMPC controller with unmodelled dynamics        | Adaptive NMPC controller (with trained Gaussian Process)         |
+| NMPC controller with unmodelled dynamics        | Learning-Based NMPC controller (with trained Gaussian Process)         |
 | ------------- |-------------|
 | <img src="./simresults/trackAnimVideo-16-Jan-2020-without-GP.gif" alt="drawing" width="400"/>      | <img src="./simresults/trackAnimVideo-16-Jan-2020-with-GP-optimized.gif" alt="drawing" width="400"/>    |
 
