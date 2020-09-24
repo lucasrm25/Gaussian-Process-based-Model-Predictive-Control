@@ -354,7 +354,7 @@ classdef GP < handle
         
         function logL = loglikelihood(obj, outdim, M, var_f, var_n)
         %------------------------------------------------------------------
-        % calculate the log likelihood: log(p(Y|X,theta)),
+        % calculate the negative log likelihood: -log(p(Y|X,theta)),
         %      where theta are the hyperparameters and (X,Y) the training data
         %------------------------------------------------------------------         
             Y = obj.Y(:,outdim);
